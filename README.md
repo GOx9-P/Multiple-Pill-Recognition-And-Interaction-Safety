@@ -30,6 +30,49 @@ Phân biệt nhanh các folder dễ nhầm:
 
 Frontend/Demo UI chưa được tạo ở giai đoạn này.
 
+## Môi Trường
+
+Phiên bản Python chốt cho project:
+
+```text
+Python 3.11.9
+```
+
+Khi chạy local, ưu tiên đúng `Python 3.11.9` để đồng nhất với `.python-version`. Khi chạy trên Colab/Kaggle, chấp nhận runtime `Python 3.11.x` hoặc `Python 3.12.x`, nhưng cần kiểm tra lại version trước khi train.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Các thư viện đã được pin trong `requirements.txt`. Nếu máy dùng GPU NVIDIA, có thể cần cài PyTorch theo CUDA tương ứng từ hướng dẫn chính thức của PyTorch, sau đó cài các thư viện còn lại trong `requirements.txt`.
+
+### Colab/Kaggle
+
+Trước khi chạy notebook trên Colab hoặc Kaggle, kiểm tra runtime:
+
+```python
+import sys
+import torch
+
+print(sys.version)
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
+```
+
+Khuyến nghị:
+
+| Nền tảng | Cách dùng |
+|---|---|
+| Local | Dùng `Python 3.11.9` và `pip install -r requirements.txt`. |
+| Colab | Có thể dùng runtime mới, nhưng nếu cần khớp project thì cài lại package theo `requirements.txt`. |
+| Kaggle | Ưu tiên GPU T4/P100-compatible runtime; nếu PyTorch mới không nhận P100 thì cài lại PyTorch pinned trong `requirements.txt` hoặc đổi accelerator. |
+
+Nếu Colab/Kaggle đã có sẵn PyTorch mới hơn và gây xung đột, cài lại PyTorch trước rồi mới cài các thư viện còn lại.
+
 ## Cây Thư Mục
 
 ```text
@@ -58,23 +101,33 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │   ├── migrations/                               # SQL/migration tạo hoặc cập nhật schema
 │   └── seeds/                                    # Dữ liệu/script seed cho drug, appearance, ingredient, DDI
 │
-├── docs/                                         # Tài liệu đồ án: report, slide, paper summary, specification
+├── docs/                                         # Tài liệu đồ án và contract giữa các module
+│   ├── Overview.md                               # Tổng quan đề tài, mục tiêu và ứng dụng
+│   ├── CV_Module.md                              # Đặc tả kiến trúc Computer Vision module
+│   ├── RAG_Module.md                             # Đặc tả Retrieval/RAG, database, DDI và report
+│   ├── metric_CV.md                              # Metric đánh giá các module CV
+│   ├── metric_LLM.md                             # Metric đánh giá retrieval/ranking/safety
+│   ├── train_request.md                          # Yêu cầu log và artifact khi train model
+│   └── schema.md                                 # Input/output contract giữa các module
 │
 ├── experiments/                                  # Kết quả của các lần train/evaluate, có thể rất lớn
 │   ├── segmentation_yolov11_full_finetune/       # Experiment cho Module 1: YOLOv11-Seg full fine-tune
 │   │   ├── checkpoints/                          # Checkpoint từng lần train: best.pt, last.pt, epoch_x.pt
 │   │   ├── logs/                                 # Log train/evaluate: loss, warning, runtime
 │   │   ├── metrics/                              # Kết quả metric đã tính: Instance Recall, Merge Error Rate
+│   │   ├── plots/                                # Biểu đồ loss/metric/threshold để đưa vào báo cáo
 │   │   └── predictions/                          # Ảnh/mask dự đoán mẫu để phân tích lỗi
 │   ├── attribute_resnet18_head_tune/             # Experiment cho Module 2a: train head ResNet18
 │   │   ├── checkpoints/                          # Checkpoint trong giai đoạn freeze backbone, train head
 │   │   ├── logs/                                 # Log train/evaluate head-tune
 │   │   ├── metrics/                              # Macro F1, loss curve, confusion matrix nếu cần
+│   │   ├── plots/                                # Biểu đồ loss, Macro F1, confusion matrix
 │   │   └── predictions/                          # Sample dự đoán shape/color/form/score_line
 │   ├── attribute_resnet18_last_blocks_finetune/  # Experiment cho Module 2b: fine-tune last blocks ResNet18
 │   │   ├── checkpoints/                          # Checkpoint sau khi unfreeze last blocks
 │   │   ├── logs/                                 # Log fine-tune với learning rate nhỏ
 │   │   ├── metrics/                              # So sánh metric với bản head-tune
+│   │   ├── plots/                                # Biểu đồ so sánh head-tune và last-blocks
 │   │   └── predictions/                          # Sample dự đoán sau fine-tune
 │   └── ocr_paddleocr_baseline/                   # Experiment cho Module 3: PaddleOCR baseline
 │       ├── logs/                                 # Log chạy OCR/evaluate OCR
@@ -173,6 +226,18 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 ├── README.md                                     # Tài liệu cấu trúc project
 └── requirements.txt                              # Python dependencies
 ```
+
+## Tài Liệu Chính
+
+| File | Nội dung |
+|---|---|
+| `docs/Overview.md` | Tổng quan bài toán, mục tiêu, phạm vi và giá trị ứng dụng của đề tài. |
+| `docs/CV_Module.md` | Thiết kế CV pipeline: segmentation, attribute recognition, imprint OCR và CV output. |
+| `docs/RAG_Module.md` | Thiết kế retrieval/ranking, database thuốc, mapping hoạt chất, DDI lookup và report. |
+| `docs/metric_CV.md` | Metric cho segmentation, attribute recognition, OCR và CV output. |
+| `docs/metric_LLM.md` | Metric cho identification, unknown rejection, ranking và safety gate. |
+| `docs/train_request.md` | Quy định log, metric, checkpoint và evidence cần lưu cho 3 training job hiện tại. |
+| `docs/schema.md` | Contract input/output giữa các module để các team làm song song không conflict. |
 
 ## Quy Ước Làm Việc
 
