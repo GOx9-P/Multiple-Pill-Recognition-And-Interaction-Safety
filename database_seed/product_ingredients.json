@@ -1,0 +1,326 @@
+[
+  {
+    "product_code": "0093-5056",
+    "ingredient_name": "atorvastatin",
+    "strength": "atorvastatin 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "atorvastatin 10 mg",
+    "source_ingredient_name": "ATORVASTATIN CALCIUM TRIHYDRATE"
+  },
+  {
+    "product_code": "0904-7914",
+    "ingredient_name": "ibuprofen",
+    "strength": "ibuprofen 200 mg",
+    "strength_value": 200,
+    "strength_unit": "mg",
+    "numerator_text": "ibuprofen 200 mg",
+    "source_ingredient_name": "ibuprofen"
+  },
+  {
+    "product_code": "41250-484",
+    "ingredient_name": "acetaminophen",
+    "strength": "acetaminophen 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "acetaminophen 500 mg",
+    "source_ingredient_name": "acetaminophen"
+  },
+  {
+    "product_code": "43353-338",
+    "ingredient_name": "pantoprazole",
+    "strength": "pantoprazole 40 mg",
+    "strength_value": 40,
+    "strength_unit": "mg",
+    "numerator_text": "pantoprazole 40 mg",
+    "source_ingredient_name": "pantoprazole"
+  },
+  {
+    "product_code": "45865-517",
+    "ingredient_name": "metformin",
+    "strength": "metformin 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "metformin 500 mg",
+    "source_ingredient_name": "metformin"
+  },
+  {
+    "product_code": "50111-334",
+    "ingredient_name": "metronidazole",
+    "strength": "metronidazole 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "metronidazole 500 mg",
+    "source_ingredient_name": "metronidazole"
+  },
+  {
+    "product_code": "53808-0349",
+    "ingredient_name": "ciprofloxacin",
+    "strength": "ciprofloxacin 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "ciprofloxacin 500 mg",
+    "source_ingredient_name": "ciprofloxacin"
+  },
+  {
+    "product_code": "54348-857",
+    "ingredient_name": "azithromycin",
+    "strength": "azithromycin 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "azithromycin 500 mg",
+    "source_ingredient_name": "azithromycin"
+  },
+  {
+    "product_code": "54868-5095",
+    "ingredient_name": "bisoprolol",
+    "strength": "bisoprolol 5 mg",
+    "strength_value": 5,
+    "strength_unit": "mg",
+    "numerator_text": "bisoprolol 5 mg",
+    "source_ingredient_name": "bisoprolol"
+  },
+  {
+    "product_code": "55910-806",
+    "ingredient_name": "loratadine",
+    "strength": "loratadine 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "loratadine 10 mg",
+    "source_ingredient_name": "LORATADINE"
+  },
+  {
+    "product_code": "58151-575",
+    "ingredient_name": "sertraline",
+    "strength": "sertraline 50 mg",
+    "strength_value": 50,
+    "strength_unit": "mg",
+    "numerator_text": "sertraline 50 mg",
+    "source_ingredient_name": "sertraline"
+  },
+  {
+    "product_code": "61919-030",
+    "ingredient_name": "losartan",
+    "strength": "losartan 50 mg",
+    "strength_value": 50,
+    "strength_unit": "mg",
+    "numerator_text": "losartan 50 mg",
+    "source_ingredient_name": "losartan"
+  },
+  {
+    "product_code": "61919-448",
+    "ingredient_name": "glimepiride",
+    "strength": "glimepiride 2 mg",
+    "strength_value": 2,
+    "strength_unit": "mg",
+    "numerator_text": "glimepiride 2 mg",
+    "source_ingredient_name": "glimepiride"
+  },
+  {
+    "product_code": "63629-5382",
+    "ingredient_name": "lisinopril",
+    "strength": "lisinopril 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "lisinopril 10 mg",
+    "source_ingredient_name": "lisinopril"
+  },
+  {
+    "product_code": "64725-0833",
+    "ingredient_name": "warfarin",
+    "strength": "warfarin 5 mg",
+    "strength_value": 5,
+    "strength_unit": "mg",
+    "numerator_text": "warfarin 5 mg",
+    "source_ingredient_name": "warfarin"
+  },
+  {
+    "product_code": "67046-520",
+    "ingredient_name": "omeprazole",
+    "strength": "omeprazole 20 mg",
+    "strength_value": 20,
+    "strength_unit": "mg",
+    "numerator_text": "omeprazole 20 mg",
+    "source_ingredient_name": "omeprazole"
+  },
+  {
+    "product_code": "67296-2280",
+    "ingredient_name": "hydrochlorothiazide",
+    "strength": "hydrochlorothiazide 25 mg",
+    "strength_value": 25,
+    "strength_unit": "mg",
+    "numerator_text": "hydrochlorothiazide 25 mg",
+    "source_ingredient_name": "HYDROCHLOROTHIAZIDE"
+  },
+  {
+    "product_code": "68084-536",
+    "ingredient_name": "clopidogrel",
+    "strength": "clopidogrel 75 mg",
+    "strength_value": 75,
+    "strength_unit": "mg",
+    "numerator_text": "clopidogrel 75 mg",
+    "source_ingredient_name": "clopidogrel"
+  },
+  {
+    "product_code": "70518-1248",
+    "ingredient_name": "doxycycline",
+    "strength": "doxycycline 100 mg",
+    "strength_value": 100,
+    "strength_unit": "mg",
+    "numerator_text": "doxycycline 100 mg",
+    "source_ingredient_name": "doxycycline"
+  },
+  {
+    "product_code": "70518-1939",
+    "ingredient_name": "amiodarone",
+    "strength": "amiodarone 200 mg",
+    "strength_value": 200,
+    "strength_unit": "mg",
+    "numerator_text": "amiodarone 200 mg",
+    "source_ingredient_name": "AMIODARONE HYDROCHLORIDE"
+  },
+  {
+    "product_code": "70518-2981",
+    "ingredient_name": "amlodipine",
+    "strength": "amlodipine 5 mg",
+    "strength_value": 5,
+    "strength_unit": "mg",
+    "numerator_text": "amlodipine 5 mg",
+    "source_ingredient_name": "amlodipine"
+  },
+  {
+    "product_code": "71335-2784",
+    "ingredient_name": "fluoxetine",
+    "strength": "fluoxetine 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "fluoxetine 10 mg",
+    "source_ingredient_name": "FLUOXETINE HYDROCHLORIDE"
+  },
+  {
+    "product_code": "72162-2268",
+    "ingredient_name": "digoxin",
+    "strength": "digoxin 125 ug",
+    "strength_value": 125,
+    "strength_unit": "ug",
+    "numerator_text": "digoxin 125 ug",
+    "source_ingredient_name": "digoxin"
+  },
+  {
+    "product_code": "72789-032",
+    "ingredient_name": "furosemide",
+    "strength": "furosemide 40 mg",
+    "strength_value": 40,
+    "strength_unit": "mg",
+    "numerator_text": "furosemide 40 mg",
+    "source_ingredient_name": "furosemide"
+  },
+  {
+    "product_code": "72789-290",
+    "ingredient_name": "spironolactone",
+    "strength": "spironolactone 25 mg",
+    "strength_value": 25,
+    "strength_unit": "mg",
+    "numerator_text": "spironolactone 25 mg",
+    "source_ingredient_name": "SPIRONOLACTONE"
+  },
+  {
+    "product_code": "72789-343",
+    "ingredient_name": "cetirizine",
+    "strength": "cetirizine 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "cetirizine 10 mg",
+    "source_ingredient_name": "cetirizine"
+  },
+  {
+    "product_code": "72789-401",
+    "ingredient_name": "prednisone",
+    "strength": "prednisone 10 mg",
+    "strength_value": 10,
+    "strength_unit": "mg",
+    "numerator_text": "prednisone 10 mg",
+    "source_ingredient_name": "PREDNISONE"
+  },
+  {
+    "product_code": "72789-423",
+    "ingredient_name": "propranolol",
+    "strength": "propranolol 20 mg",
+    "strength_value": 20,
+    "strength_unit": "mg",
+    "numerator_text": "propranolol 20 mg",
+    "source_ingredient_name": "PROPRANOLOL HYDROCHLORIDE"
+  },
+  {
+    "product_code": "76420-192",
+    "ingredient_name": "amoxicillin",
+    "strength": "amoxicillin 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "amoxicillin 500 mg",
+    "source_ingredient_name": "amoxicillin"
+  },
+  {
+    "product_code": "80425-0049",
+    "ingredient_name": "naproxen",
+    "strength": "naproxen 500 mg",
+    "strength_value": 500,
+    "strength_unit": "mg",
+    "numerator_text": "naproxen 500 mg",
+    "source_ingredient_name": "naproxen"
+  },
+  {
+    "product_code": "80425-0057",
+    "ingredient_name": "tramadol",
+    "strength": "tramadol 50 mg",
+    "strength_value": 50,
+    "strength_unit": "mg",
+    "numerator_text": "tramadol 50 mg",
+    "source_ingredient_name": "tramadol"
+  },
+  {
+    "product_code": "80425-0102",
+    "ingredient_name": "diclofenac",
+    "strength": "diclofenac 50 mg",
+    "strength_value": 50,
+    "strength_unit": "mg",
+    "numerator_text": "diclofenac 50 mg",
+    "source_ingredient_name": "diclofenac"
+  },
+  {
+    "product_code": "81964-221",
+    "ingredient_name": "amoxicillin",
+    "strength": "amoxicillin 875 mg",
+    "strength_value": 875,
+    "strength_unit": "mg",
+    "numerator_text": "amoxicillin 875 mg",
+    "source_ingredient_name": "amoxicillin"
+  },
+  {
+    "product_code": "81964-221",
+    "ingredient_name": "clavulanic acid",
+    "strength": "clavulanic acid 125 mg",
+    "strength_value": 125,
+    "strength_unit": "mg",
+    "numerator_text": "clavulanic acid 125 mg",
+    "source_ingredient_name": "clavulanic acid"
+  },
+  {
+    "product_code": "82868-108",
+    "ingredient_name": "gabapentin",
+    "strength": "gabapentin 100 mg",
+    "strength_value": 100,
+    "strength_unit": "mg",
+    "numerator_text": "gabapentin 100 mg",
+    "source_ingredient_name": "GABAPENTIN"
+  },
+  {
+    "product_code": "85534-0096",
+    "ingredient_name": "levofloxacin",
+    "strength": "levofloxacin 250 mg",
+    "strength_value": 250,
+    "strength_unit": "mg",
+    "numerator_text": "levofloxacin 250 mg",
+    "source_ingredient_name": "LEVOFLOXACIN"
+  }
+]

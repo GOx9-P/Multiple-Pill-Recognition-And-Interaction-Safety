@@ -2,6 +2,120 @@
 
 Project xây dựng hệ thống nhận diện nhiều viên thuốc trong một ảnh và cảnh báo tương tác thuốc dựa trên dữ liệu có kiểm chứng.
 
+## Database Backend Local
+
+Phần PostgreSQL/FastAPI được tích hợp vào cấu trúc hiện tại của repo, không tạo cây `app/` riêng. Code backend nằm trong `src/pill_safety`, migration nằm trong `database/migrations`, dữ liệu seed nằm trong `database_seed`.
+
+Luồng vận hành:
+
+```text
+compose.yaml
+    -> Docker chay PostgreSQL 16 Alpine
+    -> Alembic tao/cap nhat schema
+    -> JSON seed trong database_seed/
+    -> FastAPI truy van bang SQLAlchemy 2.x
+```
+
+Các file chính:
+
+| File/thư mục | Vai trò |
+|---|---|
+| `compose.yaml` | Chạy PostgreSQL bằng Docker Compose |
+| `.env.example` | Mẫu biến môi trường, không chứa mật khẩu thật |
+| `alembic.ini` | Cấu hình Alembic dùng `database/migrations` |
+| `database/migrations/` | Migration tạo/cập nhật bảng |
+| `database_seed/db.md` | Tài liệu ER, data dictionary và JSON seed |
+| `src/pill_safety/database/` | SQLAlchemy model, session, repository, service, seed script |
+| `src/pill_safety/api/main.py` | FastAPI endpoints |
+
+### Cài đặt database lần đầu
+
+```powershell
+pip install -r requirements.txt
+Copy-Item .env.example .env
+
+docker compose up -d
+$env:PYTHONPATH = "src"
+alembic upgrade head
+python -m pill_safety.database.scripts.seed
+uvicorn pill_safety.api.main:app --reload
+```
+
+Hoặc chạy script:
+
+```powershell
+.\scripts\setup.ps1
+```
+
+URL kiểm tra:
+
+```text
+http://localhost:8000
+http://localhost:8000/docs
+http://localhost:8000/health/database
+http://localhost:8000/drugs
+```
+
+### Quy trình hằng ngày
+
+```powershell
+docker compose up -d
+$env:PYTHONPATH = "src"
+alembic upgrade head
+python -m pill_safety.database.scripts.seed
+uvicorn pill_safety.api.main:app --reload
+```
+
+### Khi thay đổi schema
+
+```powershell
+$env:PYTHONPATH = "src"
+alembic revision --autogenerate -m "describe change"
+alembic upgrade head
+```
+
+Sau khi đổi schema, cập nhật đồng bộ:
+
+```text
+SQLAlchemy models
+Alembic migration
+database_seed/db.md
+```
+
+### Khi thay đổi dữ liệu nền
+
+Sửa file JSON plural trong `database_seed/`, sau đó chạy:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m pill_safety.database.scripts.seed
+```
+
+Seed script idempotent: chạy nhiều lần không tạo dữ liệu trùng.
+
+### Xem bảng trong PostgreSQL
+
+```powershell
+docker compose exec postgres psql -U medication_user -d medication_db
+```
+
+Trong `psql`:
+
+```sql
+\dt
+\d drug_products
+SELECT * FROM drug_products LIMIT 20;
+\q
+```
+
+### Reset database local
+
+```powershell
+.\scripts\reset_database.ps1
+```
+
+Script này gọi `docker compose down -v`, nên sẽ xóa toàn bộ dữ liệu PostgreSQL local trong Docker volume.
+
 ## Tổ Chức Folder
 
 ```text
