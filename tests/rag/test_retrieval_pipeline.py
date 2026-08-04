@@ -544,3 +544,37 @@ def test_candidate_retriever_fallback_by_attributes_uses_idf() -> None:
     finally:
         session.close()
 
+
+def test_multiple_appearances_same_drug_not_ambiguous() -> None:
+    session = make_session()
+
+    # Add a second appearance for drug_id = 1
+    app_second = DrugAppearance(
+        appearance_id=99,
+        drug_id=1,
+        imprint="TV 5056",
+        imprint_normalized="TV5056",
+        shape="OVAL",
+        color="WHITE",
+        primary_color="WHITE",
+        score_line=False,
+        logo_or_symbol=False,
+    )
+    session.add(app_second)
+    session.commit()
+
+    try:
+        IdfStatisticsBuilder.invalidate_cache()
+        service = IdentificationService(session)
+        pill = base_pill()
+        request = cv_request_for_pill(pill)
+        res = service.identify(request)
+
+        pill_result = res["pill_results"][0]
+        # Should be IDENTIFIED, not AMBIGUOUS, because top-1 and top-2 are deduplicated by drug_id
+        assert pill_result["identification_status"] == "identified"
+        assert pill_result["accepted_product"]["drug_id"] == 1
+    finally:
+        session.close()
+
+

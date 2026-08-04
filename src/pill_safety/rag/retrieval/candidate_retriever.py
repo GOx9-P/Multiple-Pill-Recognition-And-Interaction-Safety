@@ -56,7 +56,7 @@ class CandidateRetriever:
 
         if queried_imprints:
             min_len = max(1, min((len(q) + 1) // 2 for q in queried_imprints))
-            max_len = max(len(q) * 2 for q in queried_imprints)
+            max_len = max(6, max(len(q) * 2 for q in queried_imprints))
             all_candidates = self.load_active_candidates(market=pill.market, min_len=min_len, max_len=max_len)
 
             matched: list[tuple[float, CandidateRecord]] = []

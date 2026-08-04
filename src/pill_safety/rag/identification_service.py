@@ -76,11 +76,18 @@ class IdentificationService:
             }
 
         diagnostics, candidates = self.retriever.retrieve(normalized, idf_statistics=scorer.idf_statistics)
-        ranked = sorted(
+        all_ranked = sorted(
             (scorer.score(normalized, candidate) for candidate in candidates),
             key=lambda item: item.final_score,
             reverse=True,
         )
+        seen_drugs: set[int] = set()
+        ranked: list[CandidateScore] = []
+        for score_item in all_ranked:
+            if score_item.candidate.drug_id not in seen_drugs:
+                seen_drugs.add(score_item.candidate.drug_id)
+                ranked.append(score_item)
+
         decision = self.safety_gate.decide(normalized, ranked)
         top_candidates = [
             self._serialize_candidate_score(score, rank=index + 1, top2_margin=_top2_margin(ranked, index))

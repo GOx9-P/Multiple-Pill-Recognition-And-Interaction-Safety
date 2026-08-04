@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 from pill_safety.database.services.drug_service import DrugService
 from pill_safety.database.services.interaction_service import InteractionService
 from pill_safety.database.session import get_db
+from pill_safety.rag.identification_service import IdentificationService
+from pill_safety.rag.ddi.ddi_lookup_service import DdiLookupService
+from pill_safety.rag.reporting.context_builder import ContextBuilderService
+from pill_safety.schemas.rag import RagIdentifyRequest, DdiRequest, ContextBuilderInput
 
 
 app = FastAPI(title="Medication Safety API")
@@ -64,3 +68,37 @@ def get_interaction_pair(
     if interaction is None:
         raise HTTPException(status_code=404, detail="No known interaction in current database")
     return interaction
+
+
+@app.post("/rag/identify")
+def identify_pills(
+    rag_request: RagIdentifyRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    try:
+        return IdentificationService(db).identify(rag_request.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/rag/ddi")
+def lookup_ddi(
+    ddi_request: DdiRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    try:
+        return DdiLookupService(db).lookup_ddi(ddi_request.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/rag/context")
+def build_context(
+    context_input: ContextBuilderInput,
+) -> dict:
+    try:
+        return ContextBuilderService().build_context(context_input.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

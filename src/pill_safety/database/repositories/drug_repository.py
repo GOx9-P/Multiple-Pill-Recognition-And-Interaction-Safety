@@ -26,7 +26,14 @@ class DrugRepository:
         return self.db.scalars(statement).first()
 
     def get_by_product_code(self, product_code: str) -> DrugProduct | None:
-        statement = select(DrugProduct).where(DrugProduct.product_code == product_code)
+        statement = (
+            select(DrugProduct)
+            .options(
+                selectinload(DrugProduct.appearances),
+                selectinload(DrugProduct.product_ingredients).selectinload(ProductIngredient.ingredient),
+            )
+            .where(DrugProduct.product_code == product_code)
+        )
         return self.db.scalars(statement).first()
 
     def find_by_visual_features(
