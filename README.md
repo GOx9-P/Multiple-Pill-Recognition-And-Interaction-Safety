@@ -2,120 +2,6 @@
 
 Project xây dựng hệ thống nhận diện nhiều viên thuốc trong một ảnh và cảnh báo tương tác thuốc dựa trên dữ liệu có kiểm chứng.
 
-## Database Backend Local
-
-Phần PostgreSQL/FastAPI được tích hợp vào cấu trúc hiện tại của repo, không tạo cây `app/` riêng. Code backend nằm trong `src/pill_safety`, migration nằm trong `database/migrations`, dữ liệu seed nằm trong `database_seed`.
-
-Luồng vận hành:
-
-```text
-compose.yaml
-    -> Docker chay PostgreSQL 16 Alpine
-    -> Alembic tao/cap nhat schema
-    -> JSON seed trong database_seed/
-    -> FastAPI truy van bang SQLAlchemy 2.x
-```
-
-Các file chính:
-
-| File/thư mục | Vai trò |
-|---|---|
-| `compose.yaml` | Chạy PostgreSQL bằng Docker Compose |
-| `.env.example` | Mẫu biến môi trường, không chứa mật khẩu thật |
-| `alembic.ini` | Cấu hình Alembic dùng `database/migrations` |
-| `database/migrations/` | Migration tạo/cập nhật bảng |
-| `database_seed/db.md` | Tài liệu ER, data dictionary và JSON seed |
-| `src/pill_safety/database/` | SQLAlchemy model, session, repository, service, seed script |
-| `src/pill_safety/api/main.py` | FastAPI endpoints |
-
-### Cài đặt database lần đầu
-
-```powershell
-pip install -r requirements.txt
-Copy-Item .env.example .env
-
-docker compose up -d
-$env:PYTHONPATH = "src"
-alembic upgrade head
-python -m pill_safety.database.scripts.seed
-uvicorn pill_safety.api.main:app --reload
-```
-
-Hoặc chạy script:
-
-```powershell
-.\scripts\setup.ps1
-```
-
-URL kiểm tra:
-
-```text
-http://localhost:8000
-http://localhost:8000/docs
-http://localhost:8000/health/database
-http://localhost:8000/drugs
-```
-
-### Quy trình hằng ngày
-
-```powershell
-docker compose up -d
-$env:PYTHONPATH = "src"
-alembic upgrade head
-python -m pill_safety.database.scripts.seed
-uvicorn pill_safety.api.main:app --reload
-```
-
-### Khi thay đổi schema
-
-```powershell
-$env:PYTHONPATH = "src"
-alembic revision --autogenerate -m "describe change"
-alembic upgrade head
-```
-
-Sau khi đổi schema, cập nhật đồng bộ:
-
-```text
-SQLAlchemy models
-Alembic migration
-database_seed/db.md
-```
-
-### Khi thay đổi dữ liệu nền
-
-Sửa file JSON plural trong `database_seed/`, sau đó chạy:
-
-```powershell
-$env:PYTHONPATH = "src"
-python -m pill_safety.database.scripts.seed
-```
-
-Seed script idempotent: chạy nhiều lần không tạo dữ liệu trùng.
-
-### Xem bảng trong PostgreSQL
-
-```powershell
-docker compose exec postgres psql -U medication_user -d medication_db
-```
-
-Trong `psql`:
-
-```sql
-\dt
-\d drug_products
-SELECT * FROM drug_products LIMIT 20;
-\q
-```
-
-### Reset database local
-
-```powershell
-.\scripts\reset_database.ps1
-```
-
-Script này gọi `docker compose down -v`, nên sẽ xóa toàn bộ dữ liệu PostgreSQL local trong Docker volume.
-
 ## Tổ Chức Folder
 
 ```text
@@ -191,6 +77,15 @@ Nếu Colab/Kaggle đã có sẵn PyTorch mới hơn và gây xung đột, cài 
 
 ```text
 Multiple-Pill-Recognition-And-Interaction-Safety/
+├── .env                                          # Biến môi trường local (chứa DATABASE_URL, API key...)
+├── .env.example                                  # File mẫu cấu hình biến môi trường
+├── alembic.ini                                   # Cấu hình Alembic migration cho PostgreSQL
+├── compose.yaml                                  # Docker Compose cấu hình PostgreSQL database
+├── requirements.txt                              # Python dependencies đã được pin version
+├── scripts/                                      # Shell/PowerShell scripts tiện ích
+│   ├── reset_database.ps1                        # Script reset database và xóa dữ liệu local
+│   └── setup.ps1                                 # Script khởi tạo môi trường và database
+│
 ├── configs/                                      # Cấu hình chạy hệ thống, KHÔNG chứa code model
 │   ├── training/                                 # Config cho train: epoch, batch size, lr, augmentation, split path
 │   └── inference/                                # Config cho chạy thật: weight path, threshold, OCR/RAG setting
@@ -212,13 +107,31 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │       └── real_world/                           # Ảnh tự chụp để kiểm tra domain gap thực tế
 │
 ├── database/                                     # Tài nguyên database cho thuốc, appearance và DDI
-│   ├── migrations/                               # SQL/migration tạo hoặc cập nhật schema
-│   └── seeds/                                    # Dữ liệu/script seed cho drug, appearance, ingredient, DDI
+│   ├── migrations/                               # SQL/Alembic migration tạo và cập nhật DB schema
+│   │   ├── versions/                             # Các bản script migration DB (initial tables, seed schema)
+│   │   │   ├── 2026_08_01_0001_create_initial_medication_tables.py
+│   │   │   └── 2026_08_02_0002_enrich_medication_seed_schema.py
+│   │   ├── env.py                                # Alembic environment script kết nối SQLAlchemy metadata
+│   │   └── script.py.mako                        # Template cho migration script mới
+│   └── seeds/                                    # Dữ liệu/script seed bổ sung
+│
+├── database_seed/                                # Dữ liệu seed thô JSON cho DB thuốc (RxNav/NIH DDI/Appearance)
+│   ├── drug_products.json                        # Danh sách thông tin sản phẩm thuốc (rxcui, name, brand...)
+│   ├── drug_appearances.json                     # Đặc tính cảm quan (color, shape, score, imprint)
+│   ├── ingredients.json                          # Danh sách các hoạt chất thuốc
+│   ├── product_ingredients.json                  # Bảng quan hệ N-N giữa sản phẩm thuốc và hoạt chất
+│   ├── drug_interactions.json                    # Dữ liệu cảnh báo tương tác thuốc DDI từ NLM
+│   ├── patient_profiles.json                     # Mẫu profile bệnh nhân cho testing
+│   ├── scan_sessions.json                        # Mẫu session quét cho testing
+│   ├── scan_items.json                           # Mẫu item trong phiên quét cho testing
+│   ├── scan_interaction_results.json             # Mẫu kết quả tương tác quét cho testing
+│   └── db.md                                     # Mô tả chi tiết schema và quan hệ database
 │
 ├── docs/                                         # Tài liệu đồ án và contract giữa các module
 │   ├── Overview.md                               # Tổng quan đề tài, mục tiêu và ứng dụng
 │   ├── CV_Module.md                              # Đặc tả kiến trúc Computer Vision module
 │   ├── RAG_Module.md                             # Đặc tả Retrieval/RAG, database, DDI và report
+│   ├── guide_database.md                         # Hướng dẫn chi tiết thiết kế và khởi tạo Database
 │   ├── metric_CV.md                              # Metric đánh giá các module CV
 │   ├── metric_LLM.md                             # Metric đánh giá retrieval/ranking/safety
 │   ├── train_request.md                          # Yêu cầu log và artifact khi train model
@@ -270,6 +183,10 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │
 ├── src/                                          # Source code chính, nơi nên viết logic thật của hệ thống
 │   └── pill_safety/                              # Python package chính của project
+│       ├── api/                                  # Entrypoint FastAPI ứng dụng
+│       │   └── main.py                           # App FastAPI chính khởi tạo routes & DB health check
+│       ├── core/                                 # Cấu hình chung cho hệ thống
+│       │   └── config.py                         # Load environment variables, pydantic settings
 │       ├── cv/                                   # Logic thị giác máy tính
 │       │   ├── segmentation/                     # Module 1: YOLOv11-Seg segmentation
 │       │   │   ├── datasets/                     # Dataset loader/format adapter cho MEDISEG
@@ -303,17 +220,32 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │       │       ├── fusion/                        # Gộp evidence từ mask, attribute, OCR
 │       │       ├── calibration/                   # Calibrate score/confidence trước khi đưa sang RAG
 │       │       └── quality/                       # Blur/glare/occlusion quality flags
+│       ├── database/                             # DB connection, ORM models, repository, service layer
+│       │   ├── base.py                           # Declarative Base cho SQLAlchemy models
+│       │   ├── session.py                        # Async/Sync DB engine và session maker
+│       │   ├── models/                           # SQLAlchemy ORM Models
+│       │   │   ├── drug.py                       # DrugProduct và DrugAppearance tables
+│       │   │   ├── ingredient.py                 # Ingredient và ProductIngredient tables
+│       │   │   ├── interaction.py                # DrugInteraction table
+│       │   │   └── scan.py                       # PatientProfile, ScanSession, ScanItem, ScanInteractionResult
+│       │   ├── repositories/                     # Repository pattern truy vấn DB
+│       │   │   ├── drug_repository.py            # Truy vấn thuốc theo appearance, candidate scoring
+│       │   │   └── interaction_repository.py     # Truy vấn tương tác thuốc theo danh sách ingredient ID
+│       │   ├── services/                         # Service layer xử lý nghiệp vụ DB
+│       │   │   ├── drug_service.py               # Tìm kiếm và tra cứu thông tin thuốc
+│       │   │   └── interaction_service.py        # Kiểm tra tương tác thuốc giữa các sản phẩm
+│       │   └── scripts/                          # Script thao tác DB
+│       │       └── seed.py                       # Script nạp dữ liệu seed từ JSON vào DB
 │       ├── rag/                                  # Logic retrieval, ranking, DDI và report
-│       │   ├── retrieval/                        # Imprint-first search, fuzzy matching, candidate query
-│       │   ├── ranking/                          # Feature scoring và final candidate ranking
-│       │   ├── safety/                           # Safety gate: identified/ambiguous/unknown
-│       │   ├── ddi/                              # Ingredient mapping, DDI lookup, duplicate ingredient check
-│       │   └── reporting/                        # Context builder và grounded report formatter
-│       ├── database/                             # DB connection, repository/query layer
 │       ├── schemas/                              # Pydantic schemas cho CV output, RAG input/output, report
 │       └── utils/                                # Logging, path utils, image utils, common helpers
 │
 ├── tests/                                        # Unit test và integration test
+│   ├── conftest.py                               # Pytest configuration & fixture chung
+│   ├── database/                                 # Test DB models, seed files và API import
+│   │   ├── test_api_import.py                    # Test import và khởi chạy FastAPI app
+│   │   ├── test_database_models.py               # Test khởi tạo SQLAlchemy models
+│   │   └── test_seed_files.py                    # Test kiểm tra tính hợp lệ của file seed JSON
 │   ├── cv/                                       # Test segmentation/attribute/OCR/CV schema
 │   ├── rag/                                      # Test retrieval, ranking, safety gate, DDI
 │   └── integration/                              # Test end-to-end từ ảnh đầu vào đến report
@@ -348,6 +280,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 | `docs/Overview.md` | Tổng quan bài toán, mục tiêu, phạm vi và giá trị ứng dụng của đề tài. |
 | `docs/CV_Module.md` | Thiết kế CV pipeline: segmentation, attribute recognition, imprint OCR và CV output. |
 | `docs/RAG_Module.md` | Thiết kế retrieval/ranking, database thuốc, mapping hoạt chất, DDI lookup và report. |
+| `docs/guide_database.md` | Hướng dẫn chi tiết thiết kế và khởi tạo Database. |
 | `docs/metric_CV.md` | Metric cho segmentation, attribute recognition, OCR và CV output. |
 | `docs/metric_LLM.md` | Metric cho identification, unknown rejection, ranking và safety gate. |
 | `docs/train_request.md` | Quy định log, metric, checkpoint và evidence cần lưu cho 3 training job hiện tại. |
