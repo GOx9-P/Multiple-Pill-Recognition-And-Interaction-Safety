@@ -1,0 +1,23 @@
+{
+    "image_path": "43547-0353-11_RXNAVIMAGE10_99514CFA_2.jpg",
+    "ground_truth": {
+        "shape": "shape_class_7",
+        "color": [
+            "PINK"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_7",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "ORANGE",
+                "PINK",
+                "RED"
+            ],
+            "correct": false
+        }
+    }
+}

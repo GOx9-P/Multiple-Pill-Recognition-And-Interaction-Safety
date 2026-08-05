@@ -1,0 +1,22 @@
+{
+    "image_path": "00093-2050-56_RXNAVIMAGE10_5038A805_1.jpg",
+    "ground_truth": {
+        "shape": "shape_class_1",
+        "color": [
+            "GREEN"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_1",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "GREEN",
+                "TURQUOISE"
+            ],
+            "correct": false
+        }
+    }
+}

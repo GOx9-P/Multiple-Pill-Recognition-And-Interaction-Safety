@@ -1,0 +1,22 @@
+{
+    "image_path": "51991-0819-01_RXNAVIMAGE10_B14158CA_2.jpg",
+    "ground_truth": {
+        "shape": "shape_class_1",
+        "color": [
+            "ORANGE"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_1",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "ORANGE",
+                "YELLOW"
+            ],
+            "correct": false
+        }
+    }
+}

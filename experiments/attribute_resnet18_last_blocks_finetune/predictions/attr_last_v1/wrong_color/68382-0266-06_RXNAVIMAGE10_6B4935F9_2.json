@@ -1,0 +1,22 @@
+{
+    "image_path": "68382-0266-06_RXNAVIMAGE10_6B4935F9_2.jpg",
+    "ground_truth": {
+        "shape": "shape_class_7",
+        "color": [
+            "GRAY"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_7",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "GRAY",
+                "WHITE"
+            ],
+            "correct": false
+        }
+    }
+}
