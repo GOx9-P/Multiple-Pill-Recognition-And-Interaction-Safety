@@ -1,0 +1,1 @@
+https://www.kaggle.com/code/thuongnguoiquantu/resnet-18-last-blocks-finetune

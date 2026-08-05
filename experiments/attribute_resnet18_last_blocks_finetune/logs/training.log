@@ -1,0 +1,15 @@
+2026-08-05 04:08:41,559 - Epoch 01/15 | Train Loss: 0.8225 | Val Loss: 0.2040 | Shape Acc: 0.9902 | Color Acc: 0.9610 | Shape F1: 0.8124 | Color F1: 0.6306
+2026-08-05 04:10:06,384 - Epoch 02/15 | Train Loss: 0.5237 | Val Loss: 0.1874 | Shape Acc: 0.9918 | Color Acc: 0.9647 | Shape F1: 0.8550 | Color F1: 0.6431
+2026-08-05 04:11:26,060 - Epoch 03/15 | Train Loss: 0.4361 | Val Loss: 0.1747 | Shape Acc: 0.9918 | Color Acc: 0.9681 | Shape F1: 0.8550 | Color F1: 0.6655
+2026-08-05 04:12:49,304 - Epoch 04/15 | Train Loss: 0.3811 | Val Loss: 0.1697 | Shape Acc: 0.9943 | Color Acc: 0.9690 | Shape F1: 0.7765 | Color F1: 0.6711
+2026-08-05 04:14:14,566 - Epoch 05/15 | Train Loss: 0.3487 | Val Loss: 0.1715 | Shape Acc: 0.9951 | Color Acc: 0.9689 | Shape F1: 0.8737 | Color F1: 0.6714
+2026-08-05 04:15:38,222 - Epoch 06/15 | Train Loss: 0.3219 | Val Loss: 0.1701 | Shape Acc: 0.9943 | Color Acc: 0.9703 | Shape F1: 0.7765 | Color F1: 0.6788
+2026-08-05 04:17:00,761 - Epoch 07/15 | Train Loss: 0.3009 | Val Loss: 0.1700 | Shape Acc: 0.9943 | Color Acc: 0.9700 | Shape F1: 0.8347 | Color F1: 0.6722
+2026-08-05 04:18:24,018 - Epoch 08/15 | Train Loss: 0.2753 | Val Loss: 0.1696 | Shape Acc: 0.9951 | Color Acc: 0.9724 | Shape F1: 0.9392 | Color F1: 0.6821
+2026-08-05 04:19:46,001 - Epoch 09/15 | Train Loss: 0.2629 | Val Loss: 0.1699 | Shape Acc: 0.9943 | Color Acc: 0.9721 | Shape F1: 0.8557 | Color F1: 0.6711
+2026-08-05 04:21:11,619 - Epoch 10/15 | Train Loss: 0.2584 | Val Loss: 0.1680 | Shape Acc: 0.9951 | Color Acc: 0.9725 | Shape F1: 0.9392 | Color F1: 0.6793
+2026-08-05 04:22:34,078 - Epoch 11/15 | Train Loss: 0.2471 | Val Loss: 0.1717 | Shape Acc: 0.9943 | Color Acc: 0.9734 | Shape F1: 0.9182 | Color F1: 0.6809
+2026-08-05 04:23:56,208 - Epoch 12/15 | Train Loss: 0.2427 | Val Loss: 0.1747 | Shape Acc: 0.9951 | Color Acc: 0.9723 | Shape F1: 0.9392 | Color F1: 0.6769
+2026-08-05 04:25:20,691 - Epoch 13/15 | Train Loss: 0.2367 | Val Loss: 0.1829 | Shape Acc: 0.9951 | Color Acc: 0.9732 | Shape F1: 0.9392 | Color F1: 0.6846
+2026-08-05 04:26:42,271 - Epoch 14/15 | Train Loss: 0.2263 | Val Loss: 0.1788 | Shape Acc: 0.9943 | Color Acc: 0.9739 | Shape F1: 0.9182 | Color F1: 0.6862
+2026-08-05 04:28:02,589 - Epoch 15/15 | Train Loss: 0.2222 | Val Loss: 0.1844 | Shape Acc: 0.9935 | Color Acc: 0.9733 | Shape F1: 0.8161 | Color F1: 0.6824
