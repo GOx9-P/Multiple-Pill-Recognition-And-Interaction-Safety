@@ -15,9 +15,13 @@ from torch.utils.data import DataLoader
 from torchvision import models, transforms
 import yaml
 
-# Khởi tạo đường dẫn dự án
+# ==============================================================================
+# 0. KHỞI TẠO ĐƯỜNG DẪN DỰ ÁN (PROJECT ROOT)
+# ==============================================================================
+# File: .../training/attribute_resnet18_last_blocks_finetune/train/train_last_blocks.py
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.append(str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
 from src.pill_safety.cv.attribute.datasets.rximage_dataset import RxImageDataset
 from src.pill_safety.cv.attribute.models.multitask_resnet import MultiTaskResNet18
@@ -28,10 +32,12 @@ from src.pill_safety.cv.attribute.models.multitask_resnet import MultiTaskResNet
 RUN_ID = "attr_last_v1"
 MODULE_NAME = "attribute_resnet18_last_blocks_finetune"
 
-BASE_DIR = Path("/kaggle/input/datasets/thuongnguoiquantu/dataset/Data/rximage")
-COMBINED_DIR = BASE_DIR / "combined"
-IMG_DIR = BASE_DIR / "image_all"
-STAGE1_CHECKPOINT = Path("/kaggle/input/datasets/thuongnguoiquantu/head-1/best_heads_finetuned (1).pth")
+# Chuẩn hóa đường dẫn Data (Đã fix lỗi lặp 'data/data')
+BASE_DIR = PROJECT_ROOT / "data" 
+COMBINED_DIR = BASE_DIR / "splits" / "nih_attribute"
+IMG_DIR = BASE_DIR / "image_all" / "nih_attribute"
+
+STAGE1_CHECKPOINT = PROJECT_ROOT / "experiments" / "attribute_resnet18_head_tune" / "checkpoints" / "best_heads_finetuned.pth"
 
 EXP_DIR = PROJECT_ROOT / "experiments" / MODULE_NAME
 PATHS = {
@@ -61,13 +67,20 @@ def setup_logger(log_file):
     logger.setLevel(logging.INFO)
     if logger.hasHandlers():
         logger.handlers.clear()
-    handler = logging.FileHandler(log_file)
+    handler = logging.FileHandler(log_file, encoding="utf-8")
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(handler)
+    
+    # Thêm StreamHandler để in log ra Console khi chạy
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(console_handler)
     return logger
 
 logger = setup_logger(PATHS["logs"] / f"{RUN_ID}_runtime.log")
 logger.info(f"Khởi chạy Training Run ID: {RUN_ID} trên module {MODULE_NAME}")
+logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+logger.info(f"Device: {DEVICE}")
 
 # ==============================================================================
 # 2. DATASET, TRANSFORMS & MANIFEST
@@ -94,8 +107,8 @@ val_csv = COMBINED_DIR / "val_combined_crop.csv"
 train_dataset = RxImageDataset(train_csv, IMG_DIR, transform=data_transforms["train"])
 val_dataset = RxImageDataset(val_csv, IMG_DIR, transform=data_transforms["val"])
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True if torch.cuda.is_available() else False)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True if torch.cuda.is_available() else False)
 
 NUM_SHAPE_CLASSES = len(np.unique(train_dataset.shape_labels))
 NUM_COLOR_CLASSES = len(train_dataset.color_cols)
@@ -107,7 +120,7 @@ label_mapping = {
 }
 label_mapping_path = PATHS["logs"] / f"{RUN_ID}_label_mapping.json"
 with open(label_mapping_path, "w", encoding="utf-8") as f:
-    json.dump(label_mapping, f, indent=4)
+    json.dump(label_mapping, f, indent=4, ensure_ascii=False)
 
 dataset_manifest = {
     "run_id": RUN_ID,
@@ -126,7 +139,7 @@ dataset_manifest = {
     "label_mapping_file": str(label_mapping_path),
 }
 with open(PATHS["logs"] / f"{RUN_ID}_dataset_manifest.json", "w", encoding="utf-8") as f:
-    json.dump(dataset_manifest, f, indent=4)
+    json.dump(dataset_manifest, f, indent=4, ensure_ascii=False)
 
 config_data = {
     "run_id": RUN_ID,
@@ -158,10 +171,15 @@ weights_base.pop("fc.bias", None)
 model.backbone.load_state_dict(weights_base, strict=False)
 
 if STAGE1_CHECKPOINT.exists():
-    heads_weights = torch.load(STAGE1_CHECKPOINT, map_location=DEVICE, weights_only=True)
-    model.fc_shape.load_state_dict(heads_weights["fc_shape"])
-    model.fc_color.load_state_dict(heads_weights["fc_color"])
-    logger.info("Đã load thành công trọng số Stage 1 cho FC Heads!")
+    try:
+        heads_weights = torch.load(STAGE1_CHECKPOINT, map_location=DEVICE, weights_only=True)
+        model.fc_shape.load_state_dict(heads_weights["fc_shape"])
+        model.fc_color.load_state_dict(heads_weights["fc_color"])
+        logger.info("Đã load thành công trọng số Stage 1 cho FC Heads!")
+    except Exception as e:
+        logger.warning(f"Không thể load Stage 1 checkpoint ({e}). Sẽ train tiếp từ weights mặc định.")
+else:
+    logger.warning(f"Không tìm thấy Stage 1 checkpoint tại {STAGE1_CHECKPOINT}. Sẽ train tiếp từ weights mặc định.")
 
 model.unfreeze_last_blocks()
 
@@ -288,10 +306,11 @@ for epoch in range(NUM_EPOCHS):
     train_history_rows.append(row)
     pd.DataFrame(train_history_rows).to_csv(csv_log_path, index=False)
 
-    print(f"Epoch {epoch+1:02d}/{NUM_EPOCHS:02d} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Val Shape F1: {val_shape_f1:.4f} | Val Color F1: {val_color_f1:.4f} | Best: {is_best}")
+    log_msg = f"Epoch {epoch+1:02d}/{NUM_EPOCHS:02d} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Val Shape F1: {val_shape_f1:.4f} | Val Color F1: {val_color_f1:.4f} | Best: {is_best}"
+    logger.info(log_msg)
 
     if patience_counter >= PATIENCE:
-        print(f"\n[Early Stopping] Kích hoạt tại Epoch {epoch+1}. Dừng huấn luyện!")
+        logger.info(f"[Early Stopping] Kích hoạt tại Epoch {epoch+1}. Dừng huấn luyện!")
         break
 
 total_time_min = (time.time() - start_time) / 60.0
@@ -302,4 +321,4 @@ runtime_info = (
 with open(PATHS["logs"] / f"{RUN_ID}_runtime.txt", "w", encoding="utf-8") as f:
     f.write(runtime_info)
 
-print(f"\n[Train Finished] Checkpoint đã được lưu trữ tại {PATHS['checkpoints'].resolve()}")
+logger.info(f"[Train Finished] Checkpoint đã được lưu trữ tại {PATHS['checkpoints'].resolve()}")

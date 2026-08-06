@@ -16,8 +16,7 @@ from torchvision import transforms
 # ==============================================================================
 # 0. KHỞI TẠO ĐƯỜNG DẪN DỰ ÁN (PROJECT ROOT)
 # ==============================================================================
-# File nằm tại: training/attribute_resnet18_last_blocks_finetune/eval/eval_last_blocks.py
-# .parents[3] trỏ về thư mục gốc: Multiple-Pill-Recognition-And-Interaction-Safety/
+# File: .../training/attribute_resnet18_last_blocks_finetune/eval/eval_last_blocks.py
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
@@ -31,10 +30,10 @@ from src.pill_safety.cv.attribute.models.multitask_resnet import MultiTaskResNet
 RUN_ID = "attr_last_v1"
 MODULE_NAME = "attribute_resnet18_last_blocks_finetune"
 
-# Đường dẫn Dữ liệu (Dùng tuyệt đối từ PROJECT_ROOT)
+# Đường dẫn Dữ liệu
 DATA_DIR = PROJECT_ROOT / "data"
 COMBINED_DIR = DATA_DIR / "splits" / "nih_attribute"
-IMG_DIR = DATA_DIR / "all_image" / "rximage" / "image_all"
+IMG_DIR = DATA_DIR / "image_all" / "nih_attribute"
 
 # Đường dẫn Artifacts Thí nghiệm (Experiments)
 EXP_DIR = PROJECT_ROOT / "experiments" / MODULE_NAME
@@ -59,9 +58,28 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 32
 CONFIDENCE_THRESHOLD = 0.5  # Ngưỡng độ tin cậy cho Shape
 
+def setup_logger(log_file):
+    logger = logging.getLogger(f"{RUN_ID}_eval")
+    logger.setLevel(logging.INFO)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    handler = logging.FileHandler(log_file, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
+    
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(console_handler)
+    return logger
+
+logger = setup_logger(PATHS["logs"] / f"{RUN_ID}_eval_runtime.log")
+logger.info(f"Khởi chạy Evaluation cho Run ID: {RUN_ID}")
+logger.info(f"Device đang sử dụng: {DEVICE}")
+
 # Nạp Dataset Manifest
 manifest_path = PATHS["logs"] / f"{RUN_ID}_dataset_manifest.json"
 if not manifest_path.exists():
+    logger.error(f"Không tìm thấy dataset manifest tại: {manifest_path}")
     raise FileNotFoundError(
         f"Không tìm thấy dataset manifest tại: {manifest_path}\n"
         f"Vui lòng kiểm tra lại quá trình huấn luyện (training phase)."
@@ -88,13 +106,14 @@ test_csv = COMBINED_DIR / "test_combined_crop.csv"
 # Kiểm tra tồn tại CSV
 for csv_f in [val_csv, test_csv]:
     if not csv_f.exists():
+        logger.error(f"Không tìm thấy file dataset: {csv_f}")
         raise FileNotFoundError(f"Không tìm thấy file tập dữ liệu tại: {csv_f}")
 
 val_dataset = RxImageDataset(val_csv, IMG_DIR, transform=data_transform)
 test_dataset = RxImageDataset(test_csv, IMG_DIR, transform=data_transform)
 
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True if torch.cuda.is_available() else False)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True if torch.cuda.is_available() else False)
 
 # ==============================================================================
 # 3. LOAD MODEL & CHECKPOINT
@@ -106,14 +125,17 @@ model = MultiTaskResNet18(
 
 checkpoint_path = PATHS["checkpoints"] / f"{RUN_ID}_best.pt"
 if not checkpoint_path.exists():
+    logger.error(f"Không tìm thấy checkpoint: {checkpoint_path}")
     raise FileNotFoundError(f"Không tìm thấy file checkpoint trọng số tại: {checkpoint_path}")
 
-model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE))
+model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE, weights_only=True))
 model.eval()
+logger.info(f"Đã load checkpoint trọng số từ: {checkpoint_path}")
 
 # ==============================================================================
 # 4. TỐI ƯU THRESHOLD MÀU SẮC TRÊN VAL SET
 # ==============================================================================
+logger.info("Bắt đầu tìm Threshold tối ưu cho thuộc tính Màu sắc trên Validation set...")
 val_color_probs, val_color_targets = [], []
 with torch.no_grad():
     for images, _, c_targets, _ in val_loader:
@@ -136,14 +158,21 @@ for i in range(NUM_COLOR_CLASSES):
         )
         if score > b_f1:
             b_f1 = score
-            b_thresh = thresh
+            b_thresh = float(thresh)
     best_thresholds.append(b_thresh)
 
 best_thresholds = np.array(best_thresholds)
 
+# Lưu Optimal Thresholds
+thresh_out_file = PATHS["metrics"] / f"{RUN_ID}_optimal_thresholds.json"
+with open(thresh_out_file, "w", encoding="utf-8") as f:
+    json.dump(best_thresholds.tolist(), f, indent=4)
+logger.info(f"Đã lưu Optimal Thresholds tại: {thresh_out_file}")
+
 # ==============================================================================
 # 5. DỰ ĐOÁN & ĐÁNH GIÁ TRÊN TEST SET
 # ==============================================================================
+logger.info("Bắt đầu đánh giá trên Test set...")
 img_filenames, test_shape_preds, test_shape_targets = [], [], []
 test_shape_confs = []
 test_color_probs_list, test_color_targets_list = [], []
@@ -190,9 +219,13 @@ metrics_out_file = PATHS["metrics"] / f"{RUN_ID}_test_metrics.json"
 with open(metrics_out_file, "w", encoding="utf-8") as f:
     json.dump(test_metrics_contract, f, indent=4)
 
+logger.info(f"Test Shape Macro F1: {test_shape_f1:.4f}")
+logger.info(f"Test Color Macro F1: {test_color_f1:.4f}")
+
 # ==============================================================================
 # 6. PHÂN LOẠI VÀ LƯU SAMPLES DỰ ĐOÁN
 # ==============================================================================
+logger.info("Phân loại các ảnh Test vào các thư mục predictions...")
 for idx, img_name in enumerate(img_filenames):
     src_img_path = IMG_DIR / img_name
     if not src_img_path.exists():
@@ -202,7 +235,7 @@ for idx, img_name in enumerate(img_filenames):
     color_correct = np.array_equal(test_color_preds[idx], test_color_targets[idx])
     conf_score = test_shape_confs[idx]
 
-    # Phân loại thứ tự ưu tiên: Low Confidence -> Wrong Shape -> Wrong Color -> Correct
+    # Phân loại ưu tiên: Low Confidence -> Wrong Shape -> Wrong Color -> Correct
     if conf_score < CONFIDENCE_THRESHOLD:
         dest_folder = PATHS["predictions"] / "low_confidence"
     elif not shape_correct:
@@ -217,6 +250,8 @@ for idx, img_name in enumerate(img_filenames):
 # ==============================================================================
 # 7. XUẤT ĐỒ THỊ VÀ ARTIFACTS
 # ==============================================================================
+logger.info("Vẽ đồ thị Confusion Matrix & So sánh F1 Score...")
+
 # Shape Confusion Matrix
 cm = confusion_matrix(test_shape_targets, test_shape_preds)
 plt.figure(figsize=(10, 8))
@@ -249,5 +284,5 @@ plt.tight_layout()
 plt.savefig(PATHS["plots"] / f"{RUN_ID}_head_vs_last_blocks_comparison.png", dpi=300)
 plt.close()
 
-print(f"\n[Evaluation Finished] Đã hoàn thành đánh giá Test set.")
-print(f" -> Artifacts lưu tại: {EXP_DIR.resolve()}")
+logger.info(f"[Evaluation Finished] Đã hoàn thành đánh giá Test set.")
+logger.info(f" -> Artifacts lưu tại: {EXP_DIR.resolve()}")
