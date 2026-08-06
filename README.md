@@ -298,3 +298,25 @@ Các thư mục `data/`, `models/`, `experiments/` và `outputs/` có thể rấ
 `.gitkeep` được dùng để giữ các folder rỗng trên Git. Không xóa `.gitkeep` cho đến khi folder đó đã có file thật cần commit.
 
 `.gitignore` ở root project đang ignore dữ liệu lớn, checkpoint, model weight, log và output runtime; code, config, schema, docs và test vẫn nên commit bình thường.
+
+# Ghi chú về chỉnh sửa folder data
+Thêm folder all_image vào để tiện trong việc train model
+
+```
+Multiple-Pill-Recognition-And-Interaction-Safety/
+│
+└── data/                                 
+    │
+    ├── all_image/                         # Toàn bộ ảnh dùng cho train, test, validation
+    │   └── rximage/
+    │                   
+    ├── augmented/                       
+    │
+    ├── benchmark/                       
+    │
+    ├── processed/                       
+    │
+    ├── raw/                              
+    │
+    └── splits/                                     
+```
