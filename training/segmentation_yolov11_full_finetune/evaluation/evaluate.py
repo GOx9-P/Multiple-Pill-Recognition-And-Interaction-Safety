@@ -1,13 +1,3 @@
-"""
-evaluate.py
--------------
-KHÔNG có trong script gốc — thêm để hoàn thiện pipeline: đánh giá checkpoint
-đã train (weights/best.pt) trên split test, tính mask mAP@0.5 / mAP@0.5:0.95
-(chỉ tiêu Report.pdf: Module 1 > 85%), lưu ra experiments/<EXPERIMENT_NAME>/metrics/.
-
-Usage:
-    python evaluation/evaluate.py
-"""
 from __future__ import annotations
 
 import json
@@ -15,10 +5,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
 from ultralytics import YOLO
-from src.segmentation.config import (
+from src.pill_safety.cv.segmentation.utils.config import (
     OUTPUT_DIR,
     EXPERIMENTS_ROOT,
     EXPERIMENT_NAME,

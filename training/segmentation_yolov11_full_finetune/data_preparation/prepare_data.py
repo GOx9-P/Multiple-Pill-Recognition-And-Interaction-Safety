@@ -6,10 +6,12 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
-from src.segmentation.config import RAW_ANN_PATH, OUTPUT_DIR, SPLIT_RATIOS, RANDOM_SEED
-from src.segmentation.coco_utils import (
+from src.pill_safety.cv.segmentation.utils.config import RAW_ANN_PATH, OUTPUT_DIR, SPLIT_RATIOS, RANDOM_SEED
+from src.pill_safety.cv.segmentation.datasets.coco_utils import (
     load_coco,
     drop_empty_annotation_images,
     split_dataset,

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sklearn.model_selection import train_test_split
 
-from .config import OUTPUT_DIR, CLASS_AGNOSTIC, RAW_IMAGES_DIR
+from src.pill_safety.cv.segmentation.utils.config import OUTPUT_DIR, CLASS_AGNOSTIC, RAW_IMAGES_DIR
 
 
 # ----------------------------------------------------------------------------

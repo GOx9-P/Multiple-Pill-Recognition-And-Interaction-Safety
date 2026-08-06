@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from pathlib import Path
 
-from .config import OUTPUT_DIR, N_AUG_PER_IMAGE
+from src.pill_safety.cv.segmentation.utils.config import OUTPUT_DIR, N_AUG_PER_IMAGE
 
 
 def get_augmentation_pipeline():

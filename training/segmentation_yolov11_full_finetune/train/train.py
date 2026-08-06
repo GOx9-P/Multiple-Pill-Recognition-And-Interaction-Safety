@@ -3,10 +3,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
 from ultralytics import YOLO
-from src.segmentation.config import (
+from src.pill_safety.cv.segmentation.utils.config import (
     OUTPUT_DIR,
     BASE_WEIGHTS,
     IMGSZ,

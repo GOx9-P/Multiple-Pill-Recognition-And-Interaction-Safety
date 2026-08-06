@@ -1,21 +1,13 @@
-"""
-check_data.py (tuỳ chọn)
----------------------------
-Không có trong script gốc của bạn — thêm để kiểm tra nhanh kết quả sau khi
-chạy prepare_data.py: đếm ảnh/label mỗi split, cảnh báo ảnh thiếu label,
-label rỗng. KHÔNG bắt buộc phải chạy, chỉ để đối chiếu số liệu.
-
-Usage:
-    python data_preparation/check_data.py
-"""
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
-from src.segmentation.config import OUTPUT_DIR
+from src.pill_safety.cv.segmentation.utils.config import OUTPUT_DIR
 
 
 def main():

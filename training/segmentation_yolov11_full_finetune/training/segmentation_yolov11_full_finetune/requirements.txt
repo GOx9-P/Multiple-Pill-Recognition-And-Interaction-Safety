@@ -1,6 +1,0 @@
-opencv-python-headless>=4.9.0
-numpy>=1.26
-scikit-learn>=1.4        # train_test_split (dùng trong coco_utils.split_dataset)
-albumentations>=1.4.0    # augmentation, hỗ trợ polygon/mask
-ultralytics>=8.3.0       # YOLO11-Seg (yolo11*-seg.pt), model.train / model.val
-tqdm>=4.66
