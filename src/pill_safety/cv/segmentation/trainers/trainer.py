@@ -1,0 +1,251 @@
+from __future__ import annotations
+
+import json
+import platform
+import shutil
+import socket
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from src.pill_safety.cv.segmentation.models.yolo_model import SegmentationModel
+from src.pill_safety.cv.segmentation.utils.config import (
+    BATCH,
+    DEVICE,
+    EPOCHS,
+    EXPERIMENT_NAME,
+    EXPERIMENTS_ROOT,
+    FREEZE,
+    IMGSZ,
+    OUTPUT_DIR,
+    PATIENCE,
+    RANDOM_SEED,
+)
+
+MODULE_EXPERIMENT_FOLDER = "segmentation_yolov11_full_finetune"
+
+
+class SegmentationTrainer:
+    def __init__(
+        self,
+        model: SegmentationModel,
+        output_dir: Path,
+        experiments_root: Path,
+        experiment_name: str,
+        epochs: int,
+        batch: int,
+        patience: int,
+        device: str | int,
+        freeze: str | None,
+        imgsz: int,
+        seed: int,
+    ):
+        self.model = model
+        self.output_dir = Path(output_dir)
+        self.experiments_root = Path(experiments_root)
+        self.experiment_name = experiment_name
+        self.epochs = epochs
+        self.imgsz = imgsz
+        self.batch = batch
+        self.patience = patience
+        self.device = device
+        self.freeze = freeze
+        self.seed = seed
+        self.data_yaml = self.output_dir / "data.yaml"
+        self.module_dir = self.experiments_root / MODULE_EXPERIMENT_FOLDER
+
+    def _generate_run_id(self) -> str:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"{self.experiment_name}_{timestamp}"
+
+    def _prepare_experiment_dirs(self, run_id: str) -> dict[str, Path]:
+        checkpoint_dir = self.module_dir / "checkpoints"
+        logs_dir = self.module_dir / "logs"
+        metrics_dir = self.module_dir / "metrics"
+        plots_dir = self.module_dir / "plots"
+        predictions_dir = self.module_dir / "predictions"
+
+        for directory in (checkpoint_dir, logs_dir, metrics_dir, plots_dir, predictions_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        return {
+            "checkpoint_dir": checkpoint_dir,
+            "logs_dir": logs_dir,
+            "metrics_dir": metrics_dir,
+            "plots_dir": plots_dir,
+            "predictions_dir": predictions_dir,
+        }
+
+    def _write_config(self, run_id: str, logs_dir: Path) -> None:
+        config = {
+            "run_id": run_id,
+            "module": MODULE_EXPERIMENT_FOLDER,
+            "seed": self.seed,
+            "dataset": {
+                "output_dir": str(self.output_dir),
+                "data_yaml": str(self.data_yaml),
+            },
+            "model": {
+                "architecture": "YOLOv11-Seg",
+                "pretrained_weight": self.model.base_weights,
+            },
+            "training": {
+                "image_size": self.imgsz,
+                "epochs": self.epochs,
+                "batch_size": self.batch,
+                "patience": self.patience,
+                "device": self.device,
+                "freeze": self.freeze,
+                "seed": self.seed,
+            },
+        }
+
+        out_path = logs_dir / f"{run_id}_config.yaml"
+        with open(out_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(config, f)
+
+    def _write_dataset_manifest(self, run_id: str, logs_dir: Path) -> None:
+        def _relative_image_paths(split: str) -> list[str]:
+            image_dir = self.output_dir / "images" / split
+            return [
+                str(path.relative_to(self.output_dir))
+                for path in sorted(image_dir.glob("*.*"))
+            ]
+
+        train_images = _relative_image_paths("train")
+        val_images = _relative_image_paths("val")
+        test_images = _relative_image_paths("test")
+
+        manifest = {
+            "run_id": run_id,
+            "dataset_name": "MEDISEG",
+            "data_yaml": str(self.data_yaml),
+            "train_count": len(train_images),
+            "val_count": len(val_images),
+            "test_count": len(test_images),
+            "train_images": train_images,
+            "val_images": val_images,
+            "test_images": test_images,
+            "split_before_augmentation": True,
+            "augmentation_train_only": True,
+            "label_mapping_file": None,
+        }
+
+        out_path = logs_dir / f"{run_id}_dataset_manifest.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2, ensure_ascii=False)
+
+    def _write_runtime(self, run_id: str, logs_dir: Path, started_at: datetime, finished_at: datetime) -> None:
+        try:
+            import torch
+        except ImportError:
+            torch = None
+
+        try:
+            import ultralytics
+            ultralytics_version = getattr(ultralytics, "__version__", None)
+        except ImportError:
+            ultralytics_version = None
+
+        cuda_version = None
+        if torch is not None:
+            cuda_version = getattr(torch.version, "cuda", None)
+
+        runtime = {
+            "run_id": run_id,
+            "module": MODULE_EXPERIMENT_FOLDER,
+            "started_at": started_at.isoformat(),
+            "finished_at": finished_at.isoformat(),
+            "duration_seconds": int((finished_at - started_at).total_seconds()),
+            "platform": platform.platform(),
+            "hostname": socket.gethostname(),
+            "python_version": platform.python_version(),
+            "device": str(self.device),
+            "cuda_available": bool(torch.cuda.is_available()) if torch is not None else False,
+            "cuda_version": cuda_version,
+            "torch_version": str(torch.__version__) if torch is not None else None,
+            "ultralytics_version": ultralytics_version,
+        }
+
+        if torch is not None and torch.cuda.is_available():
+            runtime["gpu_name"] = torch.cuda.get_device_name(0)
+
+        out_path = logs_dir / f"{run_id}_runtime.txt"
+        with open(out_path, "w", encoding="utf-8") as f:
+            for key, value in runtime.items():
+                f.write(f"{key}: {value}\n")
+
+    def _collect_training_artifacts(self, run_id: str, save_dir: Path, output_dirs: dict[str, Path]) -> None:
+        checkpoint_dir = output_dirs["checkpoint_dir"]
+        logs_dir = output_dirs["logs_dir"]
+        plots_dir = output_dirs["plots_dir"]
+
+        weights_dir = save_dir / "weights"
+        if weights_dir.exists():
+            for checkpoint in weights_dir.glob("*.pt"):
+                dest = checkpoint_dir / f"{run_id}_{checkpoint.name}"
+                shutil.copy2(checkpoint, dest)
+
+        results_csv = save_dir / "results.csv"
+        if results_csv.exists():
+            dest = logs_dir / f"{run_id}_train_log.csv"
+            shutil.copy2(results_csv, dest)
+
+        for image_path in save_dir.glob("*.png"):
+            dest = plots_dir / f"{run_id}_{image_path.name}"
+            shutil.move(str(image_path), dest)
+        for image_path in save_dir.glob("*.jpg"):
+            dest = plots_dir / f"{run_id}_{image_path.name}"
+            shutil.move(str(image_path), dest)
+
+    def _cleanup_temp(self, save_dir: Path) -> None:
+        if save_dir.exists() and save_dir.is_dir():
+            shutil.rmtree(save_dir)
+
+    def train(self) -> None:
+        if not self.data_yaml.exists():
+            raise FileNotFoundError(
+                f"Không thấy {self.data_yaml}. Chạy data_preparation/prepare_data.py trước."
+            )
+
+        train_images_dir = self.output_dir / "images" / "train"
+        n_train = len(list(train_images_dir.glob("*.*")))
+        print(f"[train.py] {n_train} ảnh train (gốc + augmented) tại {train_images_dir}")
+
+        run_id = self._generate_run_id()
+        output_dirs = self._prepare_experiment_dirs(run_id)
+        save_dir = self.module_dir / ".tmp" / run_id
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        print(
+            f"[train.py] Bắt đầu FULL fine-tune {self.model.base_weights} "
+            f"({self.epochs} epochs, imgsz={self.imgsz}, freeze={self.freeze})"
+        )
+
+        model = self.model.build()
+        started_at = datetime.now()
+        model.train(
+            data=str(self.data_yaml),
+            epochs=self.epochs,
+            imgsz=self.imgsz,
+            batch=self.batch,
+            patience=self.patience,
+            device=self.device,
+            freeze=self.freeze,
+            seed=self.seed,
+            save_dir=str(save_dir),
+            exist_ok=True,
+        )
+        finished_at = datetime.now()
+
+        self._collect_training_artifacts(run_id, save_dir, output_dirs)
+        self._write_config(run_id, output_dirs["logs_dir"])
+        self._write_dataset_manifest(run_id, output_dirs["logs_dir"])
+        self._write_runtime(run_id, output_dirs["logs_dir"], started_at, finished_at)
+        self._cleanup_temp(save_dir)
+
+        best_checkpoint = output_dirs["checkpoint_dir"] / f"{run_id}_best.pt"
+        print(f"\n[train.py] Xong. Checkpoint tốt nhất: {best_checkpoint}")
+        print("Tiếp theo: chạy evaluation/evaluate.py để tính mask mAP trên tập test.")

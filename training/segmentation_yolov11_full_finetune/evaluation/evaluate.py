@@ -1,72 +1,37 @@
 from __future__ import annotations
 
-import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from ultralytics import YOLO
+from src.pill_safety.cv.segmentation.evaluators.evaluator import SegmentationEvaluator
 from src.pill_safety.cv.segmentation.utils.config import (
+    EVAL_SPLIT,
     OUTPUT_DIR,
     EXPERIMENTS_ROOT,
-    EXPERIMENT_NAME,
-    EVAL_WEIGHTS_NAME,
-    EVAL_SPLIT,
-    EVAL_CONF_THRESHOLD,
-    EVAL_IOU_THRESHOLD,
-    TARGET_MASK_MAP50_95,
 )
+
+MODULE_EXPERIMENT_FOLDER = "segmentation_yolov11_full_finetune"
+
+
+def _latest_best_weight(checkpoints_dir: Path) -> Path:
+    candidates = sorted(checkpoints_dir.glob("*_best.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not candidates:
+        raise FileNotFoundError(f"Không tìm thấy checkpoint tốt nhất trong {checkpoints_dir}.")
+    return candidates[0]
 
 
 def main():
-    weights_path = EXPERIMENTS_ROOT / EXPERIMENT_NAME / "weights" / EVAL_WEIGHTS_NAME
-    data_yaml = OUTPUT_DIR / "data.yaml"
+    experiment_dir = EXPERIMENTS_ROOT / MODULE_EXPERIMENT_FOLDER
+    checkpoints_dir = experiment_dir / "checkpoints"
+    weights_path = _latest_best_weight(checkpoints_dir)
+    run_id = weights_path.stem.removesuffix("_best")
 
-    if not weights_path.exists():
-        raise FileNotFoundError(f"Không thấy checkpoint {weights_path}. Chạy train/train.py trước.")
-    if not data_yaml.exists():
-        raise FileNotFoundError(f"Không thấy {data_yaml}. Chạy data_preparation/prepare_data.py trước.")
-
-    model = YOLO(str(weights_path))
-
-    print(f"[evaluate.py] Evaluate {weights_path} trên split '{EVAL_SPLIT}'...")
-    results = model.val(
-        data=str(data_yaml),
-        split=EVAL_SPLIT,
-        conf=EVAL_CONF_THRESHOLD,
-        iou=EVAL_IOU_THRESHOLD,
-        project=str(EXPERIMENTS_ROOT),
-        name=f"{EXPERIMENT_NAME}_eval",
-        exist_ok=True,
-    )
-
-    seg_metrics = results.seg  # metrics riêng cho mask (khác box mAP)
-    summary = {
-        "timestamp": datetime.now().isoformat(),
-        "weights": str(weights_path),
-        "split": EVAL_SPLIT,
-        "mask_mAP50": float(seg_metrics.map50),
-        "mask_mAP50_95": float(seg_metrics.map),
-        "mask_precision": float(seg_metrics.mp),
-        "mask_recall": float(seg_metrics.mr),
-        "target_mask_mAP50_95": TARGET_MASK_MAP50_95,
-        "meets_target": bool(seg_metrics.map >= TARGET_MASK_MAP50_95),
-    }
-
-    metrics_dir = EXPERIMENTS_ROOT / EXPERIMENT_NAME / "metrics"
-    metrics_dir.mkdir(parents=True, exist_ok=True)
-    out_path = metrics_dir / f"eval_{EVAL_SPLIT}.json"
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2, ensure_ascii=False)
-
-    print("\n===== KẾT QUẢ =====")
-    for k, v in summary.items():
-        print(f"  {k}: {v}")
-    print(f"\nĐã lưu metrics -> {out_path}")
+    evaluator = SegmentationEvaluator(output_dir=OUTPUT_DIR, experiments_root=EXPERIMENTS_ROOT)
+    evaluator.evaluate(weights_path=weights_path, split=EVAL_SPLIT, run_id=run_id)
 
 
 if __name__ == "__main__":

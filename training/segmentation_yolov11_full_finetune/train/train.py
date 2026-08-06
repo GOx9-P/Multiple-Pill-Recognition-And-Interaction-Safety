@@ -7,57 +7,39 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from ultralytics import YOLO
+from src.pill_safety.cv.segmentation.models.yolo_model import SegmentationModel
+from src.pill_safety.cv.segmentation.trainers.trainer import SegmentationTrainer
 from src.pill_safety.cv.segmentation.utils.config import (
-    OUTPUT_DIR,
     BASE_WEIGHTS,
-    IMGSZ,
-    EPOCHS,
     BATCH,
-    PATIENCE,
     DEVICE,
-    FREEZE,
-    RANDOM_SEED,
+    EPOCHS,
     EXPERIMENT_NAME,
     EXPERIMENTS_ROOT,
+    FREEZE,
+    IMGSZ,
+    OUTPUT_DIR,
+    PATIENCE,
+    RANDOM_SEED,
 )
 
 
 def main():
-    data_yaml = OUTPUT_DIR / "data.yaml"
-    if not data_yaml.exists():
-        raise FileNotFoundError(
-            f"Không thấy {data_yaml}. Chạy data_preparation/prepare_data.py trước."
-        )
-
-    train_images_dir = OUTPUT_DIR / "images" / "train"
-    n_train = len(list(train_images_dir.glob("*.*")))
-    print(f"[train.py] {n_train} ảnh train (gốc + augmented) tại {train_images_dir}")
-
-    model = YOLO(BASE_WEIGHTS)
-
-    print(
-        f"[train.py] Bắt đầu FULL fine-tune {BASE_WEIGHTS} "
-        f"({EPOCHS} epochs, imgsz={IMGSZ}, freeze={FREEZE})"
-    )
-
-    model.train(
-        data=str(data_yaml),
+    model = SegmentationModel(BASE_WEIGHTS)
+    trainer = SegmentationTrainer(
+        model=model,
+        output_dir=OUTPUT_DIR,
+        experiments_root=EXPERIMENTS_ROOT,
+        experiment_name=EXPERIMENT_NAME,
         epochs=EPOCHS,
-        imgsz=IMGSZ,
         batch=BATCH,
         patience=PATIENCE,
         device=DEVICE,
-        freeze=FREEZE,          # None = full fine-tune, không freeze layer nào
+        freeze=FREEZE,
+        imgsz=IMGSZ,
         seed=RANDOM_SEED,
-        project=str(EXPERIMENTS_ROOT),
-        name=EXPERIMENT_NAME,
-        exist_ok=True,
     )
-
-    best_ckpt = EXPERIMENTS_ROOT / EXPERIMENT_NAME / "weights" / "best.pt"
-    print(f"\n[train.py] Xong. Checkpoint tốt nhất: {best_ckpt}")
-    print("Tiếp theo: chạy evaluation/evaluate.py để tính mask mAP trên tập test.")
+    trainer.train()
 
 
 if __name__ == "__main__":
