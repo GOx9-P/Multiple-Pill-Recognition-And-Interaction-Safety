@@ -1,0 +1,13 @@
+run_id: attr_head_v1
+module: attribute_resnet18_head_tune
+started_at: 2026-08-06 03:35
+finished_at: 2026-08-06 03:39
+device: cuda
+gpu_name: Tesla T4
+python_version: 3.12.13
+torch_version: 2.10.0+cu128
+cuda_available: True
+total_train_time_minutes: 3.6
+avg_epoch_time_seconds: 14.3
+best_epoch: 15
+best_overall_f1: 0.6565
