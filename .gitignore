@@ -26,10 +26,10 @@ env/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs (training runtime logs only)
 *.log
 
-# Model weights and checkpoints
+# Model weights and checkpoints (too large for Git, use Git LFS or Drive)
 *.pt
 *.pth
 *.onnx
@@ -37,20 +37,24 @@ Thumbs.db
 *.ckpt
 *.safetensors
 
-# Large or generated project artifacts
+# Large raw data
 data/raw/**
 data/processed/**
 data/augmented/**
 data/benchmark/**
-experiments/**
+
+# Model weights directory (keep structure, block weights)
 models/**
+
+# Outputs (inference results, can be regenerated)
 outputs/**
+
+# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
+# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
 
 # Keep folder structure in Git
 !data/**/
 !data/**/.gitkeep
-!experiments/**/
-!experiments/**/.gitkeep
 !models/**/
 !models/**/.gitkeep
 !outputs/**/
