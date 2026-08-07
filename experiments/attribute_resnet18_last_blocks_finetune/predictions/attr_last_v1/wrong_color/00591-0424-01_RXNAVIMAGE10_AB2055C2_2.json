@@ -1,0 +1,22 @@
+{
+    "image_path": "00591-0424-01_RXNAVIMAGE10_AB2055C2_2.jpg",
+    "ground_truth": {
+        "shape": "shape_class_10",
+        "color": [
+            "GREEN"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_10",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "GREEN",
+                "YELLOW"
+            ],
+            "correct": false
+        }
+    }
+}

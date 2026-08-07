@@ -1,0 +1,24 @@
+{
+    "image_path": "42865-0302-02_RXNAVIMAGE10_78473C79_2.jpg",
+    "ground_truth": {
+        "shape": "shape_class_1",
+        "color": [
+            "RED",
+            "WHITE"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_1",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "PINK",
+                "RED",
+                "WHITE"
+            ],
+            "correct": false
+        }
+    }
+}
