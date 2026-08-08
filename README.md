@@ -200,6 +200,9 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │       ├── schemas/                              # Pydantic schemas cho CV output, RAG input/output, report
 │       └── utils/                                # Logging, path utils, image utils, common helpers
 │
+├── scripts/                                      # Các công cụ hỗ trợ độc lập, tác vụ chuẩn bị dữ liệu một lần
+│   └── resplit_by_ndc.py                         # Tool chia lại tập data NIH theo NDC để chống leakage
+│
 ├── tests/                                        # Unit test và integration test
 │   ├── cv/                                       # Test segmentation/attribute/OCR/CV schema
 │   ├── rag/                                      # Test retrieval, ranking, safety gate, DDI
@@ -247,6 +250,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 | `src/` | Viết logic chính ở đây để training, inference và tests import chung. |
 | `training/` | Chỉ viết script chạy một task cụ thể: prepare data, augment, train, evaluate. |
 | `inference/` | Chỉ viết script chạy dự đoán ảnh mới; không viết lại logic đã có trong `src/`. |
+| `scripts/` | Chứa code công cụ chạy một lần, dọn dẹp hệ thống, chia data... không tham gia logic chính. |
 | `evaluation/` | Là code tính điểm, không phải nơi lưu điểm. |
 | `experiments/.../metrics/` | Là nơi lưu điểm đã tính ra từ evaluation. |
 | `experiments/.../checkpoints/` | Lưu checkpoint theo từng lần train, có thể có nhiều file. |
