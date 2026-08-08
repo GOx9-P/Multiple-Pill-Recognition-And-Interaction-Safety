@@ -12,6 +12,7 @@ experiments/  -> kết quả từng lần train/evaluate: logs, metrics, checkpo
 models/       -> weight chính thức được chọn để chạy inference
 outputs/      -> kết quả sinh ra khi chạy inference/demo
 docs/         -> tài liệu đồ án: report, slide, paper summary, specification
+scripts/      -> các công cụ hỗ trợ độc lập (ví dụ: chia dataset)
 ```
 
 Phân biệt nhanh các folder dễ nhầm:
@@ -300,15 +301,15 @@ Các thư mục `data/`, `models/`, `experiments/` và `outputs/` có thể rấ
 `.gitignore` ở root project đang ignore dữ liệu lớn, checkpoint, model weight, log và output runtime; code, config, schema, docs và test vẫn nên commit bình thường.
 
 # Ghi chú về chỉnh sửa folder data
-Thêm folder all_image vào để tiện trong việc train model
+Thêm folder image_all vào để tiện trong việc train model
 
 ```
 Multiple-Pill-Recognition-And-Interaction-Safety/
 │
 └── data/                                 
     │
-    ├── all_image/                         # Toàn bộ ảnh dùng cho train, test, validation
-    │   └── rximage/
+    ├── image_all/                         # Toàn bộ ảnh dùng cho train, test, validation
+    │   └── nih_attribute/
     │                   
     ├── augmented/                       
     │
