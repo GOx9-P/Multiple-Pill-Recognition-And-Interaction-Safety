@@ -1,0 +1,21 @@
+{
+    "image_path": "59676-0566-30_RXNAVIMAGE10_EB4175DB_1.jpg",
+    "ground_truth": {
+        "shape": "shape_class_7",
+        "color": [
+            "RED"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_7",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "BROWN"
+            ],
+            "correct": false
+        }
+    }
+}

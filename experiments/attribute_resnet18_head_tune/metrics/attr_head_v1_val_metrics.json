@@ -1,0 +1,16 @@
+{
+  "run_id": "attr_head_v1",
+  "module": "attribute_resnet18_head_tune",
+  "split": "val",
+  "best_epoch": 15,
+  "best_checkpoint": "/kaggle/working/experiments/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
+  "selection_metric": "overall_macro_f1",
+  "metrics": {
+    "shape_macro_f1": 0.7271,
+    "color_macro_f1": 0.5858,
+    "dosage_form_macro_f1": null,
+    "scoreline_macro_f1": null,
+    "overall_macro_f1": 0.6565
+  },
+  "label_mapping_file": "/kaggle/working/experiments/attribute_resnet18_head_tune/logs/attr_head_v1_label_mapping.json"
+}

@@ -1,0 +1,22 @@
+{
+    "image_path": "00378-2410-01_RXNAVIMAGE10_FC477E1B_1.jpg",
+    "ground_truth": {
+        "shape": "shape_class_10",
+        "color": [
+            "PURPLE"
+        ]
+    },
+    "prediction": {
+        "shape": {
+            "label": "shape_class_10",
+            "correct": true
+        },
+        "color": {
+            "labels": [
+                "PINK",
+                "PURPLE"
+            ],
+            "correct": false
+        }
+    }
+}
