@@ -181,7 +181,7 @@ def main():
         trainable_layers=unfrozen_names + ["fc_shape", "fc_color"],
         label_mapping_file=str(head_mapping_path.relative_to(PROJECT_ROOT)),
         augmentation={"mode": "online", "train_only": True,
-                      "transforms": ["RandomHorizontalFlip", "RandomRotation(15)", "ColorJitter"]},
+                      "transforms": ["RandomHorizontalFlip", "RandomRotation(15)"]},
         scheduler_config={"name": "ReduceLROnPlateau", "mode": "min", "patience": 2, "factor": 0.5},
         extra={"head_run_id": args.head_run_id},
     )
