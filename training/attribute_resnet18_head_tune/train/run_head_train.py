@@ -117,7 +117,7 @@ def main():
     # --- Leakage Check (ACTUAL, not hard-coded) ---
     try:
         leakage_passed, leakage_details = check_split_leakage(
-            str(train_csv), str(val_csv), str(test_csv)
+            str(train_csv), str(val_csv), str(test_csv), group_key="NDC11"
         )
     except KeyError:
         logger.warning("NDC11 column not found — skipping leakage check")

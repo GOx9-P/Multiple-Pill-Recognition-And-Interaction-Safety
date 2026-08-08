@@ -1,7 +1,7 @@
 """
-Evaluation Script for Last-Blocks Fine-Tune (Stage 2).
+Evaluation Script for Head-Tune (Stage 1).
 
-Loads the best checkpoint from a given run, runs inference on the test set,
+Loads the best checkpoint from a given head-tune run, runs inference on the test set,
 computes metrics (Shape/Color F1), and generates visualization artifacts.
 """
 
@@ -28,9 +28,8 @@ from pill_safety.cv.attribute.utils.config import AttributeConfig
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate Last-Blocks Fine-Tune")
-    parser.add_argument("--run_id", type=str, required=True, help="Unique run identifier (e.g. attr_last_v2)")
-    parser.add_argument("--head_run_id", type=str, required=True, help="Run ID of the corresponding head-tune")
+    parser = argparse.ArgumentParser(description="Evaluate Head-Tune")
+    parser.add_argument("--run_id", type=str, required=True, help="Unique run identifier (e.g. attr_head_v2)")
     parser.add_argument("--batch_size", type=int, default=32)
     return parser.parse_args()
 
@@ -38,12 +37,10 @@ def parse_args():
 def main():
     args = parse_args()
     DEVICE = AttributeConfig.DEVICE
-    MODULE_NAME = "attribute_resnet18_last_blocks_finetune"
-    HEAD_MODULE = "attribute_resnet18_head_tune"
+    MODULE_NAME = "attribute_resnet18_head_tune"
 
     # --- Paths ---
     paths = AttributeConfig.get_experiment_paths(MODULE_NAME, args.run_id)
-    head_paths = AttributeConfig.get_experiment_paths(HEAD_MODULE, args.head_run_id)
     AttributeConfig.setup_directories(paths)
 
     # --- Logging ---
@@ -56,15 +53,15 @@ def main():
         ],
     )
     logger = logging.getLogger(__name__)
-    logger.info(f"=== Evaluating Last-Blocks | Run ID: {args.run_id} ===")
+    logger.info(f"=== Evaluating Head-Tune | Run ID: {args.run_id} ===")
 
-    # --- Load Label Mapping (from head-tune) ---
-    head_mapping_path = head_paths["logs"] / f"{args.head_run_id}_label_mapping.json"
-    if not head_mapping_path.exists():
-        logger.error(f"Missing label mapping at {head_mapping_path}")
+    # --- Load Label Mapping ---
+    mapping_path = paths["logs"] / f"{args.run_id}_label_mapping.json"
+    if not mapping_path.exists():
+        logger.error(f"Missing label mapping at {mapping_path}")
         sys.exit(1)
         
-    label_mapping, num_shape_classes, num_color_classes, mapping_hash = load_label_mapping(head_mapping_path)
+    label_mapping, num_shape_classes, num_color_classes, mapping_hash = load_label_mapping(mapping_path)
     shape_names = label_mapping["shape"]
     color_names = label_mapping["color"]
 
