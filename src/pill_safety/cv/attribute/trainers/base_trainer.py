@@ -88,6 +88,13 @@ class BaseTrainer:
         self.patience_counter = 0
         self.history: List[Dict] = []
 
+    @property
+    def history_dict(self) -> Dict[str, List]:
+        """Return history as a dictionary of lists (columnar format) for plotting/evaluation."""
+        if not self.history:
+            return {}
+        return {k: [d[k] for d in self.history] for k in self.history[0].keys()}
+
     def _train_one_epoch(self) -> Dict:
         """Run one training epoch. Returns dict of metrics."""
         self.model.train()

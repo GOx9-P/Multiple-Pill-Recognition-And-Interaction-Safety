@@ -16,6 +16,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+import getpass
 
 import numpy as np
 import torch
@@ -39,6 +40,7 @@ from pill_safety.cv.attribute.utils.artifacts import (
     save_config_yaml, save_dataset_manifest, save_runtime_info,
 )
 from pill_safety.cv.attribute.utils.config import AttributeConfig
+from pill_safety.cv.attribute.evaluators.attribute_evaluator import AttributeEvaluator
 
 
 def parse_args():
@@ -164,6 +166,11 @@ def main():
         leakage_passed, leakage_details = check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="NDC11")
     except KeyError:
         leakage_passed, leakage_details = False, {"error": "NDC11 column not found"}
+        
+    logger.info(f"Leakage check: passed={leakage_passed}, details={leakage_details}")
+    if not leakage_passed:
+        logger.error(f"Leakage check failed: {leakage_details}")
+        raise ValueError("Leakage check failed! Train/Val/Test splits have overlapping NDC11 groups.")
 
     # --- Save Config & Manifest ---
     unfrozen_names = [f"layer{5 - i}" for i in range(args.num_blocks, 0, -1)]
@@ -183,7 +190,17 @@ def main():
         augmentation={"mode": "online", "train_only": True,
                       "transforms": ["RandomHorizontalFlip", "RandomRotation(15)"]},
         scheduler_config={"name": "ReduceLROnPlateau", "mode": "min", "patience": 2, "factor": 0.5},
-        extra={"head_run_id": args.head_run_id},
+        extra={
+            "head_run_id": args.head_run_id,
+            "image_size": AttributeConfig.IMAGE_SIZE,
+            "lambda_color": args.lambda_color,
+            "pretrained_weight": str(head_ckpt_path),
+            "user": getpass.getuser(),
+            "date": datetime.now().isoformat(),
+            "git_commit": "unknown",
+            "optional_tasks": [],
+            "sim2real_status": True
+        },
     )
 
     from pill_safety.cv.attribute.labels.label_mapping import get_shape_distribution, get_color_distribution
@@ -200,6 +217,7 @@ def main():
         class_distribution={"shape": shape_dist, "color": color_dist},
         leakage_check_passed=leakage_passed,
         leakage_check_details=leakage_details,
+        transform_repr=repr(train_dataset.transform) if hasattr(train_dataset, "transform") else "unknown",
     )
 
     # --- Train ---
@@ -228,6 +246,59 @@ def main():
     logger.info(f"Training complete! Best epoch: {trainer.best_epoch}, Best F1: {trainer.best_metric:.4f}")
     # NOTE: Test evaluation is NOT run here. Use eval_last_blocks.py separately.
 
+    # --- Validation Artifacts & Plots ---
+    logger.info("Generating validation artifacts and plots...")
+    shape_names = label_mapping["shape"]
+    color_names = label_mapping["color"]
+
+    evaluator = AttributeEvaluator(
+        model=model,
+        test_loader=None,
+        device=DEVICE,
+        paths=paths,
+        run_id=args.run_id,
+        module_name=MODULE_NAME,
+        shape_class_names=shape_names,
+        color_class_names=color_names,
+        num_shape_classes=num_shape_classes,
+        num_color_classes=num_color_classes,
+    )
+
+    # Collect validation predictions with best weights
+    best_ckpt_path = paths["checkpoints"] / f"{args.run_id}_best.pt"
+    logger.info(f"Loading best checkpoint for validation evaluation from: {best_ckpt_path}")
+    best_ckpt = torch.load(best_ckpt_path, map_location=DEVICE, weights_only=False)
+    model.load_state_dict(best_ckpt["model_state_dict"])
+    
+    val_preds = evaluator.collect_predictions(val_loader)
+    val_test_metrics = evaluator.compute_test_metrics(val_preds)
+    
+    # Save metrics and plot curves
+    evaluator.save_val_metrics(
+        trainer.history_dict, trainer.best_epoch, trainer.best_metric,
+        per_class_metrics={
+            "shape": val_test_metrics.get("per_class_shape", {}),
+            "color": val_test_metrics.get("per_class_color", {})
+        },
+        label_mapping_file=str(head_mapping_path.relative_to(PROJECT_ROOT))
+    )
+    evaluator.plot_training_curves(trainer.history_dict, trainer.best_epoch)
+    
+    plot_config = {
+        "training": {
+            "epochs": args.epochs,
+            "learning_rate": args.lr_heads,
+            "batch_size": args.batch_size
+        }
+    }
+    evaluator.plot_summary(
+        history=trainer.history_dict,
+        preds=val_preds,
+        test_metrics=None,
+        best_epoch=trainer.best_epoch,
+        best_val_f1=trainer.best_metric,
+        config=plot_config
+    )
 
 if __name__ == "__main__":
     main()

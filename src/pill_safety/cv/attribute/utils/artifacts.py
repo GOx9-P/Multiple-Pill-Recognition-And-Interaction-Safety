@@ -5,6 +5,7 @@ Ensures both head-tune and last-blocks produce identical artifact formats
 with all required fields.
 """
 
+import hashlib
 import json
 import platform
 import sys
@@ -74,6 +75,18 @@ def save_config_yaml(
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
 
+def compute_file_hash(path: str) -> str:
+    """Compute SHA-256 hash of a file."""
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+    except FileNotFoundError:
+        return "file_not_found"
+
+
 def save_dataset_manifest(
     path: Path,
     run_id: str,
@@ -90,6 +103,7 @@ def save_dataset_manifest(
     class_distribution: Dict[str, Dict[str, int]],
     leakage_check_passed: bool,
     leakage_check_details: Dict,
+    transform_repr: str,
     group_key: str = "NDC11",
     extra: Optional[Dict] = None,
 ) -> None:
@@ -123,11 +137,15 @@ def save_dataset_manifest(
         "label_mapping_file": str(label_mapping_file),
         "class_distribution": class_distribution,
         "split_policy": {
-            "split_before_augmentation": True,
-            "augmentation_train_only": True,
             "group_key": group_key,
             "leakage_check_passed": leakage_check_passed,
             "leakage_check_notes": leakage_check_details,
+            "provenance": {
+                "train_csv_sha256": compute_file_hash(train_csv),
+                "val_csv_sha256": compute_file_hash(val_csv),
+                "test_csv_sha256": compute_file_hash(test_csv),
+                "augmentation_transform_repr": transform_repr,
+            },
         },
     }
 

@@ -70,7 +70,7 @@ class AttributeEvaluator:
         self.num_color_classes = num_color_classes
 
     @torch.no_grad()
-    def collect_predictions(self) -> dict:
+    def collect_predictions(self, dataloader=None) -> dict:
         """Run inference on the test set and collect all predictions.
 
         Returns:
@@ -83,7 +83,7 @@ class AttributeEvaluator:
         all_color_preds, all_color_targets = [], []
         all_shape_probs, all_color_probs = [], []
 
-        for images, s_targets, c_targets in self.test_loader:
+        for images, s_targets, c_targets in (dataloader or self.test_loader):
             images = images.to(self.device)
             s_outputs, c_outputs = self.model(images)
 
@@ -203,7 +203,9 @@ class AttributeEvaluator:
         }
 
     def save_val_metrics(
-        self, history: dict, best_epoch: int, best_val_f1: float
+        self, history: dict, best_epoch: int, best_val_f1: float,
+        per_class_metrics: Optional[dict] = None,
+        label_mapping_file: Optional[str] = None
     ) -> Path:
         """Save validation metrics JSON.
 
@@ -211,6 +213,8 @@ class AttributeEvaluator:
             history: Training history dictionary.
             best_epoch: Best epoch number (1-indexed).
             best_val_f1: Best overall F1 on validation set.
+            per_class_metrics: Optional per class metrics dictionary.
+            label_mapping_file: Optional path to label mapping file.
 
         Returns:
             Path to the saved JSON file.
@@ -236,6 +240,11 @@ class AttributeEvaluator:
                 "overall_macro_f1": round(best_val_f1, 4),
             },
         }
+
+        if label_mapping_file:
+            val_metrics["label_mapping_file"] = label_mapping_file
+        if per_class_metrics:
+            val_metrics["per_class_metrics"] = per_class_metrics
 
         path = self.paths["metrics"] / f"{self.run_id}_val_metrics.json"
         with open(path, "w", encoding="utf-8") as f:
@@ -509,7 +518,7 @@ class AttributeEvaluator:
         self,
         history: dict,
         preds: dict,
-        test_metrics: dict,
+        test_metrics: Optional[dict],
         best_epoch: int,
         best_val_f1: float,
         config: dict,
@@ -615,20 +624,16 @@ class AttributeEvaluator:
                 f"{history['val_color_f1'][best_epoch-1]:.4f}",
             ],
             ["Val Overall F1", f"{best_val_f1:.4f}"],
-            ["", ""],
-            [
-                "Test Shape F1",
-                f"{test_metrics['shape_macro_f1']:.4f}",
-            ],
-            [
-                "Test Color F1",
-                f"{test_metrics['color_macro_f1']:.4f}",
-            ],
-            [
-                "Test Overall F1",
-                f"{test_metrics['overall_macro_f1']:.4f}",
-            ],
         ]
+
+        if test_metrics is not None:
+            table_data.extend([
+                ["", ""],
+                ["Test Shape F1", f"{test_metrics['shape_macro_f1']:.4f}"],
+                ["Test Color F1", f"{test_metrics['color_macro_f1']:.4f}"],
+                ["Test Overall F1", f"{test_metrics['overall_macro_f1']:.4f}"],
+            ])
+
         table = axes[1, 1].table(
             cellText=table_data,
             colLabels=["Metric", "Value"],
@@ -664,7 +669,7 @@ class AttributeEvaluator:
             test_csv_path: Path to the test CSV (for filenames).
             filenames_col: Column name for image filenames.
         """
-        pred_dir = self.paths["predictions"] / self.run_id
+        pred_dir = self.paths["predictions"]
         test_df = pd.read_csv(test_csv_path)
 
         if filenames_col not in test_df.columns:
@@ -764,6 +769,7 @@ class AttributeEvaluator:
                 p for p in predictions if p["category"] == cat
             ][:50]
             cat_path = pred_dir / cat / "samples.json"
+            cat_path.parent.mkdir(parents=True, exist_ok=True)
             with open(cat_path, "w", encoding="utf-8") as f:
                 json.dump(cat_preds, f, indent=2, ensure_ascii=False)
 
