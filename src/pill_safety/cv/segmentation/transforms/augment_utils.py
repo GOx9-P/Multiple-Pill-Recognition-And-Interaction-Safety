@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+import re
 from pathlib import Path
 
 from src.pill_safety.cv.segmentation.utils.config import OUTPUT_DIR, N_AUG_PER_IMAGE
@@ -67,8 +68,14 @@ def augment_train_split(n_aug=N_AUG_PER_IMAGE):
     img_dir = OUTPUT_DIR / "images" / "train"
     lbl_dir = OUTPUT_DIR / "labels" / "train"
 
-    original_images = list(img_dir.glob("*.*"))
-    print(f"Augmenting {len(original_images)} train images x{n_aug} copies each...")
+    all_images = list(img_dir.glob("*.*"))
+    aug_pattern = re.compile(r"_aug\d+$", re.IGNORECASE)
+    original_images = [p for p in all_images if not aug_pattern.search(p.stem)]
+    num_aug_files = len(all_images) - len(original_images)
+    print(
+        f"Augmenting {len(original_images)} original train images x{n_aug} copies each... "
+        f"({num_aug_files} _aug* files excluded from input)"
+    )
 
     for img_path in original_images:
         label_path = lbl_dir / (img_path.stem + ".txt")

@@ -108,8 +108,17 @@ def build_splits(images, anns_by_image, categories, splits):
     for split_name, ids in splits.items():
         img_out = OUTPUT_DIR / "images" / split_name
         lbl_out = OUTPUT_DIR / "labels" / split_name
-        img_out.mkdir(parents=True, exist_ok=True)
-        lbl_out.mkdir(parents=True, exist_ok=True)
+
+        # Xóa dữ liệu cũ trước khi tạo lại split
+        for out_dir in (img_out, lbl_out):
+            if out_dir.exists():
+                for item in out_dir.iterdir():
+                    if item.is_file() or item.is_symlink():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+
+            out_dir.mkdir(parents=True, exist_ok=True)
 
         for img_id in ids:
             img_info = images[img_id]

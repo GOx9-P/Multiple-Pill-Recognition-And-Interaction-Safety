@@ -22,6 +22,7 @@ from src.pill_safety.cv.segmentation.utils.config import (
     OUTPUT_DIR,
     PATIENCE,
     RANDOM_SEED,
+    CLASS_AGNOSTIC,
 )
 
 MODULE_EXPERIMENT_FOLDER = "segmentation_yolov11_full_finetune"
@@ -177,6 +178,200 @@ class SegmentationTrainer:
             for key, value in runtime.items():
                 f.write(f"{key}: {value}\n")
 
+    def _capture_training_config(self, run_id: str, logs_dir: Path, model: Any) -> None:
+        """Capture minimal training config (learning_rate, optimizer, scheduler, class_agnostic).
+
+        Priority: read resolved values from `model.trainer.args` after `model.train()`.
+        If unavailable, fall back to project config (CLASS_AGNOSTIC) or mark as unavailable.
+        """
+        trainer = getattr(model, "trainer", None)
+        trainer_args = getattr(trainer, "args", None) if trainer is not None else None
+
+        def _get_arg(obj, *keys):
+            if obj is None:
+                return None
+            for k in keys:
+                # handle Namespace-like and dict-like
+                try:
+                    if hasattr(obj, k):
+                        val = getattr(obj, k)
+                        if val is not None:
+                            return val
+                except Exception:
+                    pass
+                try:
+                    if isinstance(obj, dict) and k in obj:
+                        return obj[k]
+                except Exception:
+                    pass
+            return None
+
+        lr_val = _get_arg(trainer_args, "lr0", "lr", "learning_rate")
+        opt_val = _get_arg(trainer_args, "optimizer", "opt")
+        sched_val = _get_arg(trainer_args, "scheduler", "lr_scheduler", "sched")
+
+        # Class agnostic: prefer trainer args, else project config
+        class_agnostic_val = _get_arg(trainer_args, "class_agnostic")
+        if class_agnostic_val is None:
+            try:
+                class_agnostic_val = CLASS_AGNOSTIC
+                class_agnostic_source = "project_config"
+            except Exception:
+                class_agnostic_val = None
+                class_agnostic_source = "unavailable"
+        else:
+            class_agnostic_source = "trainer.args"
+
+        def _format_source(val, source_name: str):
+            if val is None:
+                return {"value": None, "source": "unavailable"}
+            return {"value": val, "source": source_name}
+
+        cfg = {
+            "run_id": run_id,
+            "learning_rate": _format_source(lr_val, "trainer.args" if lr_val is not None else "unavailable"),
+            "optimizer": _format_source(opt_val, "trainer.args" if opt_val is not None else "unavailable"),
+            "scheduler": _format_source(sched_val, "trainer.args" if sched_val is not None else "unavailable"),
+            "class_agnostic": {"value": class_agnostic_val, "source": class_agnostic_source},
+        }
+
+        # --- Capture augmentation_online from trainer args (do not guess missing values) ---
+        online_keys = [
+            "hsv_h",
+            "hsv_s",
+            "hsv_v",
+            "degrees",
+            "translate",
+            "scale",
+            "shear",
+            "perspective",
+            "flipud",
+            "fliplr",
+            "mosaic",
+            "mixup",
+            "copy_paste",
+        ]
+
+        augmentation_online: dict[str, object] = {}
+        for k in online_keys:
+            val = _get_arg(trainer_args, k)
+            augmentation_online[k] = val if val is not None else None
+
+        # --- Capture augmentation_offline by introspecting augment_utils.get_augmentation_pipeline() ---
+        augmentation_offline = None
+        exact_offline: list[dict[str, object]] = []
+        try:
+            from src.pill_safety.cv.segmentation.transforms import augment_utils
+
+            try:
+                pipeline = augment_utils.get_augmentation_pipeline()
+                # albumentations Compose has `.transforms`
+                transforms = getattr(pipeline, "transforms", None)
+                if transforms is None:
+                    augmentation_offline = None
+                else:
+                    for t in transforms:
+                        try:
+                            t_name = t.__class__.__name__
+                        except Exception:
+                            t_name = str(type(t))
+                        t_p = getattr(t, "p", None)
+                        # capture parameters conservatively
+                        try:
+                            params = {k: v for k, v in vars(t).items() if k != "p"}
+                        except Exception:
+                            params = {}
+                        item = {"name": t_name, "p": t_p, "params": params}
+                        exact_offline.append(item)
+                    augmentation_offline = exact_offline
+            except Exception:
+                augmentation_offline = None
+        except Exception:
+            augmentation_offline = None
+
+        # exact_transforms contains both offline and online concrete descriptions
+        exact_transforms = {"offline": augmentation_offline, "online": augmentation_online}
+
+        # merge into cfg
+        cfg.update(
+            {
+                "augmentation_online": augmentation_online,
+                "augmentation_offline": augmentation_offline,
+                "exact_transforms": exact_transforms,
+            }
+        )
+
+        # --- Capture n_aug from dataset (count augmented files) when deterministically possible ---
+        n_aug_val = None
+        n_aug_source = "unavailable"
+        try:
+            from pathlib import Path
+            import re
+
+            train_dir = Path(self.output_dir) / "images" / "train"
+            if train_dir.exists() and train_dir.is_dir():
+                all_files = [p.stem for p in train_dir.glob("*.*")]
+                aug_pattern = re.compile(r"_aug(\d+)$", re.IGNORECASE)
+                original_stems = [s for s in all_files if not aug_pattern.search(s)]
+                aug_stems = [s for s in all_files if aug_pattern.search(s)]
+                num_original = len(set(original_stems))
+                num_aug_files = len(aug_stems)
+                if num_original > 0:
+                    # if augmentation count divides evenly, determine n_aug per original
+                    if num_aug_files % num_original == 0:
+                        n_aug_val = num_aug_files // num_original
+                        n_aug_source = f"filesystem:{train_dir}"
+                    else:
+                        # cannot determine exact per-image augmentation
+                        n_aug_val = None
+                        n_aug_source = f"indeterminate_filesystem:{train_dir}"
+                else:
+                    n_aug_val = None
+                    n_aug_source = f"no_originals_in_filesystem:{train_dir}"
+        except Exception:
+            n_aug_val = None
+            n_aug_source = "unavailable"
+
+        # If still unavailable, fall back to project config N_AUG_PER_IMAGE (explicit source)
+        if n_aug_val is None:
+            try:
+                from src.pill_safety.cv.segmentation.utils.config import N_AUG_PER_IMAGE
+
+                # Only use config value if it is explicitly set (non-None)
+                if N_AUG_PER_IMAGE is not None:
+                    n_aug_val = N_AUG_PER_IMAGE
+                    n_aug_source = "project_config:N_AUG_PER_IMAGE"
+            except Exception:
+                pass
+
+        # --- Explicit copy_paste field (prefer trainer args, else project config if defined) ---
+        copy_paste_val = _get_arg(trainer_args, "copy_paste")
+        copy_paste_source = "trainer.args" if copy_paste_val is not None else "unavailable"
+        if copy_paste_val is None:
+            try:
+                from src.pill_safety.cv.segmentation.utils.config import COPY_PASTE
+
+                copy_paste_val = COPY_PASTE
+                copy_paste_source = "project_config:COPY_PASTE"
+            except Exception:
+                copy_paste_val = None
+                copy_paste_source = copy_paste_source if copy_paste_source != "unavailable" else "unavailable"
+
+        # Attach n_aug and copy_paste metadata
+        cfg.update(
+            {
+                "n_aug": {"value": n_aug_val, "source": n_aug_source},
+                "copy_paste": {"value": copy_paste_val, "source": copy_paste_source},
+            }
+        )
+
+        out_path = logs_dir / f"{run_id}_training_config.json"
+        try:
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
     def _collect_training_artifacts(self, run_id: str, save_dir: Path, output_dirs: dict[str, Path]) -> None:
         checkpoint_dir = output_dirs["checkpoint_dir"]
         logs_dir = output_dirs["logs_dir"]
@@ -239,6 +434,12 @@ class SegmentationTrainer:
             exist_ok=True,
         )
         finished_at = datetime.now()
+
+        # Capture resolved training configuration (learning_rate, optimizer, scheduler, class_agnostic)
+        try:
+            self._capture_training_config(run_id, output_dirs["logs_dir"], model)
+        except Exception:
+            pass
 
         self._collect_training_artifacts(run_id, save_dir, output_dirs)
         self._write_config(run_id, output_dirs["logs_dir"])

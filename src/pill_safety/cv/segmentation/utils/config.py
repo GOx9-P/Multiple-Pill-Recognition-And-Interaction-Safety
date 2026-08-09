@@ -30,7 +30,11 @@ EXPERIMENTS_ROOT = Path("experiments")   # experiments/<EXPERIMENT_NAME>/{weight
 
 # Evaluation
 EVAL_WEIGHTS_NAME = "best.pt"
-EVAL_SPLIT = "test"
+EVAL_SPLIT = "val"
 EVAL_CONF_THRESHOLD = 0.25
 EVAL_IOU_THRESHOLD = 0.6
+EVAL_CONF_THRESHOLDS = [0.1, 0.2, 0.3, 0.4, 0.5]
+EVAL_IOU_THRESHOLDS = [0.4, 0.5, 0.6, 0.7]
+EVAL_MASK_THRESHOLDS = [0.3, 0.4, 0.5, 0.6, 0.7]
+EVAL_SELECTION_METRIC = "mask_mAP50_95"
 TARGET_MASK_MAP50_95 = 0.85   # chỉ tiêu Module 1 theo Report.pdf
