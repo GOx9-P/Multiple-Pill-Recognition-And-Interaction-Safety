@@ -116,7 +116,7 @@ def main():
     logger.info(f"Test Color Macro F1: {test_metrics['color_macro_f1']:.4f}")
     logger.info(f"Test Overall F1: {test_metrics['overall_macro_f1']:.4f}")
 
-    evaluator.save_test_metrics(test_metrics, best_epoch)
+    evaluator.save_test_metrics(test_metrics, best_epoch, label_mapping_file=str(mapping_path.relative_to(PROJECT_ROOT)))
     evaluator.plot_confusion_matrix(preds)
     evaluator.save_predictions(preds, test_csv, filenames_col="rxnavImageFileName")
     

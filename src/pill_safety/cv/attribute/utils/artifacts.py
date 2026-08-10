@@ -138,6 +138,8 @@ def save_dataset_manifest(
         "class_distribution": class_distribution,
         "split_policy": {
             "group_key": group_key,
+            "split_before_augmentation": True,
+            "split_before_augmentation_note": "đã xử lí từ bên ngoài phần train",
             "leakage_check_passed": leakage_check_passed,
             "leakage_check_notes": leakage_check_details,
             "provenance": {

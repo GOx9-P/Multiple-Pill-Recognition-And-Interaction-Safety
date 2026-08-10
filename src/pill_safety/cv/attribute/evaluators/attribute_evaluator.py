@@ -254,13 +254,14 @@ class AttributeEvaluator:
         return path
 
     def save_test_metrics(
-        self, test_metrics: dict, best_epoch: int
+        self, test_metrics: dict, best_epoch: int, label_mapping_file: Optional[str] = None
     ) -> Path:
         """Save test metrics JSON.
 
         Args:
             test_metrics: Output from ``compute_test_metrics()``.
             best_epoch: Best epoch number.
+            label_mapping_file: Optional path to label mapping file.
 
         Returns:
             Path to the saved JSON file.
@@ -284,6 +285,9 @@ class AttributeEvaluator:
                 "color": test_metrics.get("per_class_color", {}),
             },
         }
+
+        if label_mapping_file:
+            output["label_mapping_file"] = label_mapping_file
 
         path = self.paths["metrics"] / f"{self.run_id}_test_metrics.json"
         with open(path, "w", encoding="utf-8") as f:

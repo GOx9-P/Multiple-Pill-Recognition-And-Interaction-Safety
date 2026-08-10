@@ -239,7 +239,7 @@ class BaseTrainer:
                     self.scheduler.step()
 
             # Check if best (by overall_macro_f1, NOT val_loss)
-            is_best = val_metrics["overall_macro_f1"] > self.best_metric
+            is_best = val_metrics["overall_macro_f1"] >= self.best_metric
             if is_best:
                 self.best_metric = val_metrics["overall_macro_f1"]
                 self.best_epoch = epoch

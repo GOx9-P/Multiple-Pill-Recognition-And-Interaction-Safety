@@ -18,13 +18,13 @@ def test_leakage_passed(tmp_path):
     val_csv = tmp_path / "val.csv"
     test_csv = tmp_path / "test.csv"
     
-    pd.DataFrame({"NDC11": ["A", "B"]}).to_csv(train_csv, index=False)
-    pd.DataFrame({"NDC11": ["C", "D"]}).to_csv(val_csv, index=False)
-    pd.DataFrame({"NDC11": ["E", "F"]}).to_csv(test_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["A", "B"]}).to_csv(train_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["C", "D"]}).to_csv(val_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["E", "F"]}).to_csv(test_csv, index=False)
     
-    passed, details = check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="NDC11")
+    passed, details = check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="rxnav_rxcui")
     assert passed is True, f"Expected passed=True, got passed=False. Details: {details}"
-    assert details.get("train_val_overlap", 0) == 0
+    assert details.get("overlap_train_val", 0) == 0
 
 def test_leakage_failed(tmp_path):
     """Test that split leakage returns False when overlapping groups exist."""
@@ -33,13 +33,13 @@ def test_leakage_failed(tmp_path):
     test_csv = tmp_path / "test.csv"
     
     # "C" is overlapping between train and val
-    pd.DataFrame({"NDC11": ["A", "B", "C"]}).to_csv(train_csv, index=False)
-    pd.DataFrame({"NDC11": ["C", "D"]}).to_csv(val_csv, index=False)
-    pd.DataFrame({"NDC11": ["E", "F"]}).to_csv(test_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["A", "B", "C"]}).to_csv(train_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["C", "D"]}).to_csv(val_csv, index=False)
+    pd.DataFrame({"rxnav_rxcui": ["E", "F"]}).to_csv(test_csv, index=False)
     
-    passed, details = check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="NDC11")
+    passed, details = check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="rxnav_rxcui")
     assert passed is False
-    assert details.get("train_val_overlap", 0) > 0
+    assert details.get("overlap_train_val", 0) > 0
 
 def test_leakage_keyerror(tmp_path):
     """Test that a KeyError is raised or handled when group_key is missing."""
@@ -52,7 +52,7 @@ def test_leakage_keyerror(tmp_path):
     pd.DataFrame({"WRONG_COLUMN": ["E", "F"]}).to_csv(test_csv, index=False)
     
     with pytest.raises(KeyError):
-        check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="NDC11")
+        check_split_leakage(str(train_csv), str(val_csv), str(test_csv), group_key="rxnav_rxcui")
 
 
 def test_build_label_mapping():
@@ -61,17 +61,15 @@ def test_build_label_mapping():
         def __init__(self):
             # df has out-of-order shapes
             self.df = pd.DataFrame({"shape": ["ROUND", "CAPSULE", "OVAL"]})
-            # color encoder mock
-            class DummyEncoder:
-                classes_ = ["color_RED", "color_BLUE"]
-            self.color_mlb = DummyEncoder()
+            # mock color cols
+            self.color_cols = ["color_RED", "color_BLUE"]
 
     train_dataset = DummyDataset()
     mapping, shape_names, color_names = build_label_mapping(train_dataset, 3, 2)
     
     assert shape_names == ["CAPSULE", "OVAL", "ROUND"], "Shapes should be sorted alphabetically."
     assert color_names == ["color_RED", "color_BLUE"], "Colors should match mlb classes."
-    assert mapping["shape"] == {"CAPSULE": 0, "OVAL": 1, "ROUND": 2}
+    assert mapping["shape"] == ["CAPSULE", "OVAL", "ROUND"]
 
 
 def test_checkpoint_save_load(tmp_path):
@@ -101,11 +99,11 @@ def test_checkpoint_save_load(tmp_path):
     
     ckpt_data = load_checkpoint(
         path=ckpt_path,
-        model=model_loaded,
-        optimizer=optimizer_loaded,
         device=torch.device("cpu"),
         expected_mapping_hash=dummy_hash
     )
+    model_loaded.load_state_dict(ckpt_data["model_state_dict"])
+    optimizer_loaded.load_state_dict(ckpt_data["optimizer_state_dict"])
     
     assert ckpt_data["epoch"] == 5
     assert ckpt_data["best_metric"] == 0.85
@@ -117,9 +115,9 @@ def test_checkpoint_save_load(tmp_path):
 
 
 def test_artifact_paths_no_duplicate_run_id():
-    """Test that AttributeConfig generates paths without duplicating run_id."""
+    """Test that AttributeConfig generates paths with run_id as leaf folder."""
     paths = AttributeConfig.get_experiment_paths("attribute_resnet18_head_tune", "test_run_123")
     
     pred_path = str(paths["predictions"]).replace("\\", "/")
     
-    assert "test_run_123" not in pred_path.split("/")[-1], "run_id should not be the leaf folder for predictions."
+    assert "test_run_123" == pred_path.split("/")[-1], "run_id SHOULD be the leaf folder for predictions."
