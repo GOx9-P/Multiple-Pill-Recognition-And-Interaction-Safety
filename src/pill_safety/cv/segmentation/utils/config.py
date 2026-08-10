@@ -1,11 +1,15 @@
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+DATA_ROOT = PROJECT_ROOT / "data"
+RAW_DATA_DIR = DATA_ROOT / "raw" / "mediseg" / "32pills"
+
 # ----------------------------------------------------------------------------
 # Từ mediseg_split_augment.py — GIỮ NGUYÊN
 # ----------------------------------------------------------------------------
-RAW_IMAGES_DIR = Path(r"d:\PRJ_MLIoT\MEDISEG\32pills\images")   # <-- EDIT nếu cần
-RAW_ANN_PATH = Path(r"d:\PRJ_MLIoT\MEDISEG\32pills\annotations.json")  # <-- EDIT nếu cần
-OUTPUT_DIR = Path(r"d:\PRJ_MLIoT\MEDISEG\32pills\mediseg_yolo")  # <-- EDIT nếu cần
+RAW_IMAGES_DIR = RAW_DATA_DIR / "images"
+RAW_ANN_PATH = RAW_DATA_DIR / "annotations.json"
+OUTPUT_DIR = DATA_ROOT / "splits" / "mediseg"
 
 SPLIT_RATIOS = (0.70, 0.15, 0.15)          # train / val / test
 RANDOM_SEED = 42
@@ -26,7 +30,7 @@ DEVICE = 0            # "cpu" nếu không có GPU
 FREEZE = None          # None = full fine-tune, KHÔNG freeze layer nào
 
 EXPERIMENT_NAME = "module1_full_finetune_v1"
-EXPERIMENTS_ROOT = Path("experiments")   # experiments/<EXPERIMENT_NAME>/{weights,metrics}
+EXPERIMENTS_ROOT = PROJECT_ROOT / "experiments"   # experiments/<EXPERIMENT_NAME>/{weights,metrics}
 
 # Evaluation
 EVAL_WEIGHTS_NAME = "best.pt"
