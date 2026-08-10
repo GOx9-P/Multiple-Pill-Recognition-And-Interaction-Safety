@@ -49,7 +49,8 @@ def test_seed_references_use_business_keys() -> None:
         assert row["ingredient_a"] in ingredient_names
         assert row["ingredient_b"] in ingredient_names
         assert row["ingredient_a"] != row["ingredient_b"]
-        assert row["severity"] in {"minor", "moderate", "major", "contraindicated"}
+        assert row["severity"] in {"minor", "moderate", "major", "contraindicated", "unclassified"}
+
         assert "ingredient_a_id" not in row
         assert "ingredient_b_id" not in row
 

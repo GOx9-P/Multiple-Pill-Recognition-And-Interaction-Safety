@@ -101,11 +101,18 @@ def adapt_cv_pill_to_recognition_input(
         if (normalized := normalize_color(str(label))) is not None
     }
 
+    raw_cv_status = str(pill.get("cv_status") or "").lower()
+    if raw_cv_status in {"detected", "ready", "features_ready"}:
+        cv_status = "features_ready"
+    else:
+        cv_status = raw_cv_status
+
     return RecognitionInput(
         instance_id=str(pill.get("instance_id") or ""),
         instance_token=pill.get("instance_token"),
         market=normalize_token(rag_request.get("market") or "US"),
-        cv_status=str(pill.get("cv_status") or ""),
+        cv_status=cv_status,
+
         segmentation=SegmentationEvidence(
             confidence=_float(segmentation.get("confidence")),
             occlusion_estimate=segmentation.get("occlusion_estimate"),

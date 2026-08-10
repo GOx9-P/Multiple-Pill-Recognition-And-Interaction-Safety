@@ -12,7 +12,14 @@ from pill_safety.database.session import get_db
 from pill_safety.rag.identification_service import IdentificationService
 from pill_safety.rag.ddi.ddi_lookup_service import DdiLookupService
 from pill_safety.rag.reporting.context_builder import ContextBuilderService
-from pill_safety.schemas.rag import RagIdentifyRequest, DdiRequest, ContextBuilderInput
+from pill_safety.rag.reporting.llm_report_generator import LlmReportGenerator
+from pill_safety.schemas.rag import (
+    RagIdentifyRequest,
+    DdiRequest,
+    ContextBuilderInput,
+    RagReportRequest,
+    ManualIdentifyRequest,
+)
 
 
 app = FastAPI(title="Medication Safety API")
@@ -102,3 +109,79 @@ def build_context(
         return ContextBuilderService().build_context(context_input.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/rag/report")
+def generate_report(
+    report_request: RagReportRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    try:
+        req_dict = report_request.model_dump()
+        cv_output = req_dict.get("cv_output") or {}
+        rag_id = req_dict.get("rag_identification")
+        if not rag_id:
+            rag_id = IdentificationService(db).identify(req_dict)
+
+        ddi_out = req_dict.get("ddi_output")
+        if not ddi_out:
+            identified_products = []
+            for pill_res in rag_id.get("pill_results", []):
+                acc = pill_res.get("accepted_product")
+                if acc and acc.get("drug_id"):
+                    identified_products.append({
+                        "instance_id": pill_res.get("instance_id"),
+                        "product_id": f"drug_{acc['drug_id']}"
+                    })
+            if identified_products:
+                ddi_out = DdiLookupService(db).lookup_ddi({
+                    "request_id": report_request.request_id,
+                    "session_id": report_request.session_id,
+                    "identified_products": identified_products
+                })
+            else:
+                ddi_out = {
+                    "request_id": report_request.request_id,
+                    "session_id": report_request.session_id,
+                    "identified_drugs": [],
+                    "duplicate_ingredient_warnings": [],
+                    "interactions": [],
+                    "overall_severity": "none",
+                    "scope_warnings": []
+                }
+
+        context = ContextBuilderService().build_context({
+            "request_id": report_request.request_id,
+            "session_id": report_request.session_id,
+            "cv_output": cv_output,
+            "rag_identification": rag_id,
+            "ddi_output": ddi_out
+        })
+
+        return LlmReportGenerator().generate_report(context)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/rag/manual-identify")
+def manual_identify(
+    manual_request: ManualIdentifyRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    try:
+        id_service = IdentificationService(db)
+        bound = id_service.manual_bind_unresolved_pill(
+            instance_id=manual_request.instance_id,
+            manual_drug_name=manual_request.manual_drug_name,
+            product_id=manual_request.product_id,
+        )
+        return {
+            "status": "success",
+            "session_id": manual_request.session_id,
+            "bound_pill": bound,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+

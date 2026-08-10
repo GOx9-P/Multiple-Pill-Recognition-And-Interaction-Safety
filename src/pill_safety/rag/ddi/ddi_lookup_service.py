@@ -126,7 +126,8 @@ class DdiLookupService:
                 })
 
         # 3. Calculate Overall Severity
-        severity_ranks = {"contraindicated": 4, "major": 3, "moderate": 2, "minor": 1, "none": 0}
+        severity_ranks = {"contraindicated": 4, "major": 3, "moderate": 2, "minor": 1, "unclassified": 1, "none": 0}
+
         max_rank = 0
         overall_severity = "none"
         for inter in interactions:

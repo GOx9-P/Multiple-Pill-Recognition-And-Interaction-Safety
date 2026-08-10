@@ -139,3 +139,31 @@ class ContextBuilderInput(BaseModel):
     cv_output: Optional[dict[str, Any]] = None
     rag_identification: Optional[dict[str, Any]] = None
     ddi_output: Optional[dict[str, Any]] = None
+
+
+# ----------------- Report & Manual Override Models -----------------
+class RagReportRequest(BaseModel):
+    schema_version: Optional[str] = None
+    request_id: Optional[str] = None
+    session_id: Optional[str] = None
+    cv_output: CvOutput
+    rag_identification: Optional[dict[str, Any]] = None
+    ddi_output: Optional[dict[str, Any]] = None
+
+
+class RagReportResponse(BaseModel):
+    schema_version: str = "llm_report_v0"
+    request_id: Optional[str] = None
+    session_id: Optional[str] = None
+    overall_severity: str
+    provider_used: str
+    formatted_report_text: str
+    structured_context: dict[str, Any]
+
+
+class ManualIdentifyRequest(BaseModel):
+    session_id: Optional[str] = None
+    instance_id: str
+    manual_drug_name: Optional[str] = None
+    product_id: Optional[str] = None
+

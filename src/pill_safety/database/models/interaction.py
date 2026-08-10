@@ -17,9 +17,10 @@ class DrugInteraction(Base):
     __tablename__ = "drug_interactions"
     __table_args__ = (
         CheckConstraint(
-            "severity IN ('minor', 'moderate', 'major', 'contraindicated')",
+            "severity IN ('minor', 'moderate', 'major', 'contraindicated', 'unclassified')",
             name="ck_drug_interactions_severity",
         ),
+
         CheckConstraint(
             "ingredient_a_id <> ingredient_b_id",
             name="ck_drug_interactions_distinct_ingredients",
@@ -58,7 +59,8 @@ class DrugInteraction(Base):
     alternative: Mapped[str | None] = mapped_column(Text)
     source_name: Mapped[str | None] = mapped_column(String(100))
     source_reference: Mapped[str | None] = mapped_column(String(500))
-    source_level: Mapped[str | None] = mapped_column(String(50))
+    source_level: Mapped[str | None] = mapped_column(String(255))
+
     evidence_text: Mapped[str | None] = mapped_column(Text)
     last_reviewed: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(

@@ -26,7 +26,13 @@ env/
 .DS_Store
 Thumbs.db
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Logs
+
 *.log
 
 # Model weights and checkpoints
@@ -56,3 +62,35 @@ outputs/**
 !outputs/**/
 !outputs/**/.gitkeep
 !.gitkeep
+
+# Temporary scripts & scratch files
+scratch/
+tmp/
+temp/
+
+# Testing & Coverage
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Docker data & local overrides
+pgdata/
+docker-compose.override.yml
+compose.override.yaml
+
+# Build & packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Additional editor & OS files
+*.swp
+*.swo
+*~
+
+
+# tasks for agent
+tasks
+.agents

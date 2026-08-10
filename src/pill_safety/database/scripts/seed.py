@@ -165,7 +165,8 @@ def seed_product_ingredients(db: Session) -> None:
 
 
 def seed_drug_interactions(db: Session) -> None:
-    allowed_severity = {"minor", "moderate", "major", "contraindicated"}
+    allowed_severity = {"minor", "moderate", "major", "contraindicated", "unclassified"}
+
     for index, row in enumerate(read_json("drug_interactions.json")):
         ingredient_a = get_ingredient_by_name(
             db,
@@ -214,7 +215,12 @@ def seed_drug_interactions(db: Session) -> None:
 
 
 def seed_database() -> None:
+    from pill_safety.database.base import Base
+    from pill_safety.database.session import engine
+
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
+
     try:
         read_json("patient_profiles.json")
         seed_ingredients(db)
@@ -229,8 +235,9 @@ def seed_database() -> None:
         db.commit()
     except Exception as exc:
         db.rollback()
-        print(f"Seed database thất bại: {exc}")
+        print(f"Seed database failed: {exc}".encode("ascii", "replace").decode("ascii"))
         raise
+
     finally:
         db.close()
 

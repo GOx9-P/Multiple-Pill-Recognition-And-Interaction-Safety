@@ -1,0 +1,88 @@
+{
+  "schema_version": "cv_output_v0",
+  "request_id": "req_scenario_critical_01",
+  "session_id": "sess_scenario_critical_01",
+  "image_quality": {
+    "status": "good",
+    "blur_score": 0.02,
+    "glare_detected": false,
+    "lighting_warning": false
+  },
+  "pills": [
+    {
+      "instance_id": "pill_instance_001",
+      "cv_status": "detected",
+      "bbox_xyxy": [100.0, 150.0, 300.0, 450.0],
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.98
+      },
+      "color": {
+        "primary": "WHITE",
+        "confidence": 0.95
+      },
+      "dosage_form": {
+        "label": "TABLET",
+        "confidence": 0.90
+      },
+      "scoreline": {
+        "visible": true,
+        "confidence": 0.90
+      },
+
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.95
+      },
+      "imprint": {
+        "visible": true,
+        "raw": "84A",
+        "confidence": 0.96,
+        "normalized_candidates": [
+          {
+            "text": "84A",
+            "score": 0.96,
+            "source": "paddle_ocr"
+          }
+        ]
+      }
+    },
+    {
+      "instance_id": "pill_instance_002",
+      "cv_status": "detected",
+      "bbox_xyxy": [500.0, 150.0, 700.0, 350.0],
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.97
+      },
+      "color": {
+        "primary": "ORANGE",
+        "confidence": 0.94
+      },
+      "dosage_form": {
+        "label": "TABLET",
+        "confidence": 0.90
+      },
+      "scoreline": {
+        "visible": true,
+        "confidence": 0.91
+      },
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.92
+      },
+      "imprint": {
+        "visible": true,
+        "raw": "8335BARR",
+        "confidence": 0.95,
+        "normalized_candidates": [
+          {
+            "text": "8335BARR",
+            "score": 0.95,
+            "source": "paddle_ocr"
+          }
+        ]
+      }
+    }
+  ]
+}

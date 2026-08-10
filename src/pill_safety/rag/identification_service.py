@@ -47,6 +47,58 @@ class IdentificationService:
             "pill_results": pill_results,
         }
 
+    def manual_bind_unresolved_pill(
+        self,
+        *,
+        instance_id: str,
+        manual_drug_name: str | None = None,
+        product_id: str | None = None,
+    ) -> dict[str, Any]:
+        from pill_safety.database.services.drug_service import DrugService
+        drug_service = DrugService(self.db)
+        
+        drug = None
+        if product_id:
+            from pill_safety.rag.ddi.ddi_lookup_service import DdiLookupService
+            drug_id = DdiLookupService._parse_drug_id(product_id)
+            if drug_id is not None:
+                drug = drug_service.get_drug(drug_id)
+            if drug is None:
+                drug = drug_service.repository.get_by_product_code(product_id)
+
+        if drug is None and manual_drug_name:
+            results = drug_service.search(imprint=manual_drug_name)
+            if not results:
+                # Search by drug name in DB
+                from sqlalchemy import select
+                from pill_safety.database.models import DrugProduct
+                stmt = select(DrugProduct).where(DrugProduct.name.ilike(f"%{manual_drug_name}%"))
+                drug_obj = self.db.scalars(stmt).first()
+                if drug_obj:
+                    drug = drug_service._detail(drug_obj)
+            elif results:
+                drug = results[0]
+
+        if drug is None:
+            raise ValueError(f"Không tìm thấy sản phẩm thuốc phù hợp cho '{manual_drug_name or product_id}'.")
+
+        drug_id_val = drug.get("drug_id") if isinstance(drug, dict) else drug.drug_id
+        product_code_val = drug.get("product_code") if isinstance(drug, dict) else drug.product_code
+        name_val = drug.get("name") if isinstance(drug, dict) else drug.name
+
+        return {
+            "instance_id": instance_id,
+            "identification_status": "identified",
+            "required_action": "none",
+            "accepted_product": {
+                "drug_id": drug_id_val,
+                "product_code": product_code_val,
+                "product_name": name_val,
+            },
+            "decision_reasons": ["manual_user_override"],
+        }
+
+
     def _identify_one(
         self,
         *,
