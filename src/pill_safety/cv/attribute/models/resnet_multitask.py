@@ -63,6 +63,20 @@ class MultiTaskResNet18(nn.Module):
             f"fc_color output {self.fc_color[-1].out_features} != {num_color_classes}"
         )
 
+        # Apply weight initialization to prevent loss explosion
+        self.fc_shape.apply(self._init_weights)
+        self.fc_color.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        """Initialize weights for newly added layers to prevent loss explosion."""
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm1d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+
     # ------------------------------------------------------------------
     # Freeze / Unfreeze API
     # ------------------------------------------------------------------
