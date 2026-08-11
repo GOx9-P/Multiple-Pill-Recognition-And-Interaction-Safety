@@ -1,0 +1,36 @@
+model:
+  weights_path: models/segmentation_yolov11_full_finetune/yolov11m_seg_mediseg_full_finetune_v1.pt
+  device: auto
+  image_size: 640
+  # Các ngưỡng tạm thời, cần chốt lại sau khi quét ngưỡng trên tập validation.
+  confidence_threshold: 0.25
+  iou_threshold: 0.60
+  mask_threshold: 0.50
+
+postprocessing:
+  bbox_padding_ratio: 0.08
+  crop_size: 640
+  crop_background_value: 127
+  align_long_axis: true
+  min_alignment_aspect_ratio: 1.15
+
+quality:
+  min_mask_area_ratio: 0.0005
+  max_mask_area_ratio: 0.90
+  min_component_area_ratio: 0.05
+  merged_solidity_threshold: 0.82
+  non_pill_confidence_threshold: 0.45
+  blur_variance_reference: 120.0
+  blur_warning_score: 0.35
+  unusable_blur_score: 0.85
+  glare_value_threshold: 245
+  glare_saturation_threshold: 45
+  glare_ratio_threshold: 0.02
+  dark_value_threshold: 35
+  bright_value_threshold: 245
+  lighting_ratio_threshold: 0.35
+  unusable_lighting_ratio: 0.75
+
+artifacts:
+  output_dir: outputs
+  save_overlay: true
