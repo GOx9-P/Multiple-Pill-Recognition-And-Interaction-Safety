@@ -1,0 +1,426 @@
+[
+  {
+    "image_path": "51672-4031-01_RXNAVIMAGE10_29129484_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TRIANGLE",
+        "confidence": 0.9967
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GRAY",
+          "color_PURPLE"
+        ],
+        "confidence": 0.6807
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "66993-0057-02_RXNAVIMAGE10_1C4F8E2C_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "DOUBLE CIRCLE",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9993
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9999
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "66993-0057-02_RXNAVIMAGE10_1C4F8E2C_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "DOUBLE CIRCLE",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9994
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00603-7642-01_RXNAVIMAGE10_17418BCC_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.6385
+      },
+      "color": {
+        "labels": [
+          "color_GREEN"
+        ],
+        "confidence": 0.9534
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "51285-0061-01_RXNAVIMAGE10_A73BD3BE_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "FREEFORM",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OCTAGON",
+        "confidence": 0.9699
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9998
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "51285-0061-01_RXNAVIMAGE10_A73BD3BE_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "FREEFORM",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OCTAGON",
+        "confidence": 0.959
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 1.0
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "66213-0425-10_RXNAVIMAGE10_16398B7C_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "SEMI-CIRCLE",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "HEXAGON",
+        "confidence": 0.9836
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9939
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "66213-0425-10_RXNAVIMAGE10_16398B7C_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "SEMI-CIRCLE",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TRAPEZOID",
+        "confidence": 0.5431
+      },
+      "color": {
+        "labels": [
+          "color_GREEN"
+        ],
+        "confidence": 0.7242
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "60505-0015-06_RXNAVIMAGE10_75383AB1_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_ORANGE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7874
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "60505-0015-06_RXNAVIMAGE10_75383AB1_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_ORANGE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7969
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0973-02_RXNAVIMAGE10_4F4227F1_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_ORANGE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.5244
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7355
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0973-02_RXNAVIMAGE10_4F4227F1_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_ORANGE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.6713
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7853
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0789-02_RXNAVIMAGE10_D641EB3F_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.5126
+      },
+      "color": {
+        "labels": [
+          "color_YELLOW"
+        ],
+        "confidence": 0.925
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "65862-0176-99_RXNAVIMAGE10_4A472569_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.5231
+      },
+      "color": {
+        "labels": [
+          "color_BLUE"
+        ],
+        "confidence": 0.9847
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00603-5339-32_RXNAVIMAGE10_6612B345_1.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "TEAR",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9993
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9997
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00603-5339-32_RXNAVIMAGE10_6612B345_2.jpg",
+    "category": "wrong_shape",
+    "ground_truth": {
+      "shape": "TEAR",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9996
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.99
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  }
+]

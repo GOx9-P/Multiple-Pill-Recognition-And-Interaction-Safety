@@ -12,6 +12,7 @@ experiments/  -> kết quả từng lần train/evaluate: logs, metrics, checkpo
 models/       -> weight chính thức được chọn để chạy inference
 outputs/      -> kết quả sinh ra khi chạy inference/demo
 docs/         -> tài liệu đồ án: report, slide, paper summary, specification
+scripts/      -> các công cụ hỗ trợ độc lập (ví dụ: chia dataset)
 ```
 
 Phân biệt nhanh các folder dễ nhầm:
@@ -199,6 +200,9 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │       ├── schemas/                              # Pydantic schemas cho CV output, RAG input/output, report
 │       └── utils/                                # Logging, path utils, image utils, common helpers
 │
+├── scripts/                                      # Các công cụ hỗ trợ độc lập, tác vụ chuẩn bị dữ liệu một lần
+│   └── resplit_by_ndc.py                         # Tool chia lại tập data NIH theo NDC để chống leakage
+│
 ├── tests/                                        # Unit test và integration test
 │   ├── cv/                                       # Test segmentation/attribute/OCR/CV schema
 │   ├── rag/                                      # Test retrieval, ranking, safety gate, DDI
@@ -246,6 +250,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 | `src/` | Viết logic chính ở đây để training, inference và tests import chung. |
 | `training/` | Chỉ viết script chạy một task cụ thể: prepare data, augment, train, evaluate. |
 | `inference/` | Chỉ viết script chạy dự đoán ảnh mới; không viết lại logic đã có trong `src/`. |
+| `scripts/` | Chứa code công cụ chạy một lần, dọn dẹp hệ thống, chia data... không tham gia logic chính. |
 | `evaluation/` | Là code tính điểm, không phải nơi lưu điểm. |
 | `experiments/.../metrics/` | Là nơi lưu điểm đã tính ra từ evaluation. |
 | `experiments/.../checkpoints/` | Lưu checkpoint theo từng lần train, có thể có nhiều file. |
@@ -300,15 +305,15 @@ Các thư mục `data/`, `models/`, `experiments/` và `outputs/` có thể rấ
 `.gitignore` ở root project đang ignore dữ liệu lớn, checkpoint, model weight, log và output runtime; code, config, schema, docs và test vẫn nên commit bình thường.
 
 # Ghi chú về chỉnh sửa folder data
-Thêm folder all_image vào để tiện trong việc train model
+Thêm folder image_all vào để tiện trong việc train model
 
 ```
 Multiple-Pill-Recognition-And-Interaction-Safety/
 │
 └── data/                                 
     │
-    ├── all_image/                         # Toàn bộ ảnh dùng cho train, test, validation
-    │   └── rximage/
+    ├── image_all/                         # Toàn bộ ảnh dùng cho train, test, validation
+    │   └── nih_attribute/
     │                   
     ├── augmented/                       
     │

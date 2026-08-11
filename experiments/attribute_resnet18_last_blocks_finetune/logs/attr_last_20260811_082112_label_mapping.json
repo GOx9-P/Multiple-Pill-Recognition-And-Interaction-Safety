@@ -1,0 +1,35 @@
+{
+  "shape": [
+    "UNKNOWN_SHAPE_0",
+    "CAPSULE",
+    "DIAMOND",
+    "DOUBLE CIRCLE",
+    "FREEFORM",
+    "HEXAGON",
+    "OCTAGON",
+    "OVAL",
+    "PENTAGON",
+    "RECTANGLE",
+    "ROUND",
+    "SEMI-CIRCLE",
+    "SQUARE",
+    "TEAR",
+    "TRAPEZOID",
+    "TRIANGLE"
+  ],
+  "color": [
+    "color_BLACK",
+    "color_BLUE",
+    "color_BROWN",
+    "color_GRAY",
+    "color_GREEN",
+    "color_ORANGE",
+    "color_PINK",
+    "color_PURPLE",
+    "color_RED",
+    "color_TURQUOISE",
+    "color_WHITE",
+    "color_YELLOW"
+  ],
+  "mapping_hash": "e26a1dfecd1173fbdaa03a833647dba14d7ca6525ae57feb782729f39ad45226"
+}

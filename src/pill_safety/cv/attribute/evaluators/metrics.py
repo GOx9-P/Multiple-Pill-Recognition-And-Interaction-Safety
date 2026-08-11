@@ -1,36 +1,98 @@
+"""
+Shared metrics utilities for trainer and evaluator.
+
+Provides a single consistent implementation of F1 computation
+to avoid divergence between training metrics and evaluation metrics.
+"""
+
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, f1_score
+from sklearn.metrics import f1_score, precision_recall_fscore_support
+from typing import Dict, List, Optional, Tuple
 
-def find_best_thresholds(val_targets: np.ndarray, val_probs: np.ndarray, num_classes: int):
-    best_thresholds = []
-    for i in range(num_classes):
-        b_thresh, b_f1 = 0.5, 0.0
-        for thresh in np.arange(0.1, 0.9, 0.05):
-            score = f1_score(val_targets[:, i], (val_probs[:, i] > thresh).astype(int), zero_division=0)
-            if score > b_f1:
-                b_f1 = score
-                b_thresh = float(thresh)
-        best_thresholds.append(b_thresh)
-    return best_thresholds
 
-def save_evaluation_plots(df_history, shape_targets, shape_preds, config):
-    plt.figure(figsize=(8, 5))
-    plt.plot(df_history["epoch"], df_history["train_loss"], label="Train Loss", color="blue", marker="o")
-    plt.plot(df_history["epoch"], df_history["val_loss"], label="Val Loss", color="red", marker="o")
-    plt.title(f"{config.RUN_ID} - Loss Curve")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(config.PLOT_DIR / f"{config.RUN_ID}_loss_curve.png", dpi=300)
-    plt.close()
+def compute_epoch_metrics(
+    shape_targets: np.ndarray,
+    shape_preds: np.ndarray,
+    color_targets: np.ndarray,
+    color_preds: np.ndarray,
+    shape_class_names: Optional[List[str]] = None,
+    color_class_names: Optional[List[str]] = None,
+    zero_division: int = 0,
+) -> Dict:
+    """Compute all metrics for one epoch (used by both trainer and evaluator).
 
-    cm = confusion_matrix(shape_targets, shape_preds)
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.title(f"Shape Confusion Matrix ({config.RUN_ID})")
-    plt.savefig(config.PLOT_DIR / f"{config.RUN_ID}_shape_confusion_matrix.png", dpi=300)
-    plt.close()
+    Args:
+        shape_targets: Ground truth shape labels, shape (N,).
+        shape_preds: Predicted shape labels, shape (N,).
+        color_targets: Ground truth color labels, shape (N, C).
+        color_preds: Predicted color labels (binary), shape (N, C).
+        shape_class_names: Optional list of shape class names for per-class metrics.
+        color_class_names: Optional list of color class names for per-class metrics.
+        zero_division: Value to use when a class has no predictions.
+
+    Returns:
+        Dictionary with shape_macro_f1, color_macro_f1, overall_macro_f1,
+        and optionally per-class metrics.
+    """
+    shape_macro_f1 = f1_score(
+        shape_targets, shape_preds,
+        average="macro", zero_division=zero_division,
+    )
+    color_macro_f1 = f1_score(
+        color_targets, color_preds,
+        average="macro", zero_division=zero_division,
+    )
+    overall_macro_f1 = (shape_macro_f1 + color_macro_f1) / 2.0
+
+    result = {
+        "shape_macro_f1": float(shape_macro_f1),
+        "color_macro_f1": float(color_macro_f1),
+        "overall_macro_f1": float(overall_macro_f1),
+    }
+
+    # Per-class metrics if class names provided
+    if shape_class_names:
+        prec, rec, f1, sup = precision_recall_fscore_support(
+            shape_targets, shape_preds,
+            labels=list(range(len(shape_class_names))),
+            zero_division=zero_division,
+        )
+        result["shape_per_class"] = {
+            name: {"precision": float(prec[i]), "recall": float(rec[i]),
+                   "f1": float(f1[i]), "support": int(sup[i])}
+            for i, name in enumerate(shape_class_names)
+        }
+
+    if color_class_names:
+        prec, rec, f1, sup = precision_recall_fscore_support(
+            color_targets, color_preds,
+            average=None, zero_division=zero_division,
+        )
+        result["color_per_class"] = {
+            name: {"precision": float(prec[i]), "recall": float(rec[i]),
+                   "f1": float(f1[i]), "support": int(sup[i])}
+            for i, name in enumerate(color_class_names)
+        }
+
+    return result
+
+
+def compute_confidence(logits, task: str = "shape"):
+    """Compute confidence scores from logits.
+
+    Args:
+        logits: Raw model output, shape (B, C).
+        task: "shape" (softmax) or "color" (sigmoid).
+
+    Returns:
+        Confidence array, shape (B,) for shape, (B, C) for color.
+    """
+    import torch
+
+    if task == "shape":
+        probs = torch.softmax(logits, dim=-1)
+        conf, _ = probs.max(dim=-1)
+        return conf.cpu().numpy()
+    else:
+        probs = torch.sigmoid(logits)
+        return probs.cpu().numpy()

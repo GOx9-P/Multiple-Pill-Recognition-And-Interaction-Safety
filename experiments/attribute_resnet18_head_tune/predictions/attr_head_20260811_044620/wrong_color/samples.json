@@ -1,0 +1,1400 @@
+[
+  {
+    "image_path": "00007-4471-20_RXNAVIMAGE10_7618BB55_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_RED"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9776
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_RED"
+        ],
+        "confidence": 0.8773
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00378-0069-01_RXNAVIMAGE10_1C078E4C_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.6259
+      },
+      "color": {
+        "labels": [
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.8316
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "53489-0105-01_RXNAVIMAGE10_3D269EF4_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE"
+        ],
+        "confidence": 0.8027
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00002-3270-30_RXNAVIMAGE10_A91354EA_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_BLUE",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_PURPLE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.9534
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00002-3270-30_RXNAVIMAGE10_A91354EA_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_BLUE",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_WHITE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.8056
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00456-1405-01_RXNAVIMAGE10_683A3461_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "TRIANGLE",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TRIANGLE",
+        "confidence": 0.9921
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.8599
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-5789-01_RXNAVIMAGE10_5434AA05_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE"
+        ],
+        "confidence": 0.8798
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-5789-01_RXNAVIMAGE10_5434AA05_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN"
+        ],
+        "confidence": 0.9629
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "51672-4031-01_RXNAVIMAGE10_29129484_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_TURQUOISE"
+        ],
+        "confidence": 0.8457
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00185-0415-05_RXNAVIMAGE10_8748C3F6_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9973
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_RED"
+        ],
+        "confidence": 0.553
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00185-0415-05_RXNAVIMAGE10_8748C3F6_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN"
+        ],
+        "confidence": 0.9548
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "16571-0202-10_RXNAVIMAGE10_6A48B525_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_ORANGE",
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.7749
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "16571-0202-10_RXNAVIMAGE10_6A48B525_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_RED"
+        ],
+        "confidence": 0.6144
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "42794-0020-02_RXNAVIMAGE10_A75153EA_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.966
+      },
+      "color": {
+        "labels": [
+          "color_BLUE"
+        ],
+        "confidence": 0.591
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00406-9932-03_RXNAVIMAGE10_313D98BC_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_ORANGE",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_ORANGE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.6994
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00406-9932-03_RXNAVIMAGE10_313D98BC_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_ORANGE",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_BROWN",
+          "color_ORANGE",
+          "color_RED",
+          "color_YELLOW"
+        ],
+        "confidence": 0.7323
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "60505-2654-01_RXNAVIMAGE10_BB435DBA_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9047
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_WHITE"
+        ],
+        "confidence": 0.6778
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0513-02_RXNAVIMAGE10_D92B6CFB_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_ORANGE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7947
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00076-0111-01_RXNAVIMAGE10_9912CCC6_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_PURPLE",
+          "color_RED"
+        ],
+        "confidence": 0.8907
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00076-0111-01_RXNAVIMAGE10_9912CCC6_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_PURPLE",
+          "color_RED"
+        ],
+        "confidence": 0.8524
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00378-0433-01_RXNAVIMAGE10_38131C48_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.7454
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.7878
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00378-0433-01_RXNAVIMAGE10_38131C48_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.9653
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00091-0920-01_RXNAVIMAGE10_E215714B_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PINK",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_PINK",
+          "color_WHITE"
+        ],
+        "confidence": 0.7403
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00091-0920-01_RXNAVIMAGE10_E215714B_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PINK",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_PINK",
+          "color_WHITE"
+        ],
+        "confidence": 0.8591
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-7583-56_RXNAVIMAGE10_B842DC26_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_ORANGE",
+          "color_PINK"
+        ],
+        "confidence": 0.7207
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-5507-56_RXNAVIMAGE10_0C270618_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_RED"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_ORANGE",
+          "color_PURPLE",
+          "color_RED"
+        ],
+        "confidence": 0.8096
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-5507-56_RXNAVIMAGE10_0C270618_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_RED"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_RED"
+        ],
+        "confidence": 0.8844
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-0453-01_RXNAVIMAGE10_7207B90D_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_ORANGE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.9006
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00603-5062-21_RXNAVIMAGE10_043D820C_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_GRAY"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.8438
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GRAY"
+        ],
+        "confidence": 0.8727
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00007-3370-61_RXNAVIMAGE10_D119689B_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_WHITE"
+        ],
+        "confidence": 0.868
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00007-3370-61_RXNAVIMAGE10_D119689B_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE",
+          "color_WHITE"
+        ],
+        "confidence": 0.882
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0158-02_RXNAVIMAGE10_B5135ABA_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_PURPLE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.8061
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0158-02_RXNAVIMAGE10_B5135ABA_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_WHITE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.8967
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-2075-01_RXNAVIMAGE10_C326E187_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_RED"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_ORANGE",
+          "color_RED"
+        ],
+        "confidence": 0.9714
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-2075-01_RXNAVIMAGE10_C326E187_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_RED"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_ORANGE",
+          "color_RED"
+        ],
+        "confidence": 0.9343
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "68180-0121-02_RXNAVIMAGE10_433DA1BD_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE",
+          "color_WHITE"
+        ],
+        "confidence": 0.8182
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "68180-0121-02_RXNAVIMAGE10_433DA1BD_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_GREEN",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_WHITE"
+        ],
+        "confidence": 0.8536
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00603-7642-01_RXNAVIMAGE10_17418BCC_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE"
+        ],
+        "confidence": 0.9851
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00603-7642-01_RXNAVIMAGE10_17418BCC_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GRAY"
+        ],
+        "confidence": 0.8628
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-2318-19_RXNAVIMAGE10_E54772DB_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.961
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_PINK"
+        ],
+        "confidence": 0.7704
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-3120-01_RXNAVIMAGE10_F804FC17_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_PINK",
+          "color_PURPLE",
+          "color_RED"
+        ],
+        "confidence": 0.9069
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-3120-01_RXNAVIMAGE10_F804FC17_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.9735
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "61442-0111-01_RXNAVIMAGE10_AE03D72E_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_BLUE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_TURQUOISE",
+          "color_WHITE"
+        ],
+        "confidence": 0.8403
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "61442-0111-01_RXNAVIMAGE10_AE03D72E_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_BLUE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_TURQUOISE",
+          "color_WHITE"
+        ],
+        "confidence": 0.7331
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-8232-56_RXNAVIMAGE10_673833C1_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.6538
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_PINK"
+        ],
+        "confidence": 0.6729
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-3870-60_RXNAVIMAGE10_4D4E26A1_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9982
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.8888
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-3870-60_RXNAVIMAGE10_4D4E26A1_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.9743
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE"
+        ],
+        "confidence": 0.8755
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-5535-50_RXNAVIMAGE10_331599CC_1.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_TURQUOISE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE"
+        ],
+        "confidence": 0.8162
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-5535-50_RXNAVIMAGE10_331599CC_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "CAPSULE",
+      "color": [
+        "color_TURQUOISE",
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "CAPSULE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN",
+          "color_TURQUOISE",
+          "color_WHITE"
+        ],
+        "confidence": 0.8261
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00591-5052-01_RXNAVIMAGE10_BD215E8A_2.jpg",
+    "category": "wrong_color",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_WHITE"
+        ],
+        "confidence": 0.6888
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  }
+]

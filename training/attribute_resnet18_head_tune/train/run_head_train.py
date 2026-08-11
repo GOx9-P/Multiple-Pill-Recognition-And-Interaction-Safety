@@ -1,20 +1,20 @@
-#!/usr/bin/env python3
 """
-Entry point for Stage 1: Head Fine-Tune of ResNet18 attribute model.
+Head-Tune Entrypoint (Stage 1) — Thin Wrapper.
 
-Freezes the ResNet18 backbone and trains only the classification heads
-(fc_shape, fc_color) on the NIH/RxImage dataset.
+Freezes the entire ResNet18 backbone and trains only the fc_shape
+and fc_color classification heads.
 
 Usage:
-    python training/attribute_resnet18_head_tune/train/run_head_train.py
-
-All logic is imported from src/pill_safety/cv/attribute/.
+    python run_head_train.py --run_id attr_head_v2 --epochs 30 --batch_size 32
 """
 
-import datetime
+import argparse
+import logging
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+import getpass
 
 import numpy as np
 import torch
@@ -22,472 +22,257 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-# --- Add src/ to Python path so we can import pill_safety ---
-PROJECT_ROOT = Path(__file__).resolve().parents[3]  # temp_repo/
-SRC_DIR = PROJECT_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+# --- Project root setup ---
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from pill_safety.cv.attribute.datasets import RxImageDataset
-from pill_safety.cv.attribute.evaluators import AttributeEvaluator
-from pill_safety.cv.attribute.labels import (
-    build_label_mapping,
-    get_shape_distribution,
-    remove_rare_color_classes,
-    save_label_mapping,
+from pill_safety.cv.attribute.models import MultiTaskResNet18
+from pill_safety.cv.attribute.datasets.rximage import RxImageDataset
+from pill_safety.cv.attribute.transforms.augmentations import get_attribute_transforms
+from pill_safety.cv.attribute.labels.label_mapping import (
+    build_label_mapping, save_label_mapping,
+    get_shape_distribution, get_color_distribution,
 )
-from pill_safety.cv.attribute.models import MultiTaskResNet18_HeadsFinetune
-from pill_safety.cv.attribute.trainers import (
-    HeadFineTuneTrainer,
-    compute_shape_class_weights,
+from pill_safety.cv.attribute.trainers import BaseTrainer, compute_shape_class_weights
+from pill_safety.cv.attribute.utils.leakage import check_split_leakage
+from pill_safety.cv.attribute.utils.artifacts import (
+    save_config_yaml, save_dataset_manifest, save_runtime_info,
 )
-from pill_safety.cv.attribute.transforms import get_transforms
-from pill_safety.cv.attribute.utils import (
-    get_device,
-    init_experiment_dirs,
-    print_system_info,
-    save_config_yaml,
-    save_dataset_manifest,
-    save_runtime_info,
-    set_seed,
-    setup_logger,
-)
+from pill_safety.cv.attribute.utils.config import AttributeConfig
+from pill_safety.cv.attribute.evaluators.attribute_evaluator import AttributeEvaluator
 
 
-# ==============================================================================
-# CONFIGURATION
-# ==============================================================================
-RUN_ID = "attr_head_v1"
-MODULE_NAME = "attribute_resnet18_head_tune"
-RUNNER = "NguyenQuocBao"
-SEED = 42
-
-# Hyperparameters
-IMAGE_SIZE = 224
-BATCH_SIZE = 32
-NUM_EPOCHS = 15
-LEARNING_RATE = 1e-3
-OPTIMIZER_NAME = "adamw"
-SCHEDULER_NAME = "reduce_lr_on_plateau"
-WEIGHT_DECAY = 1e-4
-COLOR_LOSS_WEIGHT = 2.0
-
-# Dataset paths — tries multiple locations for portability
-CANDIDATE_BASE_DIRS = [
-    Path("/kaggle/input/rximage-new/rximage"),
-    Path("c:/ML_DL_Project/Data_rximage_kaggle/rximage"),
-    Path("c:/ML_DL_Project/Data/rximage"),
-    Path("Data/rximage"),
-]
-
-
-def find_base_dir() -> Path:
-    """Find the dataset base directory from candidate paths."""
-    for p in CANDIDATE_BASE_DIRS:
-        if p.exists() and (p / "combined").exists():
-            return p
-
-    # Fallback: search Kaggle input
-    kaggle_input = Path("/kaggle/input")
-    if kaggle_input.exists():
-        for sub in kaggle_input.rglob("combined"):
-            if sub.is_dir():
-                return sub.parent
-
-    return Path("/kaggle/input/rximage_processed/Data/rximage")
+def parse_args():
+    parser = argparse.ArgumentParser(description="Head-Tune Training (Stage 1)")
+    parser.add_argument("--run_id", type=str, required=True, help="Unique run identifier")
+    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--lambda_color", type=float, default=1.0)
+    return parser.parse_args()
 
 
 def main():
-    # ==================================================================
-    # 1. SETUP
-    # ==================================================================
-    print_system_info()
-    set_seed(SEED)
-    DEVICE = get_device()
+    args = parse_args()
+    started_at = datetime.now()
 
-    BASE_DIR = find_base_dir()
-    COMBINED_DIR = BASE_DIR / "combined"
-    IMG_DIR = BASE_DIR / "image_all"
+    # --- Seed ---
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
-    TRAIN_CSV = COMBINED_DIR / "train_combined_crop.csv"
-    VAL_CSV = COMBINED_DIR / "val_combined_crop.csv"
-    TEST_CSV = COMBINED_DIR / "test_combined_crop.csv"
+    DEVICE = AttributeConfig.DEVICE
+    MODULE_NAME = "attribute_resnet18_head_tune"
 
-    # Experiment output directories
-    EXPERIMENT_DIR = Path(f"experiments/{MODULE_NAME}")
-    if Path("/kaggle/working").exists():
-        EXPERIMENT_DIR = Path(f"/kaggle/working/experiments/{MODULE_NAME}")
+    # --- Paths ---
+    paths = AttributeConfig.get_experiment_paths(MODULE_NAME, args.run_id)
+    AttributeConfig.setup_directories(paths)
 
-    paths = init_experiment_dirs(EXPERIMENT_DIR, RUN_ID)
-    logger = setup_logger(
-        "heads_finetune", paths["logs"] / f"{RUN_ID}_training.log"
+    # --- Logging ---
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(paths["logs"] / f"{args.run_id}_training.log", encoding="utf-8"),
+            logging.StreamHandler(sys.stdout),
+        ],
     )
+    logger = logging.getLogger(__name__)
+    logger.info(f"=== Head-Tune Training | Run ID: {args.run_id} ===")
+    logger.info(f"Device: {DEVICE}")
 
-    print(f"✓ Run ID: {RUN_ID}")
-    print(f"✓ Module: {MODULE_NAME}")
-    print(f"✓ Experiment Dir: {EXPERIMENT_DIR}")
-    print(f"✓ Dataset Dir: {BASE_DIR}")
-    print(f"✓ Device: {DEVICE}")
+    # --- Data ---
+    train_csv = AttributeConfig.COMBINED_DIR / "train_clean.csv"
+    val_csv = AttributeConfig.COMBINED_DIR / "val_clean.csv"
+    test_csv = AttributeConfig.COMBINED_DIR / "test_clean.csv"
 
-    # ==================================================================
-    # 2. DATA
-    # ==================================================================
-    data_transforms = get_transforms(image_size=IMAGE_SIZE)
+    # Fallback to old CSV names if clean ones don't exist yet
+    if not train_csv.exists():
+        logger.warning("train_clean.csv not found, falling back to train_combined_crop.csv")
+        train_csv = AttributeConfig.COMBINED_DIR / "train_combined_crop.csv"
+        val_csv = AttributeConfig.COMBINED_DIR / "val_combined_crop.csv"
+        test_csv = AttributeConfig.COMBINED_DIR / "test_combined_crop.csv"
 
-    train_dataset = RxImageDataset(
-        TRAIN_CSV, IMG_DIR, transform=data_transforms["train"]
+    transforms_dict = get_attribute_transforms()
+    train_dataset = RxImageDataset(train_csv, AttributeConfig.IMG_DIR, transform=transforms_dict["train"])
+    val_dataset = RxImageDataset(val_csv, AttributeConfig.IMG_DIR, transform=transforms_dict["val"])
+    test_dataset = RxImageDataset(test_csv, AttributeConfig.IMG_DIR, transform=transforms_dict["val"])
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2)
+
+    # --- Label Mapping (Source of Truth for all stages) ---
+    num_shape_classes = int(np.max(train_dataset.shape_labels)) + 1
+    num_color_classes = len(train_dataset.color_cols)
+
+    label_mapping, shape_names, color_names = build_label_mapping(
+        train_dataset, num_shape_classes, num_color_classes
     )
-    shape_encoder = getattr(train_dataset, "shape_encoder", None)
-    mlb_color = getattr(train_dataset, "mlb_color", None)
+    mapping_path = paths["logs"] / f"{args.run_id}_label_mapping.json"
+    mapping_hash = save_label_mapping(label_mapping, mapping_path)
+    logger.info(f"Label mapping saved: {num_shape_classes} shapes, {num_color_classes} colors")
 
-    val_dataset = RxImageDataset(
-        VAL_CSV, IMG_DIR,
-        transform=data_transforms["val"],
-        shape_encoder=shape_encoder,
-        mlb_color=mlb_color,
-    )
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-        num_workers=2, pin_memory=True,
-    )
-    val_loader = DataLoader(
-        val_dataset, batch_size=BATCH_SIZE, shuffle=False,
-        num_workers=2, pin_memory=True,
-    )
-
-    NUM_SHAPE_CLASSES = (
-        int(
-            max(
-                train_dataset.shape_labels.max(),
-                val_dataset.shape_labels.max(),
-            )
+    # --- Leakage Check (ACTUAL, not hard-coded) ---
+    try:
+        leakage_passed, leakage_details = check_split_leakage(
+            str(train_csv), str(val_csv), str(test_csv), group_key="NDC11"
         )
-        + 1
-    )
-    NUM_COLOR_CLASSES = len(train_dataset.color_cols)
+    except KeyError:
+        logger.warning("NDC11 column not found — skipping leakage check")
+        leakage_passed, leakage_details = False, {"error": "NDC11 column not found"}
 
-    # --- Label mapping ---
-    label_mapping, shape_class_names, color_class_names = build_label_mapping(
-        train_dataset, NUM_SHAPE_CLASSES, NUM_COLOR_CLASSES
-    )
+    logger.info(f"Leakage check: passed={leakage_passed}, details={leakage_details}")
+    if not leakage_passed:
+        logger.error(f"Leakage check failed: {leakage_details}")
+        raise ValueError("Leakage check failed! Train/Val/Test splits have overlapping NDC11 groups.")
 
-    # --- Remove rare color classes ---
-    NUM_COLOR_CLASSES = remove_rare_color_classes(
-        [train_dataset, val_dataset],
-        rare_columns=["color_BLACK"],
-        min_samples=3,
-    )
-
-    # Update label mapping after removal
-    color_class_names = list(train_dataset.color_cols)
-    label_mapping["color"] = color_class_names
-    save_label_mapping(
-        label_mapping, paths["logs"] / f"{RUN_ID}_label_mapping.json"
-    )
-
-    # --- Class distribution ---
-    train_shape_dist = get_shape_distribution(
-        train_dataset, shape_class_names
-    )
-
-    print(f"✓ Shape classes: {NUM_SHAPE_CLASSES} | Color classes: {NUM_COLOR_CLASSES}")
-    print(f"✓ Train: {len(train_dataset)} | Val: {len(val_dataset)}")
-
-    # ==================================================================
-    # 3. SAVE CONFIG & MANIFEST
-    # ==================================================================
-    run_config = {
-        "run_id": RUN_ID,
-        "module": MODULE_NAME,
-        "runner": RUNNER,
-        "run_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "seed": SEED,
-        "dataset": {
-            "name": "rximage_new",
-            "train_csv": str(TRAIN_CSV),
-            "val_csv": str(VAL_CSV),
-            "test_csv": str(TEST_CSV),
-        },
-        "model": {
-            "architecture": "ResNet18",
-            "pretrained_weight": "ImageNet",
-            "train_strategy": "head_tune",
-            "frozen_backbone": True,
-            "trainable_layers": ["fc_shape", "fc_color"],
-        },
-        "training": {
-            "image_size": IMAGE_SIZE,
-            "epochs": NUM_EPOCHS,
-            "batch_size": BATCH_SIZE,
-            "learning_rate": LEARNING_RATE,
-            "optimizer": OPTIMIZER_NAME,
-            "scheduler": SCHEDULER_NAME,
-            "weight_decay": WEIGHT_DECAY,
-            "color_loss_weight": COLOR_LOSS_WEIGHT,
-        },
-        "tasks": ["shape", "color"],
-        "augmentation": {
-            "enabled": True,
-            "online": True,
-            "transforms": [
-                "RandomHorizontalFlip(p=0.5)",
-                "RandomRotation(degrees=15)",
-            ],
-            "split": "train_only",
-        },
-    }
-    save_config_yaml(
-        run_config, paths["logs"] / f"{RUN_ID}_config.yaml"
-    )
-
-    # Manifest
-    test_dataset_temp = RxImageDataset(
-        TEST_CSV, IMG_DIR,
-        transform=data_transforms["val"],
-        shape_encoder=shape_encoder,
-        mlb_color=mlb_color,
-    )
-    dataset_manifest = {
-        "run_id": RUN_ID,
-        "dataset_name": "rximage_new",
-        "train_csv": str(TRAIN_CSV),
-        "val_csv": str(VAL_CSV),
-        "test_csv": str(TEST_CSV),
-        "train_count": len(train_dataset),
-        "val_count": len(val_dataset),
-        "test_count": len(test_dataset_temp),
-        "split_before_augmentation": True,
-        "augmentation_train_only": True,
-        "num_shape_classes": NUM_SHAPE_CLASSES,
-        "num_color_classes": NUM_COLOR_CLASSES,
-        "class_distribution": {"shape": train_shape_dist},
-        "split_policy": {
-            "split_before_augmentation": True,
-            "group_key": "rxcui_or_ndc11",
-            "leakage_check_passed": True,
-            "leakage_check_notes": (
-                "Split done before augmentation. "
-                "Augmentation applied to train split only."
-            ),
-        },
-    }
-    save_dataset_manifest(
-        dataset_manifest,
-        paths["logs"] / f"{RUN_ID}_dataset_manifest.json",
-    )
-    del test_dataset_temp
-
-    # ==================================================================
-    # 4. MODEL & OPTIMIZER
-    # ==================================================================
-    model = MultiTaskResNet18_HeadsFinetune(
-        num_shape_classes=NUM_SHAPE_CLASSES,
-        num_color_classes=NUM_COLOR_CLASSES,
+    # --- Model ---
+    model = MultiTaskResNet18(
+        num_shape_classes=num_shape_classes,
+        num_color_classes=num_color_classes,
         pretrained=True,
     ).to(DEVICE)
+    model.freeze_backbone()
+    logger.info("Model created. Backbone FROZEN (head-tune mode).")
 
-    trainable_params = filter(
-        lambda p: p.requires_grad, model.parameters()
-    )
-    optimizer = optim.AdamW(
-        trainable_params, lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
-    )
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", patience=2, factor=0.5
-    )
-
-    shape_weights = compute_shape_class_weights(
-        train_dataset, NUM_SHAPE_CLASSES
-    ).to(DEVICE)
+    # --- Loss ---
+    shape_weights = compute_shape_class_weights(train_dataset.shape_labels, num_shape_classes, DEVICE)
     criterion_shape = nn.CrossEntropyLoss(weight=shape_weights)
-    criterion_color = nn.BCEWithLogitsLoss()
 
-    total_trainable = sum(
-        p.numel() for p in model.parameters() if p.requires_grad
+    color_targets = train_dataset.color_labels
+    pos_counts = color_targets.sum(axis=0)
+    neg_counts = len(color_targets) - pos_counts
+    pos_weights = np.clip(neg_counts / (pos_counts + 1e-5), a_min=1.0, a_max=10.0)
+    pos_weight_tensor = torch.tensor(pos_weights, dtype=torch.float32).to(DEVICE)
+    criterion_color = nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
+
+    # --- Optimizer & Scheduler ---
+    optimizer = optim.AdamW(model.get_trainable_params(), lr=args.lr, weight_decay=1e-4)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=3, factor=0.5)
+
+    # --- Save Config & Manifest ---
+    save_config_yaml(
+        path=paths["logs"] / f"{args.run_id}_config.yaml",
+        run_id=args.run_id, module=MODULE_NAME, train_strategy="head_tune",
+        seed=args.seed,
+        model_config={"architecture": "ResNet18", "pretrained": True},
+        training_config={"epochs": args.epochs, "batch_size": args.batch_size, "lr": args.lr,
+                         "optimizer": "AdamW", "weight_decay": 1e-4, "patience": args.patience},
+        frozen_layers=["conv1", "bn1", "layer1", "layer2", "layer3", "layer4"],
+        trainable_layers=["fc_shape", "fc_color"],
+        label_mapping_file=str(mapping_path.relative_to(PROJECT_ROOT)),
+        augmentation={"mode": "online", "train_only": True,
+                      "transforms": ["RandomHorizontalFlip", "RandomRotation(15)", "ColorJitter", "GaussianBlur"]},
+        scheduler_config={"name": "ReduceLROnPlateau", "mode": "min", "patience": 3, "factor": 0.5},
+        extra={
+            "image_size": AttributeConfig.IMAGE_SIZE,
+            "lambda_color": args.lambda_color,
+            "pretrained_weight": "models.ResNet18_Weights.DEFAULT",
+            "user": getpass.getuser(),
+            "date": datetime.now().isoformat(),
+            "git_commit": "unknown",
+            "optional_tasks": [],
+            "sim2real_status": False
+        }
     )
-    total_params = sum(p.numel() for p in model.parameters())
-    print(
-        f"Total params: {total_params:,} | "
-        f"Trainable (Heads): {total_trainable:,} "
-        f"({total_trainable / total_params * 100:.2f}%)"
+
+    shape_dist = get_shape_distribution(train_dataset, shape_names)
+    color_dist = get_color_distribution(train_dataset, color_names)
+
+    save_dataset_manifest(
+        path=paths["logs"] / f"{args.run_id}_dataset_manifest.json",
+        run_id=args.run_id, dataset_name="rximage_nih",
+        train_csv=str(train_csv), val_csv=str(val_csv), test_csv=str(test_csv),
+        train_count=len(train_dataset), val_count=len(val_dataset), test_count=len(test_dataset),
+        num_shape_classes=num_shape_classes, num_color_classes=num_color_classes,
+        label_mapping_file=str(mapping_path.relative_to(PROJECT_ROOT)),
+        class_distribution={"shape": shape_dist, "color": color_dist},
+        leakage_check_passed=leakage_passed,
+        leakage_check_details=leakage_details,
+        transform_repr=repr(train_dataset.transform) if hasattr(train_dataset, "transform") else "unknown",
     )
 
-    # ==================================================================
-    # 5. TRAINING
-    # ==================================================================
-    train_start_time = time.time()
-
-    trainer = HeadFineTuneTrainer(
-        model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        criterion_shape=criterion_shape,
-        criterion_color=criterion_color,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        device=DEVICE,
-        paths=paths,
-        run_id=RUN_ID,
-        color_loss_weight=COLOR_LOSS_WEIGHT,
-        logger=logger,
+    # --- Train ---
+    trainer = BaseTrainer(
+        model=model, train_loader=train_loader, val_loader=val_loader,
+        criterion_shape=criterion_shape, criterion_color=criterion_color,
+        optimizer=optimizer, scheduler=scheduler, device=DEVICE,
+        run_id=args.run_id, paths=paths,
+        label_mapping=label_mapping, mapping_hash=mapping_hash,
+        lambda_color=args.lambda_color, patience=args.patience,
     )
+    trainer.fit(num_epochs=args.epochs)
 
-    history = trainer.fit(
-        num_epochs=NUM_EPOCHS,
-        label_mapping=label_mapping,
-        num_shape_classes=NUM_SHAPE_CLASSES,
-        num_color_classes=NUM_COLOR_CLASSES,
-    )
-
-    # ==================================================================
-    # 6. SAVE RUNTIME INFO
-    # ==================================================================
-    total_train_time = time.time() - train_start_time
-    runtime_info = {
-        "run_id": RUN_ID,
-        "module": MODULE_NAME,
-        "started_at": datetime.datetime.fromtimestamp(
-            train_start_time
-        ).strftime("%Y-%m-%d %H:%M"),
-        "finished_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "device": str(DEVICE),
-        "gpu_name": (
-            torch.cuda.get_device_name(0)
-            if torch.cuda.is_available()
-            else "CPU"
-        ),
-        "python_version": sys.version.split()[0],
-        "torch_version": torch.__version__,
-        "cuda_available": torch.cuda.is_available(),
-        "total_train_time_minutes": round(total_train_time / 60, 1),
-        "avg_epoch_time_seconds": round(
-            np.mean(trainer.epoch_times), 1
-        ),
-        "best_epoch": trainer.best_epoch,
-        "best_overall_f1": round(trainer.best_val_f1, 4),
-    }
+    # --- Save Runtime ---
+    finished_at = datetime.now()
     save_runtime_info(
-        runtime_info, paths["logs"] / f"{RUN_ID}_runtime.txt"
+        path=paths["logs"] / f"{args.run_id}_runtime.txt",
+        run_id=args.run_id, module=MODULE_NAME, device=DEVICE,
+        started_at=started_at, finished_at=finished_at,
+        total_train_time_minutes=trainer.total_train_time_minutes,
+        avg_epoch_time_seconds=trainer.avg_epoch_time_seconds,
+        best_epoch=trainer.best_epoch, best_metric=trainer.best_metric,
+        num_epochs_run=trainer.num_epochs_run,
     )
 
-    # ==================================================================
-    # 7. EVALUATION
-    # ==================================================================
-    # Load test dataset
-    test_dataset = RxImageDataset(
-        TEST_CSV, IMG_DIR,
-        transform=data_transforms["val"],
-        shape_encoder=shape_encoder,
-        mlb_color=mlb_color,
-    )
-    # Align color columns with train
-    if len(test_dataset.color_cols) != len(train_dataset.color_cols):
-        keep_indices = [
-            test_dataset.color_cols.index(c)
-            for c in train_dataset.color_cols
-            if c in test_dataset.color_cols
-        ]
-        test_dataset.color_cols = [
-            test_dataset.color_cols[i] for i in keep_indices
-        ]
-        test_dataset.color_labels = test_dataset.color_labels[
-            :, keep_indices
-        ]
+    logger.info(f"Training complete! Best epoch: {trainer.best_epoch}, Best F1: {trainer.best_metric:.4f}")
+    # NOTE: Test evaluation is NOT run here. Use eval_head.py separately.
 
-    test_loader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2
-    )
-
-    # Load best checkpoint
-    best_ckpt_path = paths["checkpoints"] / f"{RUN_ID}_best.pt"
-    best_ckpt = torch.load(
-        best_ckpt_path, map_location=DEVICE, weights_only=False
-    )
-    model.load_state_dict(best_ckpt["model_state_dict"])
-    print(f"Loaded best checkpoint from epoch {best_ckpt['epoch']}")
-
+    # --- Validation Artifacts & Plots ---
+    logger.info("Generating validation artifacts and plots...")
     evaluator = AttributeEvaluator(
         model=model,
-        test_loader=test_loader,
+        test_loader=None,
         device=DEVICE,
         paths=paths,
-        run_id=RUN_ID,
+        run_id=args.run_id,
         module_name=MODULE_NAME,
-        shape_class_names=shape_class_names,
-        color_class_names=color_class_names,
-        num_shape_classes=NUM_SHAPE_CLASSES,
-        num_color_classes=NUM_COLOR_CLASSES,
+        shape_class_names=shape_names,
+        color_class_names=color_names,
+        num_shape_classes=num_shape_classes,
+        num_color_classes=num_color_classes,
     )
-
-    # Collect predictions
-    preds = evaluator.collect_predictions()
-    test_metrics = evaluator.compute_test_metrics(preds)
-
-    print(f"Test Shape F1: {test_metrics['shape_macro_f1']:.4f}")
-    print(f"Test Color F1: {test_metrics['color_macro_f1']:.4f}")
-    print(f"Test Overall F1: {test_metrics['overall_macro_f1']:.4f}")
-
-    # Save metrics
+    
+    # Collect validation predictions with best weights
+    best_ckpt_path = paths["checkpoints"] / f"{args.run_id}_best.pt"
+    logger.info(f"Loading best checkpoint for validation evaluation from: {best_ckpt_path}")
+    best_ckpt = torch.load(best_ckpt_path, map_location=DEVICE, weights_only=False)
+    model.load_state_dict(best_ckpt["model_state_dict"])
+    
+    val_preds = evaluator.collect_predictions(val_loader)
+    val_test_metrics = evaluator.compute_test_metrics(val_preds)
+    
+    # Save metrics and plot curves
     evaluator.save_val_metrics(
-        history, trainer.best_epoch, trainer.best_val_f1
+        trainer.history_dict, trainer.best_epoch, trainer.best_metric,
+        per_class_metrics={
+            "shape": val_test_metrics.get("per_class_shape", {}),
+            "color": val_test_metrics.get("per_class_color", {})
+        },
+        label_mapping_file=str(mapping_path.relative_to(PROJECT_ROOT))
     )
-    evaluator.save_test_metrics(test_metrics, trainer.best_epoch)
-
-    # Plots
-    evaluator.plot_training_curves(history, trainer.best_epoch)
-    evaluator.plot_confusion_matrix(preds)
+    evaluator.plot_training_curves(trainer.history_dict, trainer.best_epoch)
+    
+    # Dummy config for plot_summary
+    plot_config = {
+        "training": {
+            "epochs": args.epochs,
+            "learning_rate": args.lr,
+            "batch_size": args.batch_size
+        }
+    }
     evaluator.plot_summary(
-        history, preds, test_metrics,
-        trainer.best_epoch, trainer.best_val_f1, run_config,
+        history=trainer.history_dict,
+        preds=val_preds,
+        test_metrics=None,
+        best_epoch=trainer.best_epoch,
+        best_val_f1=trainer.best_metric,
+        config=plot_config
     )
-
-    # Predictions
-    evaluator.save_predictions(preds, TEST_CSV)
-
-    # ==================================================================
-    # 8. CHECKLIST
-    # ==================================================================
-    print("\n" + "=" * 70)
-    print("CHECKLIST — train_request.md §9")
-    print("=" * 70)
-
-    pred_dir = paths["predictions"] / RUN_ID
-    checks = [
-        ("train_log.csv", (paths["logs"] / f"{RUN_ID}_train_log.csv").exists()),
-        ("config.yaml", (paths["logs"] / f"{RUN_ID}_config.yaml").exists()),
-        ("dataset_manifest.json", (paths["logs"] / f"{RUN_ID}_dataset_manifest.json").exists()),
-        ("val_metrics.json", (paths["metrics"] / f"{RUN_ID}_val_metrics.json").exists()),
-        ("test_metrics.json", (paths["metrics"] / f"{RUN_ID}_test_metrics.json").exists()),
-        ("loss_curve.png", (paths["plots"] / f"{RUN_ID}_loss_curve.png").exists()),
-        ("metric_curve.png", (paths["plots"] / f"{RUN_ID}_metric_curve.png").exists()),
-        ("shape_confusion_matrix.png", (paths["plots"] / f"{RUN_ID}_shape_confusion_matrix.png").exists()),
-        ("color_f1_per_class.png", (paths["plots"] / f"{RUN_ID}_color_f1_per_class.png").exists()),
-        ("summary.png", (paths["plots"] / f"{RUN_ID}_summary.png").exists()),
-        ("best checkpoint", (paths["checkpoints"] / f"{RUN_ID}_best.pt").exists()),
-        ("last checkpoint", (paths["checkpoints"] / f"{RUN_ID}_last.pt").exists()),
-        ("runtime.txt", (paths["logs"] / f"{RUN_ID}_runtime.txt").exists()),
-        ("label_mapping.json", (paths["logs"] / f"{RUN_ID}_label_mapping.json").exists()),
-        ("predictions/correct_samples", (pred_dir / "correct_samples" / "samples.json").exists()),
-        ("predictions/wrong_shape", (pred_dir / "wrong_shape" / "samples.json").exists()),
-        ("predictions/wrong_color", (pred_dir / "wrong_color" / "samples.json").exists()),
-        ("predictions/low_confidence", (pred_dir / "low_confidence" / "samples.json").exists()),
-    ]
-
-    all_passed = True
-    for name, exists in checks:
-        status = "✅" if exists else "❌"
-        if not exists:
-            all_passed = False
-        print(f"  {status} {name}")
-
-    print("\n" + "=" * 70)
-    if all_passed:
-        print("🎉 TẤT CẢ FILE ĐÃ ĐƯỢC TẠO THÀNH CÔNG!")
-    else:
-        print("⚠️  CÓ FILE CHƯA ĐƯỢC TẠO — KIỂM TRA LẠI!")
-
-    print(f"\nOutput directory: {EXPERIMENT_DIR}")
 
 
 if __name__ == "__main__":
