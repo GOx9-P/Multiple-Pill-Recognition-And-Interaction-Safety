@@ -222,66 +222,53 @@ flowchart TB
         subgraph CV5["A5. Phát hiện và nhận dạng imprint bằng PaddleOCR"]
             direction TB
 
-            OCR1["Đánh giá khả năng<br/>quan sát imprint"]
+            OCR1["Masked pill crop<br/>Thêm padding theo màu median"]
 
-            OCRG1{"Có thể quan sát<br/>imprint không?"}
+            OCR2["Rotation tiers<br/>Tier 1: 0°, 180°<br/>Tier 2: 90°, 270°<br/>Tier 3: ±15°, ±30°, ±45°"]
 
-            OCR2["Tạo bốn hướng ảnh<br/>0°, 90°, 180°, 270°"]
+            OCR3["Bốn biến thể tiền xử lý<br/>original<br/>CLAHE<br/>blackhat<br/>blackhat_bold"]
 
-            OCR3["Tăng cường chất lượng ảnh<br/>Ảnh gốc hoặc ảnh xám<br/>CLAHE<br/>Hiệu chỉnh gamma<br/>Ngưỡng thích nghi<br/>Top-hat hoặc bottom-hat"]
+            OCR4["<b>PP-OCRv5 end-to-end</b><br/>Text detection + recognition<br/>trên toàn crop"]
 
-            OCR4["<b>PP-OCRv5 Text Detector</b><br/>Phát hiện vùng chứa chữ hoặc số"]
+            OCR5["OCR quản lý scoreline visibility<br/>CLAHE + Canny + HoughLinesP<br/>ROI trung tâm + confidence<br/>Chỉ chạy Hough ở 0°/90°/180°/270°"]
 
-            OCRG2{"Có phát hiện được<br/>vùng imprint hợp lệ không?"}
+            OCRG1{"Có scoreline candidate<br/>đủ điều kiện không?"}
 
-            OCR5A["Crop các vùng imprint<br/>đã phát hiện"]
+            OCR6["Chia ảnh thành hai half-plane<br/>theo chính góc scoreline<br/>Che vùng đối diện bằng màu median"]
 
-            OCR5B["Phương án dự phòng<br/>Dùng toàn bộ ảnh crop của viên"]
+            OCR7["OCR riêng từng phía<br/>Ghép phía theo vector pháp tuyến<br/>trái→phải, trên→dưới hoặc đường chéo"]
 
-            OCR6["<b>PP-OCRv5 Text Recognizer</b><br/>Đọc chuỗi imprint<br/><br/>Bộ ký tự:<br/>A–Z, 0–9 và ký hiệu hợp lệ"]
+            OCR8["Tạo ordering candidates<br/>linear reading order<br/>circular CW/CCW + cyclic shifts"]
 
-            OCR7["Thu thập các kết quả OCR<br/>Chuỗi nhận dạng<br/>Điểm phát hiện<br/>Điểm nhận dạng<br/>Góc xoay<br/>Biến thể tiền xử lý<br/>Tọa độ vùng chữ"]
+            OCR9["Thu thập observations<br/>text, box/polygon, confidence<br/>rotation, preprocessing, mode"]
 
-            OCR8["Ghép các vùng chữ theo vị trí<br/>Nhóm theo dòng<br/>Sắp xếp từ trái sang phải<br/>Ghép thành chuỗi hoàn chỉnh"]
+            OCR10["Chọn final answer theo baseline<br/>priority → best OCR confidence"]
 
-            OCR9["Chuẩn hóa kết quả OCR<br/>Chuyển thành chữ hoa<br/>Chuẩn hóa khoảng trắng<br/>Giữ kết quả gốc có điểm cao"]
+            OCR11["Consensus bổ sung<br/>Nhóm text đã normalize<br/>Đếm support giữa các biến thể<br/>Không ghi đè final baseline"]
 
-            OCR10["Xử lý có kiểm soát<br/>các ký tự dễ nhầm<br/>0, O, Q<br/>1, I, L<br/>5, S<br/>8, B<br/>2, Z<br/>6, G"]
+            OCRG2{"Có final text<br/>qua quality gate không?"}
 
-            OCR11["Giữ một số giả thuyết imprint<br/>Tối đa 3 đến 5 ứng viên<br/>Chỉ giữ kết quả qua kiểm tra chất lượng"]
+            OCR_OK["Xuất final answer<br/>scoreline metadata<br/>Top candidates + overlay + JSON"]
 
-            OCRG3{"Bằng chứng OCR<br/>có đủ sử dụng không?"}
+            OCR_FAIL["Không có text hợp lệ<br/>Vẫn xuất scoreline evidence<br/>và trạng thái NO TEXT"]
 
-            OCR_OK["OCR đủ thông tin<br/>để tổng hợp metadata"]
-
-            OCR_FAIL["OCR chưa đủ thông tin<br/>Chỉ giữ đặc trưng một phần"]
-
-            OCR12["Không quan sát được imprint<br/>hoặc không đủ bằng chứng thị giác"]
-
-            OCR1 --> OCRG1
-
-            OCRG1 -->|Có| OCR2
-            OCRG1 -->|Không| OCR12
-
+            OCR1 --> OCR2
             OCR2 --> OCR3
             OCR3 --> OCR4
-            OCR4 --> OCRG2
-
-            OCRG2 -->|Có| OCR5A
-            OCRG2 -->|Không| OCR5B
-
-            OCR5A --> OCR6
-            OCR5B --> OCR6
-
+            OCR3 --> OCR5
+            OCR5 --> OCRG1
+            OCRG1 -->|Có| OCR6
+            OCRG1 -->|Không| OCR8
             OCR6 --> OCR7
+            OCR4 --> OCR8
             OCR7 --> OCR8
             OCR8 --> OCR9
             OCR9 --> OCR10
-            OCR10 --> OCR11
-            OCR11 --> OCRG3
-
-            OCRG3 -->|Có| OCR_OK
-            OCRG3 -->|Không| OCR_FAIL
+            OCR9 --> OCR11
+            OCR10 --> OCRG2
+            OCR11 --> OCRG2
+            OCRG2 -->|Có| OCR_OK
+            OCRG2 -->|Không| OCR_FAIL
         end
 
 
@@ -669,212 +656,309 @@ damage_or_occlusion
 
 ### 3.3. Imprint OCR
 
-Imprint là tín hiệu phân biệt quan trọng nhất trong nhiều trường hợp. Kiến trúc OCR chính của hệ thống sử dụng **PaddleOCR PP-OCRv5 end-to-end**, trong đó cùng một framework đảm nhiệm hai phase:
+Imprint là tín hiệu phân biệt quan trọng trong bước retrieval. Baseline hiện tại được triển khai tại `PaddleOCR_baseline_colab.ipynb` bằng **PaddleOCR PP-OCRv5 end-to-end**. Cùng một lần `predict()` trả text, recognition confidence và polygon của từng vùng chữ.
+
+Pipeline hiện tại:
 
 ```text
-PP-OCRv5 Text Detector
-    → tìm vùng có khả năng chứa imprint
-
-PP-OCRv5 Text Recognizer
-    → đọc chuỗi ký tự trong vùng imprint đã phát hiện
+Pill crop
+    → padding 5% bằng màu median
+    → rotation + preprocessing variants
+    → PP-OCRv5 detection and recognition trên toàn crop
+    → OCR-managed scoreline detection
+    → scoreline side split nếu có line đủ điều kiện
+    → linear/circular ordering candidates
+    → baseline final selection + supplemental consensus candidates
+    → overlay và final_result.json
 ```
 
-Cấu hình chính:
+Quyền quyết định `scoreline.visible` trong baseline thuộc **OCR module**. Attribute model không ghi đè quyết định này. Nếu sau này vẫn giữ scoreline head trong attribute model, output của head đó chỉ là evidence phụ để benchmark hoặc cảnh báo bất đồng.
+
+#### 3.3.1. PaddleOCR Baseline
+
+Cấu hình đang dùng:
 
 ```text
-Masked pill crop
-    ↓
-Basic contrast enhancement
-    ↓
-PaddleOCR PP-OCRv5
-    ├── Text Detection
-    └── Text Recognition
-    ↓
-Multi-angle OCR observations
-    ↓
-Limited normalization and Top-k imprint candidates
+framework: PaddleOCR
+ocr_version: PP-OCRv5
+language: en
+device: gpu:0 nếu Paddle được build với CUDA, ngược lại dùng CPU
+det_db_thresh: 0.20
+det_db_unclip_ratio: 2.0
+document orientation classifier: disabled
+document unwarping: disabled
+text-line orientation classifier: disabled
 ```
 
-Lý do chọn PaddleOCR làm cấu hình chính:
-
-- Cung cấp sẵn cả text detector và text recognizer trong cùng một pipeline.
-- Có thể sử dụng pretrained model để xây baseline trước khi quyết định fine-tune.
-- Detector và recognizer vẫn có thể được đánh giá hoặc fine-tune độc lập khi cần.
-- Giảm độ phức tạp tích hợp so với việc ghép detector và recognizer từ hai framework khác nhau.
-- Phù hợp với kiến trúc prototype vì có thể nâng cấp từng phase dựa trên kết quả benchmark.
-
-#### 3.3.1. Phase 1 — Text Detection
-
-Text detector nhận crop của từng viên thuốc và trả bounding box hoặc polygon của vùng có khả năng chứa imprint. Detector không quyết định chuỗi ký tự là gì.
-
-Detector giúp loại bớt các vùng không liên quan như:
-
-- Contour và cạnh viên thuốc.
-- Scoreline.
-- Bóng đổ và vùng phản sáng.
-- Vết xước hoặc texture bề mặt.
-
-Output detection mẫu:
+Text detector và recognizer chạy end-to-end trên toàn ảnh variant. Mỗi item OCR giữ:
 
 ```json
 {
-  "region_id": "region_01",
+  "text": "K56",
+  "confidence": 0.91,
   "polygon": [[32, 24], [58, 22], [60, 39], [33, 41]],
-  "detection_confidence": 0.84
+  "center_x": 48.25,
+  "center_y": 31.50
 }
 ```
 
-Detector phải có fallback:
+Baseline dùng pretrained PP-OCRv5. Chỉ fine-tune recognizer khi detector đã tìm đúng vùng nhưng Character Error Rate còn cao; chỉ fine-tune detector khi text-region recall thấp trên benchmark ảnh thuốc thật.
+
+#### 3.3.2. Preprocessing and Rotation Tiers
+
+Mỗi ảnh hiện tạo đúng bốn preprocessing variants:
 
 ```text
-Nếu detector tìm được text ROI đủ tin cậy
-    → chạy recognizer trên từng ROI
-
-Nếu detector không tìm thấy ROI
-nhưng imprint_visibility đủ cao
-    → chạy recognizer trực tiếp trên toàn crop đã mask
-
-Nếu cả hai cách đều không tạo kết quả ổn định
-    → trả partial_features hoặc insufficient_visual_evidence
+original
+clahe
+blackhat
+blackhat_bold
 ```
 
-#### 3.3.2. Phase 2 — Text Recognition
+`blackhat_bold` dùng black-hat, đảo ảnh, erosion nhẹ và CLAHE để làm nét imprint tối/dập chìm rõ hơn. Baseline hiện không dùng `gray`, gamma correction, adaptive threshold hoặc top-hat trong danh sách chạy chính.
 
-PP-OCRv5 recognizer nhận từng text ROI và dự đoán transcript imprint, ví dụ:
+Rotation tiers:
 
 ```text
-ROI image → "L484"
+Tier 1: 0°, 180°
+Tier 2: 90°, 270°
+Tier 3: -45°, -30°, -15°, 15°, 30°, 45°
 ```
 
-Trong phiên bản đầu, hệ thống sử dụng recognizer pretrained để tạo baseline. Việc fine-tune được quyết định dựa trên benchmark:
+`FORCE_RUN_ALL_ROTATION_TIERS = True` trong notebook baseline, vì vậy mọi tier đều chạy để thu thập evidence. Có thể chuyển thành early-stop sau khi benchmark latency và Recall@k, nhưng đó chưa phải hành vi mặc định hiện tại.
+
+PP-OCRv5 vẫn chạy trên các góc xiên. Riêng Hough scoreline và side-split chỉ chạy ở `0°`, `90°`, `180°`, `270°`. Nguyên nhân là `warpAffine` ở góc xiên tạo biên canvas dài và Hough có thể nhận nhầm biên này thành scoreline.
+
+Điều này không giới hạn góc scoreline: Hough chạy trên ảnh `0°` vẫn phát hiện được line thật ở `25°`, `30°` hoặc `45°`. Bản nâng cấp sau có thể detect line một lần trên ảnh gốc rồi biến đổi hai đầu mút bằng cùng affine matrix để side-split an toàn trên mọi rotation.
+
+#### 3.3.3. OCR-managed Scoreline Detection and Split
+
+Mỗi cardinal variant được xử lý theo chuỗi:
 
 ```text
-Detector tìm ROI tốt nhưng thường đọc sai ký tự
-    → chỉ fine-tune recognizer
-
-Detector thường xuyên bỏ sót vùng imprint
-    → bổ sung annotation vùng chữ và fine-tune detector
-
-Cả detector và recognizer đạt yêu cầu
-    → giữ nguyên pretrained pipeline
+grayscale
+    → CLAHE
+    → Gaussian blur
+    → Canny
+    → central elliptical ROI
+    → probabilistic HoughLinesP
 ```
 
-Khi fine-tune recognizer, dữ liệu tối thiểu gồm:
+Một line candidate phải đủ dài và đi gần tâm crop. Confidence hình học được chặn trong `[0,1]`:
 
 ```text
-imprint ROI image
-    +
-ground-truth transcript
+scoreline_confidence = 0.60 × normalized_length_score
+                     + 0.40 × center_proximity_score
 ```
 
-Charset nên được xây từ database imprint của thị trường mục tiêu. Charset cơ sở có thể gồm:
+Ngưỡng baseline:
 
 ```text
-A–Z
-0–9
+MIN_SCORELINE_DETECTION_CONFIDENCE = 0.45
+MIN_SCORELINE_SUPPORT = 2 variants
+SCORELINE_CENTER_MAX_DISTANCE_RATIO = 0.30
 ```
 
-và bổ sung các ký hiệu thực sự xuất hiện như:
-
-```text
-- / . +
-```
-
-Charset chỉ cần tùy chỉnh khi fine-tune recognizer; không bắt buộc phải thay ngay trong baseline pretrained.
-
-#### 3.3.3. Preprocessing and Multi-angle OCR
-
-Imprint có thể khắc chìm, dập nổi, tương phản thấp hoặc nằm ở hướng bất kỳ. Hệ thống áp dụng preprocessing và rotation theo cơ chế cascade thay vì chạy mọi tổ hợp cố định.
-
-```text
-Tier 1
-    0° và 180°
-    original/gray + CLAHE
-    PaddleOCR detection + recognition
-
-Nếu kết quả chưa ổn định:
-    ↓
-Tier 2
-    90° và 270°
-    gamma correction + sharpening hoặc top-hat/bottom-hat
-
-Nếu vẫn chưa đủ bằng chứng:
-    → yêu cầu ảnh cận cảnh hoặc ảnh mặt còn lại
-```
-
-Preprocessing có thể gồm:
-
-- CLAHE.
-- Gamma correction.
-- Sharpening nhẹ.
-- Adaptive threshold.
-- Morphological top-hat/bottom-hat.
-
-Không nên chỉ dùng ảnh edge làm đầu vào duy nhất vì nét imprint khắc chìm có thể bị phá vỡ.
-
-#### 3.3.4. OCR Observation Aggregation
-
-Hệ thống không nên lấy duy nhất một chuỗi OCR từ một góc chụp. Thay vào đó, CV giữ một số quan sát tốt nhất từ các rotation và preprocessing khác nhau.
-
-Ví dụ:
+OCR tổng hợp evidence giữa các preprocessing/rotation cardinal để quyết định `scoreline.visible`. Output gồm confidence, hai đầu mút, góc, orientation, support count và nguồn quyết định:
 
 ```json
-[
-  {"text": "AO1", "confidence": 0.81, "rotation": 0, "preprocessing": "clahe"},
-  {"text": "A01", "confidence": 0.77, "rotation": 180, "preprocessing": "top_hat"}
-]
+{
+  "visible": true,
+  "confidence": 0.77,
+  "angle_degrees": 79.99,
+  "orientation": "vertical",
+  "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+  "support_count": 5,
+  "rotation_degrees": 180,
+  "preprocessing": "blackhat_bold",
+  "source": "ocr_hough_consensus"
+}
 ```
 
-Sau đó hệ thống tạo một tập nhỏ `normalized_candidates` bằng:
-
-- Chuẩn hóa chữ hoa.
-- Chuẩn hóa khoảng trắng.
-- Giữ các raw observation có confidence cao.
-- Áp dụng có giới hạn các nhóm ký tự thường bị nhầm:
+Orientation được phân loại:
 
 ```text
-0 ↔ O ↔ Q
-1 ↔ I ↔ L
-5 ↔ S
-8 ↔ B
-2 ↔ Z
-6 ↔ G
+horizontal: 0°–30° hoặc 150°–180°
+vertical:   60°–120°
+oblique:    các góc còn lại
 ```
 
-Ví dụ:
+Khi có line candidate, ảnh được chia thành hai half-plane bằng dấu của tích có hướng. Vì vậy cùng một logic xử lý được line ngang, dọc và chéo. Một margin bằng `3%` cạnh ngắn được bỏ quanh line, phần không thuộc mỗi phía được tô bằng màu median, sau đó PaddleOCR chạy riêng trên từng phía.
+
+Hai phía được ghép theo phép chiếu tâm text box lên vector pháp tuyến của scoreline:
+
+```text
+projection = normal_x × (center_x - line_mid_x)
+           + normal_y × (center_y - line_mid_y)
+```
+
+Sort projection tăng dần tương ứng với trái→phải cho line gần dọc, trên→dưới cho line gần ngang, và thứ tự ổn định theo phương vuông góc cho line chéo. Side split chỉ được đánh dấu `reliable` khi cả hai phía có text và sequence confidence mỗi phía đạt ít nhất `0.60`.
+
+Hough vẫn là heuristic, không phải classifier đã calibration. False-scoreline rate phải được đo trên ảnh thuốc không có vạch trước khi dùng `visible` như bằng chứng mạnh.
+
+#### 3.3.4. Text Ordering
+
+Linear reading order:
+
+```text
+group box theo hàng bằng median text height
+    → hàng trên trước
+    → trong cùng hàng sort trái sang phải
+```
+
+Ảnh đã được rotate trước khi OCR nên không reverse kết quả thêm lần nữa ở `180°`.
+
+Circular ordering chỉ được sinh khi có ít nhất ba box và tâm các box tạo bố cục cung tròn hợp lệ. Notebook dùng tâm crop, radial coefficient of variation và angular coverage để gate, sau đó sinh:
+
+```text
+clockwise order
+counter-clockwise order
+mọi cyclic shift của hai hướng
+```
+
+Circular candidates là giả thuyết bổ sung. Chúng không tự động thay thế linear result.
+
+#### 3.3.5. Observations, Candidates and Final Answer
+
+Một observation giữ:
+
+```text
+mode: full_image | scoreline_side_split
+tier
+priority
+rotation_degrees
+preprocessing
+variant_path
+items và ordered_items
+detected_text
+best_confidence
+scoreline/split_info nếu có
+```
+
+Quality gate hiện yêu cầu chuỗi có ký tự alphanumeric ASCII, không chứa ký tự lỗi, có ít nhất một ký tự hợp lệ và `best_confidence >= 0.50`.
+
+Để không làm regression các case baseline đã đọc đúng, final answer giữ rule cũ:
+
+```text
+full_image có từ hai box: priority = 2
+full_image có một box:    priority = 1
+reliable scoreline split: priority = 3
+unreliable split:         priority = 0
+
+final observation = priority cao nhất
+                    → best OCR confidence cao nhất
+```
+
+`best_confidence` chỉ dùng để chọn observation khi cùng priority. Sau khi đã chọn observation cuối, confidence của toàn imprint được tính trên tất cả `ordered_items`:
+
+```text
+final_sequence_confidence =
+    0.5 × mean(region_confidences)
+  + 0.5 × min(region_confidences)
+```
+
+Giá trị này được dùng cho `final_answer.score`, `imprint.confidence` và tạm dùng cho `imprint_visibility.confidence`. Vì vậy một region yếu không bị che bởi region có confidence cao; quy tắc chọn đáp án cuối vẫn không thay đổi.
+
+Consensus và circular candidates được giữ làm evidence bổ sung, không ghi đè final baseline. Candidate được normalize bằng uppercase alphanumeric key, gộp evidence trùng giữa các biến thể và tính relative score từ mean sequence confidence, support count và mode diversity.
+
+Notebook chưa tự sinh các biến thể confusion như `O↔0`, `I↔1`, `S↔5`. Nếu bổ sung, chúng phải nằm ở bước candidate expansion có giới hạn và giữ provenance rõ ràng; không được sửa trực tiếp raw OCR text.
+
+Notebook giữ tối đa 10 candidates để debug. Trước khi gửi Retrieval/RAG, CV adapter phải quality-gate và cắt còn Top 3–5 theo contract hệ thống. Candidate score chỉ là relative OCR score, không phải xác suất thuốc đúng.
+
+#### 3.3.6. Notebook Output
+
+Mỗi ảnh tạo:
+
+```text
+ocr_baseline_output/<request_id>/<image_id>/<instance_id>/
+├── variants/
+├── side_split/
+├── paddleocr_json/
+├── <image_name>_final_overlay.jpg
+├── <image_name>_final_result.json
+└── <image_name>_ocr_schema.json
+```
+
+`final_result.json` chứa:
 
 ```json
-[
-  {"text": "A01", "score": 0.84, "source": "multi_angle_consensus"},
-  {"text": "AO1", "score": 0.81, "source": "raw_ocr"}
-]
+{
+  "image_name": "pill_crop.png",
+  "final_answer": {
+    "text": "35 94",
+    "normalized_text": "3594",
+    "score": 0.86,
+    "mean_ocr_confidence": 0.82,
+    "support_count": 2,
+    "modes": ["full_image", "scoreline_side_split"],
+    "rotations": [0, 180],
+    "preprocessings": ["original", "blackhat_bold_side_split"],
+    "selection_method": "legacy_priority_confidence"
+  },
+  "scoreline": {
+    "visible": true,
+    "confidence": 0.77,
+    "angle_degrees": 79.99,
+    "orientation": "vertical",
+    "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+    "support_count": 5,
+    "source": "ocr_hough_consensus"
+  },
+  "candidates": [
+    {
+      "text": "35 94",
+      "normalized_text": "3594",
+      "score": 0.86,
+      "mean_ocr_confidence": 0.82,
+      "support_count": 2,
+      "modes": ["full_image", "scoreline_side_split"],
+      "rotations": [0, 180],
+      "preprocessings": ["original", "blackhat_bold_side_split"]
+    }
+  ],
+  "selected_observation": {
+    "mode": "scoreline_side_split",
+    "rotation_degrees": 180,
+    "preprocessing": "blackhat_bold_side_split",
+    "variant_path": "ocr_baseline_output/req_001/img_001/pill_001/variants/tier1_0_180_rot180_blackhat_bold.jpg"
+  },
+  "performed_steps": [
+    {
+      "step_id": "tier1_0_180_rot0_original",
+      "rotation_degrees": 0,
+      "preprocessing": "original",
+      "scoreline_visible": false
+    }
+  ],
+  "overlay_path": "ocr_baseline_output/req_001/img_001/pill_001/pill_crop_final_overlay.jpg"
+}
 ```
 
-`score` chỉ là relative OCR score, không phải xác suất thuốc đúng. Candidate expansion phải bị giới hạn:
+Nếu không có text qua quality gate, `final_answer = null`; notebook vẫn lưu scoreline evidence, performed steps và trạng thái `NO TEXT` để debug.
 
-```text
-max_ocr_observations_per_pill = 8
-max_imprint_candidates = 3 đến 5
-min_text_detection_score = threshold theo validation set
-min_ocr_confidence_for_candidate = threshold theo validation set
-```
+#### 3.3.7. Mapping Notebook Output to Module Schema
 
-Không được đưa mọi chuỗi OCR từ mọi rotation vào retrieval. `ocr_observations` dùng cho debug/audit, còn `normalized_candidates` chỉ chứa các cách đọc đã qua quality gate.
+`final_result.json` là artifact debug của notebook, không phải interface gọi giữa các module. OCR inference wrapper phải trả đúng **Module 3 — Imprint OCR Output** trong `docs/schema.md` và không thêm field nội bộ vào payload liên module.
 
-Nếu detector trả nhiều text ROI, hệ thống có thể:
+Mapping bắt buộc:
 
-- Sort ROI theo trục `x` trong cùng một dòng.
-- Group nhiều dòng theo trục `y`.
-- Giữ transcript theo từng ROI và transcript đã ghép.
-- Không tự sinh ký tự ngoài OCR raw hoặc nhóm confusion đã định nghĩa.
+| Notebook/in-memory OCR | `schema.md` Module 3 output |
+|---|---|
+| `final_answer != null` | `imprint_visibility.visible = true`, `imprint.visible = true` |
+| `final_answer == null` | Hai field `visible = false` |
+| `final_answer.text` | `imprint.raw` |
+| `final_answer.score` | `imprint.confidence`; tạm dùng cho `imprint_visibility.confidence` ở baseline |
+| Item/polygon của selected observation | Inverse-transform về tọa độ crop gốc rồi ghi vào `imprint.text_regions[]` |
+| Các observation hợp lệ trong bộ nhớ | Ánh xạ về `region_id` canonical của selected observation rồi ghi vào `imprint.ocr_observations[]` |
+| Top 3–5 phần tử từ `candidates` | `imprint.normalized_candidates[]` |
+| Candidate cuối theo baseline | Candidate có `source = "raw_ocr"` và evidence chứa `legacy_priority_confidence` |
+| Candidate tổng hợp còn lại | `source = "multi_angle_consensus"`; `evidence` ghi mode, rotation và preprocessing |
 
-Nếu người dùng cung cấp ảnh mặt còn lại, CV vẫn xử lý từng ảnh độc lập nhưng phải giữ metadata để backend ghép:
+Mọi `ocr_observations[].region_id` phải tồn tại trong `text_regions[]`. Polygon từ ảnh đã padding hoặc rotation không được xuất trực tiếp; adapter phải inverse-transform, bỏ padding và clip về kích thước crop đầu vào. Artifact inference được namespace theo `request_id/image_id/instance_id` để không ghi đè khi nhiều request cùng có tên `pill_001`.
 
-```text
-session_id
-instance_token
-side_hint: front | back | unknown
-```
+Các field `scoreline`, `selected_observation`, `performed_steps`, `overlay_path`, `variant_path`, `modes`, `rotations` và `preprocessings` vẫn được lưu trong artifact debug. Chúng không được chèn trực tiếp vào Module 3 output nếu chưa có trong `schema.md`.
+
+Scoreline Hough hiện là control signal nội bộ của OCR để quyết định side-split. Contract hiện tại vẫn đặt field `scoreline` ở Module 2/CV Pipeline. Nếu chuyển quyền sở hữu scoreline output hoàn toàn sang OCR, phải tạo phiên bản schema mới; không được tự ý thêm field vào Module 3 response hiện tại.
 
 ### 3.4. CV Output JSON
 
@@ -882,12 +966,15 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
 
 ```json
 {
+  "schema_version": "cv_output_v0",
   "request_id": "req_2026_001",
   "session_id": "sess_2026_001",
+  "image_id": "img_001",
   "image_quality": {
     "status": "usable_with_warning",
     "blur_score": 0.21,
-    "glare_detected": true
+    "glare_detected": true,
+    "lighting_warning": false
   },
   "pills": [
     {
@@ -927,51 +1014,52 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
         "confidence": 0.89
       },
       "scoreline": {
+        "label": "single",
         "visible": true,
         "confidence": 0.81
       },
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.63
+      },
       "imprint_visibility": {
         "visible": true,
-        "confidence": 0.86
+        "confidence": 0.95
       },
       "imprint": {
-        "architecture": {
-          "framework": "PaddleOCR",
-          "detector": "PP-OCRv5",
-          "recognizer": "PP-OCRv5",
-          "mode": "end_to_end"
-        },
-        "text_regions": [
-          {
-            "region_id": "region_01",
-            "polygon": [[32, 24], [58, 22], [60, 39], [33, 41]],
-            "detection_confidence": 0.84
-          }
-        ],
-        "raw": "A O1",
-        "confidence": 0.72,
-        "normalized_candidates": [
-          {"text": "A 01", "score": 0.91, "source": "multi_angle_consensus"},
-          {"text": "A O1", "score": 0.84, "source": "raw_ocr"},
-          {"text": "A01", "score": 0.69, "source": "space_normalized"}
-        ],
+        "visible": true,
+        "raw": "35 94",
+        "confidence": 0.95,
         "ocr_observations": [
           {
             "region_id": "region_01",
             "rotation_degrees": 0,
-            "preprocessing": "clahe",
-            "text": "A O1",
-            "confidence": 0.72
+            "preprocessing": "original",
+            "text": "35 94",
+            "confidence": 0.95
           },
           {
             "region_id": "region_01",
             "rotation_degrees": 180,
-            "preprocessing": "top_hat",
-            "text": "A 01",
-            "confidence": 0.68
+            "preprocessing": "blackhat_bold_side_split",
+            "text": "35 94",
+            "confidence": 0.82
           }
         ],
-        "visible": true
+        "normalized_candidates": [
+          {
+            "text": "35 94",
+            "score": 0.95,
+            "source": "raw_ocr",
+            "evidence": ["legacy_priority_confidence", "scoreline_side_split"]
+          },
+          {
+            "text": "35",
+            "score": 0.79,
+            "source": "multi_angle_consensus",
+            "evidence": ["rot=-15", "rot=15", "preprocessing=original"]
+          }
+        ]
       },
       "quality_flags": ["minor_glare"]
     }
@@ -1645,7 +1733,7 @@ Attribute metrics:
 - Shape: macro F1, per-class recall, confusion giữa `oval`, `oblong`, `capsule`.
 - Color: macro F1, primary/secondary accuracy, performance theo lighting condition.
 - Dosage form: accuracy và macro F1 cho `tablet`, `capsule`, `softgel`, `unknown`.
-- Scoreline: F1 cho `none`, `single`, `cross`, `multiple`, `unknown` nếu có label.
+- Scoreline head: chỉ benchmark như attribute evidence phụ nếu model vẫn giữ head này; không dùng để thay quyết định Hough nội bộ của OCR baseline.
 - Imprint visibility: precision/recall/F1.
 - Quality flags: precision/recall cho blur, glare, occlusion, possible merged instance và possible non-pill.
 
@@ -1657,22 +1745,32 @@ text_region_detection_precision
 Character Error Rate
 exact_imprint_match_rate
 Recall@1 / Recall@3 / Recall@5 của normalized_candidates
+scoreline_visibility_precision / recall / F1
+scoreline_angle_MAE trên mẫu có scoreline
+false_scoreline_rate trên mẫu không có scoreline
+side_split_exact_match_rate
 latency_per_pill
 ```
 
-OCR benchmark cần tách riêng:
+OCR benchmark cần ablation đúng theo các bước notebook:
 
 ```text
-pretrained PaddleOCR baseline
-PaddleOCR + preprocessing cascade
-PaddleOCR + multi-angle observation aggregation
-fine-tuned recognizer, nếu có dữ liệu transcript đủ tốt
+PP-OCRv5 + original + rotation 0°/180°
++ CLAHE/blackhat/blackhat_bold
++ rotation 90°/270°
++ oblique OCR rotations, không chạy Hough trên oblique canvas
++ OCR-managed scoreline detection và side split
++ circular ordering candidates
+baseline final selection so với consensus candidates dùng như evidence bổ sung
 ```
 
 Điểm cần báo cáo:
 
-- OCR có cải thiện sau preprocessing cascade không.
+- OCR có cải thiện sau từng preprocessing/rotation tier không.
 - OCR có sinh thêm false positive khi chạy nhiều góc không.
+- Hough có nhận nhầm cạnh canvas, nét imprint hoặc contour viên thành scoreline không.
+- Side split có cải thiện exact match hay làm mất một phần imprint không.
+- Rule baseline `priority → confidence` có giữ được chuỗi đầy đủ tốt hơn consensus candidate không.
 - Candidate đúng có nằm trong Top-k `normalized_candidates` không.
 - Trường hợp OCR fail có được hạ xuống `partial_features` hoặc `insufficient_visual_evidence` đúng không.
 

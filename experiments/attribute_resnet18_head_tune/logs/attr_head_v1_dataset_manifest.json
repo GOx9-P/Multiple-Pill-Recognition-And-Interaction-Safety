@@ -1,0 +1,43 @@
+{
+  "run_id": "attr_head_v1",
+  "dataset_name": "rximage_new",
+  "train_csv": "/kaggle/input/datasets/baoakabin/rximage-new/Data_rximage_kaggle/rximage/combined/train_combined_crop.csv",
+  "val_csv": "/kaggle/input/datasets/baoakabin/rximage-new/Data_rximage_kaggle/rximage/combined/val_combined_crop.csv",
+  "test_csv": "/kaggle/input/datasets/baoakabin/rximage-new/Data_rximage_kaggle/rximage/combined/test_combined_crop.csv",
+  "train_count": 6148,
+  "val_count": 1312,
+  "test_count": 1312,
+  "split_before_augmentation": true,
+  "augmentation_train_only": true,
+  "label_mapping_file": "/kaggle/working/experiments/attribute_resnet18_head_tune/logs/attr_head_v1_label_mapping.json",
+  "num_shape_classes": 16,
+  "num_color_classes": 11,
+  "class_distribution": {
+    "shape": {
+      "ROUND": 2844,
+      "CAPSULE": 1034,
+      "OVAL": 2066,
+      "SEMI-CIRCLE": 10,
+      "RECTANGLE": 38,
+      "HEXAGON": 16,
+      "OCTAGON": 4,
+      "TRIANGLE": 42,
+      "DOUBLE CIRCLE": 6,
+      "PENTAGON": 22,
+      "SQUARE": 16,
+      "FREEFORM": 4,
+      "DIAMOND": 22,
+      "TRAPEZOID": 6,
+      "TEAR": 18
+    }
+  },
+  "split_policy": {
+    "split_before_augmentation": true,
+    "train_count": 6148,
+    "val_count": 1312,
+    "test_count": 1312,
+    "group_key": "rxcui_or_ndc11",
+    "leakage_check_passed": true,
+    "leakage_check_notes": "Split done before augmentation. Augmentation applied to train split only."
+  }
+}

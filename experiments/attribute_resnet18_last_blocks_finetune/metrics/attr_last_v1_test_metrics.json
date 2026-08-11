@@ -1,0 +1,10 @@
+{
+    "run_id": "attr_last_v1",
+    "module": "attribute_resnet18_last_blocks_finetune",
+    "split": "test",
+    "metrics": {
+        "shape_macro_f1": 0.9577027139643631,
+        "color_macro_f1": 0.7008781921791823,
+        "overall_macro_f1": 0.8292904530717727
+    }
+}
