@@ -1,0 +1,1083 @@
+[
+  {
+    "image_path": "00378-0069-01_RXNAVIMAGE10_1C078E4C_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "51672-4031-01_RXNAVIMAGE10_29129484_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.9881
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "42543-0705-90_RXNAVIMAGE10_CC4EE627_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.3676
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9216
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "60793-0858-01_RXNAVIMAGE10_02088174_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "DIAMOND",
+        "confidence": 0.3718
+      },
+      "color": {
+        "labels": [
+          "color_BLUE"
+        ],
+        "confidence": 0.976
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00093-7514-56_RXNAVIMAGE10_3F381FB0_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "DIAMOND",
+        "confidence": 0.4644
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9965
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "60505-0247-01_RXNAVIMAGE10_9E384F52_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4471
+      },
+      "color": {
+        "labels": [
+          "color_YELLOW"
+        ],
+        "confidence": 0.9906
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00173-0644-60_RXNAVIMAGE10_B218D956_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "HEXAGON",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "HEXAGON",
+        "confidence": 0.9978
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00054-4297-25_RXNAVIMAGE10_B0325802_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00006-0227-61_RXNAVIMAGE10_A11DD0FE_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TRIANGLE",
+        "confidence": 0.4993
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.8826
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "65862-0118-01_RXNAVIMAGE10_D146E8A7_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.4964
+      },
+      "color": {
+        "labels": [
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.7591
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "60505-3674-03_RXNAVIMAGE10_DC086E23_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "60505-3674-03_RXNAVIMAGE10_DC086E23_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "51285-0061-01_RXNAVIMAGE10_A73BD3BE_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "FREEFORM",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9583
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00456-0461-01_RXNAVIMAGE10_7A44BD15_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "DIAMOND",
+        "confidence": 0.9674
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00378-0277-01_RXNAVIMAGE10_74133A79_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "51079-0685-20_RXNAVIMAGE10_25329284_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9997
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "65162-0442-10_RXNAVIMAGE10_7350B9C5_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4674
+      },
+      "color": {
+        "labels": [
+          "color_YELLOW"
+        ],
+        "confidence": 0.9987
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "16714-0501-02_RXNAVIMAGE10_7E4E3F31_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "31722-0212-05_RXNAVIMAGE10_7E3D3F19_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4937
+      },
+      "color": {
+        "labels": [
+          "color_GREEN"
+        ],
+        "confidence": 0.9991
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "68012-0258-20_RXNAVIMAGE10_C91364AB_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "64980-0185-01_RXNAVIMAGE10_20501010_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "55111-0196-90_RXNAVIMAGE10_701DB86D_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9999
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-5172-20_RXNAVIMAGE10_782D3C19_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "DIAMOND",
+        "confidence": 0.4665
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_RED"
+        ],
+        "confidence": 0.9293
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-7477-01_RXNAVIMAGE10_9B294DCA_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-0657-01_RXNAVIMAGE10_F137F88F_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4844
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9993
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "99207-0467-30_RXNAVIMAGE10_C11D60AB_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.8683
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00228-2853-11_RXNAVIMAGE10_273E13B0_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9992
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00173-0760-60_RXNAVIMAGE10_FE197F7B_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00378-5105-01_RXNAVIMAGE10_4C342631_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "DIAMOND",
+        "confidence": 0.3158
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_PINK",
+          "color_RED"
+        ],
+        "confidence": 0.7951
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "51862-0557-12_RXNAVIMAGE10_5D4FAECD_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_PURPLE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-4234-01_RXNAVIMAGE10_292D1488_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "SQUARE",
+      "color": [
+        "color_BROWN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "SQUARE",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "33342-0054-10_RXNAVIMAGE10_804EC016_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.4678
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_YELLOW"
+        ],
+        "confidence": 0.7824
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "29300-0128-01_RXNAVIMAGE10_3E409F54_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00007-4890-20_RXNAVIMAGE10_CB18E587_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.3753
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9988
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00406-0360-05_RXNAVIMAGE10_CE15E70F_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.493
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9716
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00093-7543-56_RXNAVIMAGE10_4B38A5C5_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_PINK"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.4444
+      },
+      "color": {
+        "labels": [
+          "color_BROWN",
+          "color_ORANGE",
+          "color_PINK"
+        ],
+        "confidence": 0.7925
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "65597-0101-30_RXNAVIMAGE10_35131A98_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "10135-0149-01_RXNAVIMAGE10_6634B305_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.4058
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9963
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "23155-0071-01_RXNAVIMAGE10_423CA135_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.9996
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00093-3044-01_RXNAVIMAGE10_213810E0_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.4815
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9997
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00781-5554-31_RXNAVIMAGE10_D944ECE7_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "ROUND",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "53489-0329-01_RXNAVIMAGE10_4C0EA635_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "TEAR",
+        "confidence": 0.433
+      },
+      "color": {
+        "labels": [
+          "color_WHITE"
+        ],
+        "confidence": 0.9972
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": true
+    }
+  },
+  {
+    "image_path": "44946-1045-01_RXNAVIMAGE10_F041781B_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.381
+      },
+      "color": {
+        "labels": [
+          "color_BLUE",
+          "color_GREEN"
+        ],
+        "confidence": 0.7748
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  }
+]

@@ -1,0 +1,15 @@
+run_id: attr_head_20260811_082112
+module: attribute_resnet18_lastblocks_tune
+started_at: 2026-08-11 08:21:15
+finished_at: 2026-08-11 08:33:48
+device: cuda
+gpu_name: Tesla T4
+python_version: 3.12.13
+torch_version: 2.10.0+cu128
+cuda_available: True
+platform: Linux-6.12.90+-x86_64-with-glibc2.35
+total_train_time_minutes: 12.55
+avg_epoch_time_seconds: 24.70
+num_epochs_run: 30
+best_epoch: 30
+best_overall_macro_f1: 0.6483

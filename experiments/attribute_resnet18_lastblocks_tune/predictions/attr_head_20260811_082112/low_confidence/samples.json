@@ -1,0 +1,133 @@
+[
+  {
+    "image_path": "60793-0858-01_RXNAVIMAGE10_02088174_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_BLUE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.3514
+      },
+      "color": {
+        "labels": [
+          "color_PINK",
+          "color_PURPLE"
+        ],
+        "confidence": 0.6432
+      }
+    },
+    "correct": {
+      "shape": false,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00173-0387-00_RXNAVIMAGE10_8018C066_1.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 1.0
+      },
+      "color": {
+        "labels": [],
+        "confidence": 0.0
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "00555-0789-02_RXNAVIMAGE10_D641EB3F_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_YELLOW"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4674
+      },
+      "color": {
+        "labels": [
+          "color_YELLOW"
+        ],
+        "confidence": 0.8881
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": true
+    }
+  },
+  {
+    "image_path": "00378-0216-01_RXNAVIMAGE10_74203A31_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "PENTAGON",
+      "color": [
+        "color_WHITE"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "PENTAGON",
+        "confidence": 0.3611
+      },
+      "color": {
+        "labels": [
+          "color_GRAY"
+        ],
+        "confidence": 0.8582
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  },
+  {
+    "image_path": "44946-1045-01_RXNAVIMAGE10_F041781B_2.jpg",
+    "category": "low_confidence",
+    "ground_truth": {
+      "shape": "OVAL",
+      "color": [
+        "color_GREEN"
+      ]
+    },
+    "prediction": {
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.4807
+      },
+      "color": {
+        "labels": [
+          "color_GRAY",
+          "color_GREEN",
+          "color_PURPLE"
+        ],
+        "confidence": 0.6496
+      }
+    },
+    "correct": {
+      "shape": true,
+      "color": false
+    }
+  }
+]
