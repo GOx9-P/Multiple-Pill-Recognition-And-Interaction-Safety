@@ -1,0 +1,25 @@
+run_id: attr_head_v1
+module: attribute_resnet18_head_tune
+seed: 42
+model:
+  architecture: ResNet18
+  pretrained_weight: ImageNet
+  train_strategy: head_tune
+  frozen_backbone: true
+  trainable_layers:
+  - classification_heads
+training:
+  image_size: 224
+  epochs: 30
+  shape_batch_size: 32
+  color_batch_size: 64
+  learning_rate: 0.001
+  optimizer: adamw
+  scheduler: cosine_or_plateau
+tasks:
+- shape
+- color
+label_mapping_file: data/processed/nih_attribute/label_mapping.json
+augmentation:
+  enabled: false
+  split: train_only
