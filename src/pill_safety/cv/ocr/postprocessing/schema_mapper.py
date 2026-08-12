@@ -171,6 +171,36 @@ def _normalized_candidates(
     return candidates
 
 
+def _scoreline_result(scoreline: dict[str, Any] | None) -> dict[str, Any]:
+    """Chuẩn hóa quyết định scoreline nội bộ sang public schema của Module 3."""
+
+    value = scoreline or {}
+    line = value.get("line_xyxy")
+    return {
+        "visible": bool(value.get("visible", False)),
+        "confidence": round(float(value.get("confidence", 0.0)), 4),
+        "angle_degrees": (
+            round(float(value["angle_degrees"]), 4)
+            if value.get("angle_degrees") is not None
+            else None
+        ),
+        "orientation": str(value.get("orientation", "unknown")),
+        "line_xyxy": [round(float(point), 4) for point in line] if line else None,
+        "support_count": int(value.get("support_count", 0)),
+        "rotation_degrees": (
+            int(value["rotation_degrees"])
+            if value.get("rotation_degrees") is not None
+            else None
+        ),
+        "preprocessing": (
+            str(value["preprocessing"])
+            if value.get("preprocessing") is not None
+            else None
+        ),
+        "source": str(value.get("source", "ocr_hough_consensus")),
+    }
+
+
 def build_ocr_output(
     request: OCRInferenceRequest,
     config: OCRConfig,
@@ -179,7 +209,10 @@ def build_ocr_output(
     best_items: list[dict[str, Any]] | None = None,
     valid_observations: list[dict[str, Any]] | None = None,
     ranked_candidates: list[dict[str, Any]] | None = None,
+    scoreline: dict[str, Any] | None = None,
 ) -> OCRInferenceOutput:
+    """Ánh xạ kết quả OCR và scoreline sang contract công khai của Module 3."""
+
     visible = final_candidate is not None
     confidence = (
         round(float(final_candidate.get("score", 0.0)), 4) if visible else 0.0
@@ -191,6 +224,7 @@ def build_ocr_output(
             "image_id": request.image_id,
             "instance_id": request.instance_id,
             "instance_token": request.instance_token,
+            "scoreline": _scoreline_result(scoreline),
             "imprint_visibility": {
                 "visible": visible,
                 "confidence": confidence,

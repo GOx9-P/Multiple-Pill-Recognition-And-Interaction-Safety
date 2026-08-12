@@ -7,7 +7,11 @@ from .candidates import (
 )
 from .ordering import build_order_candidates, candidate_text, item_center
 from .schema_mapper import build_ocr_output
-from .scoreline import detect_scoreline_for_split, run_scoreline_side_split
+from .scoreline import (
+    detect_scoreline_for_split,
+    map_scoreline_to_original,
+    run_scoreline_side_split,
+)
 
 __all__ = [
     "build_final_candidate",
@@ -18,6 +22,7 @@ __all__ = [
     "finalize_scoreline",
     "is_usable_observation",
     "item_center",
+    "map_scoreline_to_original",
     "rank_text_candidates",
     "run_scoreline_side_split",
     "select_baseline_observation",

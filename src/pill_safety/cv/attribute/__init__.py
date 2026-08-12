@@ -1,8 +1,6 @@
-# Unified pill attribute recognition module
-from pill_safety.cv.attribute.models.resnet_multitask import MultiTaskResNet18
-from pill_safety.cv.attribute.datasets.rximage import RxImageDataset
+"""Module 2: nhận diện shape và color từ crop của từng viên thuốc."""
 
-__all__ = [
-    "MultiTaskResNet18",
-    "RxImageDataset",
-]
+# Không import PyTorch ở package root. Các module chỉ dùng schema/config có thể chạy
+# trên môi trường chưa cài runtime deep-learning, còn predictor tự import model khi cần.
+
+__all__: list[str] = []

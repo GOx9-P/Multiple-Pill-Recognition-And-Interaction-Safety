@@ -79,8 +79,12 @@ def parse_prediction_result(result: Any) -> list[dict[str, Any]]:
         if isinstance(page, dict):
             data = page
         else:
-            json_method = getattr(page, "json", None)
-            data = json_method() if callable(json_method) else getattr(page, "res", None)
+            json_value = getattr(page, "json", None)
+            # PaddleOCR v3 exposes JSON as a dict property. Keep support for
+            # older adapters that expose it as a callable method.
+            data = json_value() if callable(json_value) else json_value
+            if data is None:
+                data = getattr(page, "res", None)
         items.extend(extract_items_from_dict(data))
     return items
 

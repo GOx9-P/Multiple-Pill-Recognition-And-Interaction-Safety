@@ -1,4 +1,6 @@
-from .ocr import OCRInferenceOutput, OCRInferenceRequest
+from .attribute import AttributeInferenceOutput, AttributeInferenceRequest
+from .cv_pipeline import CVPill, CVPipelineInput, CVPipelineOutput
+from .ocr import OCRInferenceOutput, OCRInferenceRequest, ScorelineResult
 from .segmentation import (
     ImageQuality,
     SegmentationEvidence,
@@ -8,9 +10,15 @@ from .segmentation import (
 )
 
 __all__ = [
+    "AttributeInferenceOutput",
+    "AttributeInferenceRequest",
+    "CVPill",
+    "CVPipelineInput",
+    "CVPipelineOutput",
     "ImageQuality",
     "OCRInferenceOutput",
     "OCRInferenceRequest",
+    "ScorelineResult",
     "SegmentationEvidence",
     "SegmentationInferenceOutput",
     "SegmentationInferenceRequest",

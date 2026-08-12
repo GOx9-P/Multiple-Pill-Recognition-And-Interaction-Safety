@@ -1,4 +1,4 @@
-# Schema v0 — Module Input/Output
+# Schema v1 — Module Input/Output
 
 Tài liệu này chỉ định nghĩa input và output giữa các module.
 
@@ -113,24 +113,30 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
     "lighting_warning": false
   },
   "dosage_form": {
-    "label": "tablet",
-    "confidence": 0.89
+    "label": "unknown",
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   },
   "scoreline": {
-    "label": "single",
-    "visible": true,
-    "confidence": 0.81
+    "label": "unknown",
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   },
   "logo_or_symbol": {
-    "visible": false,
-    "confidence": 0.63
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   },
   "damage_or_occlusion": {
-    "visible": false,
-    "confidence": 0.74
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   }
 }
 ```
+
+Model Attribute hiện tại chỉ có hai head đã train là `shape` và `color`. Các trường còn lại phải giữ `unknown/null`; không được biến giá trị mặc định thành dự đoán thật. Riêng `scoreline` sẽ được Module 3 OCR cập nhật bằng kết quả Hough consensus.
 
 ---
 
@@ -159,6 +165,17 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
   "image_id": "img_001",
   "instance_id": "pill_001",
   "instance_token": "pill_token_001",
+  "scoreline": {
+    "visible": true,
+    "confidence": 0.77,
+    "angle_degrees": 79.99,
+    "orientation": "vertical",
+    "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+    "support_count": 5,
+    "rotation_degrees": 180,
+    "preprocessing": "blackhat_bold",
+    "source": "ocr_hough_consensus"
+  },
   "imprint_visibility": {
     "visible": true,
     "confidence": 0.86
@@ -208,9 +225,13 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
 }
 ```
 
+`scoreline` luôn có trong output Module 3, kể cả khi `imprint.visible = false`. `line_xyxy`, `angle_degrees` và `orientation` luôn quy về hệ tọa độ của crop gốc; `rotation_degrees` và `preprocessing` chỉ ghi variant tạo ra evidence tốt nhất. Consensus chỉ chấp nhận các line có góc và vị trí hình học tương thích. Nếu không đủ evidence để xác nhận scoreline, Module 3 trả `visible = false`, `confidence = 0.0`, các trường góc/đường/rotation/preprocessing bằng `null`; `support_count` ghi kích thước nhóm consensus hình học lớn nhất.
+
 ---
 
 ## 5. Module 4 — CV Pipeline
+
+Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object `scoreline` từ output Module 3. Placeholder `scoreline` của Module 2 không được chuyển tiếp hoặc dùng để ghi đè kết quả OCR.
 
 ### Input
 
@@ -226,7 +247,7 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
 
 ```json
 {
-  "schema_version": "cv_output_v0",
+  "schema_version": "cv_output_v1",
   "request_id": "req_001",
   "session_id": "sess_001",
   "image_id": "img_001",
@@ -270,17 +291,30 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
         "lighting_warning": false
       },
       "dosage_form": {
-        "label": "tablet",
-        "confidence": 0.89
+        "label": "unknown",
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
       },
       "scoreline": {
-        "label": "single",
         "visible": true,
-        "confidence": 0.81
+        "confidence": 0.77,
+        "angle_degrees": 79.99,
+        "orientation": "vertical",
+        "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+        "support_count": 5,
+        "rotation_degrees": 180,
+        "preprocessing": "blackhat_bold",
+        "source": "ocr_hough_consensus"
       },
       "logo_or_symbol": {
-        "visible": false,
-        "confidence": 0.63
+        "visible": null,
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
+      },
+      "damage_or_occlusion": {
+        "visible": null,
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
       },
       "imprint_visibility": {
         "visible": true,
@@ -328,13 +362,13 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
 
 ```json
 {
-  "schema_version": "rag_request_v0",
+  "schema_version": "rag_request_v1",
   "request_id": "req_001",
   "session_id": "sess_001",
   "market": "US",
   "known_drug_names": [],
   "cv_output": {
-    "schema_version": "cv_output_v0",
+    "schema_version": "cv_output_v1",
     "request_id": "req_001",
     "session_id": "sess_001",
     "image_id": "img_001",
@@ -372,17 +406,30 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
           "lighting_warning": false
         },
         "dosage_form": {
-          "label": "tablet",
-          "confidence": 0.89
+          "label": "unknown",
+          "confidence": null,
+          "source": "not_predicted_by_attribute"
         },
         "scoreline": {
-          "label": "single",
           "visible": true,
-          "confidence": 0.81
+          "confidence": 0.77,
+          "angle_degrees": 79.99,
+          "orientation": "vertical",
+          "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+          "support_count": 5,
+          "rotation_degrees": 180,
+          "preprocessing": "blackhat_bold",
+          "source": "ocr_hough_consensus"
         },
         "logo_or_symbol": {
-          "visible": false,
-          "confidence": 0.63
+          "visible": null,
+          "confidence": null,
+          "source": "not_predicted_by_attribute"
+        },
+        "damage_or_occlusion": {
+          "visible": null,
+          "confidence": null,
+          "source": "not_predicted_by_attribute"
         },
         "imprint_visibility": {
           "visible": true,
@@ -418,7 +465,7 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
 
 ```json
 {
-  "schema_version": "rag_identification_v0",
+  "schema_version": "rag_identification_v1",
   "request_id": "req_001",
   "session_id": "sess_001",
   "pill_results": [
@@ -445,8 +492,8 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
             "imprint_match_score": 0.655,
             "shape_score": 0.91,
             "color_score": 0.72,
-            "dosage_form_score": 0.89,
-            "scoreline_score": 0.81,
+            "dosage_form_score": null,
+            "scoreline_score": 0.77,
             "market_score": 1.0,
             "top1_top2_margin": 0.06,
             "hard_reject": false,

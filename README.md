@@ -123,7 +123,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │   │   ├── logs/                                 # Log train/evaluate head-tune
 │   │   ├── metrics/                              # Macro F1, loss curve, confusion matrix nếu cần
 │   │   ├── plots/                                # Biểu đồ loss, Macro F1, confusion matrix
-│   │   └── predictions/                          # Sample dự đoán shape/color/form/score_line
+│   │   └── predictions/                          # Sample dự đoán shape/color của Module 2
 │   ├── attribute_resnet18_last_blocks_finetune/  # Experiment cho Module 2b: fine-tune last blocks ResNet18
 │   │   ├── checkpoints/                          # Checkpoint sau khi unfreeze last blocks
 │   │   ├── logs/                                 # Log fine-tune với learning rate nhỏ
@@ -140,7 +140,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │   ├── cv_segmentation/                          # Entrypoint load YOLOv11-Seg và xuất bbox/mask/crop
 │   ├── cv_attribute/                             # Entrypoint load ResNet18 và dự đoán attribute
 │   ├── cv_ocr/                                   # Entrypoint chạy PaddleOCR và OCR normalization
-│   ├── cv_pipeline/                              # Entrypoint ghép segmentation + attribute + OCR thành CV JSON
+│   ├── cv_pipeline/                              # run_full_cv_pipeline.py chạy toàn bộ CV; run_cv_pipeline.py chỉ ghép JSON có sẵn
 │   └── rag_retrieval/                            # Entrypoint retrieval, ranking, safety gate và DDI lookup
 │
 ├── models/                                       # Weight chính thức dùng cho inference, copy từ checkpoint tốt nhất
@@ -170,7 +170,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │       │   ├── attribute/                        # Module 2: ResNet18 attribute recognition
 │       │   │   ├── datasets/                     # Dataset loader cho NIH/RxImage crop
 │       │   │   ├── transforms/                   # Augmentation/sim2real và normalize input
-│       │   │   ├── models/                       # ResNet18 multi-head cho shape/color/form/score_line
+│       │   │   ├── models/                       # ResNet18 hai head cho shape/color; scoreline do OCR phụ trách
 │       │   │   ├── trainers/                     # Logic head-tune và last-blocks fine-tune
 │       │   │   ├── evaluators/                   # Logic tính Macro F1/accuracy theo từng attribute
 │       │   │   ├── predictors/                   # Logic predict attribute cho một crop thuốc

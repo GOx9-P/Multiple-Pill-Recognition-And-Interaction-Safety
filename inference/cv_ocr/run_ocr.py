@@ -58,10 +58,10 @@ def main() -> int:
         )
 
     config = OCRConfig.from_yaml(args.config)
-    if args.output_dir is not None:
-        config = config.with_output_dir(args.output_dir)
-    elif not config.output_dir.is_absolute():
-        config = config.with_output_dir(PROJECT_ROOT / config.output_dir)
+    output_dir = args.output_dir or config.output_dir
+    if not output_dir.is_absolute():
+        output_dir = PROJECT_ROOT / output_dir
+    config = config.with_output_dir(output_dir)
 
     artifacts = OCRPredictor(config=config).predict_with_artifacts(request)
     print(

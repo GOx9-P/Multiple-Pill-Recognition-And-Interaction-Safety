@@ -13,6 +13,10 @@ from pill_safety.cv.ocr.postprocessing.ordering import (
     sequence_confidence,
     smart_order_items,
 )
+from pill_safety.cv.ocr.preprocessing.image_ops import (
+    PreparedImage,
+    map_polygon_to_original,
+)
 
 
 def line_orientation(
@@ -26,6 +30,39 @@ def line_orientation(
     else:
         orientation = "oblique"
     return angle, orientation
+
+
+def map_scoreline_to_original(
+    scoreline: dict[str, Any],
+    padded_shape: tuple[int, ...],
+    rotation_degrees: int,
+    prepared_image: PreparedImage,
+) -> dict[str, Any]:
+    """Dua hai dau mut scoreline tu variant xoay ve he toa do crop goc."""
+
+    mapped = dict(scoreline)
+    line = mapped.get("line_xyxy")
+    if not mapped.get("visible") or line is None:
+        return mapped
+    points = map_polygon_to_original(
+        [[float(line[0]), float(line[1])], [float(line[2]), float(line[3])]],
+        padded_shape=padded_shape,
+        rotation_degrees=rotation_degrees,
+        pad_px=prepared_image.pad_px,
+        original_height=prepared_image.original_height,
+        original_width=prepared_image.original_width,
+    )
+    if points is None or len(points) != 2:
+        raise ValueError(
+            "Cannot map scoreline endpoints to original crop coordinates."
+        )
+    x1, y1 = points[0]
+    x2, y2 = points[1]
+    angle, orientation = line_orientation(x1, y1, x2, y2)
+    mapped["line_xyxy"] = [x1, y1, x2, y2]
+    mapped["angle_degrees"] = round(angle, 2)
+    mapped["orientation"] = orientation
+    return mapped
 
 
 def point_to_segment_distance(

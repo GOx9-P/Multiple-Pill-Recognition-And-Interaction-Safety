@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -52,11 +54,28 @@ class ImprintResult(StrictSchema):
     normalized_candidates: list[NormalizedCandidate]
 
 
+class ScorelineResult(StrictSchema):
+    """Biểu diễn quyết định scoreline cuối cùng do Module 3 OCR quản lý."""
+
+    visible: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    angle_degrees: float | None = Field(default=None, ge=0.0, le=180.0)
+    orientation: Literal["horizontal", "vertical", "oblique", "unknown"]
+    line_xyxy: list[float] | None = Field(
+        default=None, min_length=4, max_length=4
+    )
+    support_count: int = Field(ge=0)
+    rotation_degrees: int | None
+    preprocessing: str | None
+    source: Literal["ocr_hough_consensus"]
+
+
 class OCRInferenceOutput(StrictSchema):
     request_id: str
     session_id: str
     image_id: str
     instance_id: str
     instance_token: str
+    scoreline: ScorelineResult
     imprint_visibility: ImprintVisibility
     imprint: ImprintResult

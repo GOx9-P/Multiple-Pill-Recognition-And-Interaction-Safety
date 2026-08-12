@@ -37,6 +37,8 @@ class OCRConfig:
     enable_scoreline_side_split: bool = True
     min_scoreline_detection_confidence: float = 0.45
     min_scoreline_support: int = 2
+    scoreline_angle_consensus_tolerance_degrees: float = 12.0
+    scoreline_consensus_distance_ratio: float = 0.08
     scoreline_center_max_distance_ratio: float = 0.30
     scoreline_use_center_roi: bool = True
     split_margin_ratio: float = 0.03
@@ -99,6 +101,14 @@ class OCRConfig:
             ),
             "min_scoreline_support": scoreline.get(
                 "min_support", defaults.min_scoreline_support
+            ),
+            "scoreline_angle_consensus_tolerance_degrees": scoreline.get(
+                "angle_consensus_tolerance_degrees",
+                defaults.scoreline_angle_consensus_tolerance_degrees,
+            ),
+            "scoreline_consensus_distance_ratio": scoreline.get(
+                "consensus_distance_ratio",
+                defaults.scoreline_consensus_distance_ratio,
             ),
             "scoreline_center_max_distance_ratio": scoreline.get(
                 "center_max_distance_ratio",

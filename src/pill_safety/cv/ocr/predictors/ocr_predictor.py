@@ -19,6 +19,7 @@ from pill_safety.cv.ocr.postprocessing import (
     finalize_scoreline,
     is_usable_observation,
     item_center,
+    map_scoreline_to_original,
     rank_text_candidates,
     run_scoreline_side_split,
     select_baseline_observation,
@@ -111,11 +112,11 @@ class OCRPredictor:
 
                     # Oblique warp borders can look like scorelines to Hough.
                     if int(rotation_degrees) % 90 == 0:
-                        scoreline = detect_scoreline_for_split(
+                        scoreline_variant = detect_scoreline_for_split(
                             variant, self.config
                         )
                     else:
-                        scoreline = {
+                        scoreline_variant = {
                             "visible": False,
                             "confidence": 0.0,
                             "line_xyxy": None,
@@ -123,13 +124,21 @@ class OCRPredictor:
                             "orientation": "unknown",
                             "reason": "oblique_rotation_border_guard",
                         }
-                    scoreline.update(
+                    scoreline_variant.update(
                         {
                             "tier": tier_config.tier,
                             "rotation_degrees": rotation_degrees,
                             "preprocessing": preprocessing,
                             "variant_path": str(variant_path),
                         }
+                    )
+                    # Public scoreline data always uses original crop coordinates.
+                    # Variant coordinates remain internal for split and overlay work.
+                    scoreline = map_scoreline_to_original(
+                        scoreline_variant,
+                        padded_shape=base_image.shape,
+                        rotation_degrees=rotation_degrees,
+                        prepared_image=prepared_image,
                     )
                     scoreline_observations.append(scoreline)
                     performed_steps.append(
@@ -181,12 +190,13 @@ class OCRPredictor:
                                 "best_confidence": best_confidence,
                                 "detected_text": detected_text,
                                 "scoreline": scoreline,
+                                "scoreline_variant": scoreline_variant,
                             }
                         )
 
                     if (
                         self.config.enable_scoreline_side_split
-                        and scoreline.get("visible")
+                        and scoreline_variant.get("visible")
                     ):
                         split_items, split_info = run_scoreline_side_split(
                             variant,
@@ -194,7 +204,7 @@ class OCRPredictor:
                             step_id,
                             split_directory,
                             paddle_json_directory,
-                            scoreline,
+                            scoreline_variant,
                             self.engine,
                             self.config,
                         )
@@ -231,6 +241,7 @@ class OCRPredictor:
                                     "best_confidence": split_confidence,
                                     "detected_text": split_text,
                                     "scoreline": scoreline,
+                                    "scoreline_variant": scoreline_variant,
                                     "split_info": split_info,
                                 }
                             )
@@ -277,7 +288,7 @@ class OCRPredictor:
                     f"Cannot read selected OCR variant: {best['variant_path']}"
                 )
             overlay_scoreline = (
-                best.get("scoreline")
+                best.get("scoreline_variant")
                 if best.get("mode") == "scoreline_side_split"
                 and best.get("split_info", {}).get("reliable", False)
                 else None
@@ -310,6 +321,7 @@ class OCRPredictor:
                 best_items=best_items,
                 valid_observations=valid_observations,
                 ranked_candidates=ranked_candidates,
+                scoreline=final_scoreline,
             )
         else:
             debug_payload = {
@@ -320,7 +332,11 @@ class OCRPredictor:
                 "performed_steps": performed_steps,
                 "overlay_path": None,
             }
-            output = build_ocr_output(request=request, config=self.config)
+            output = build_ocr_output(
+                request=request,
+                config=self.config,
+                scoreline=final_scoreline,
+            )
 
         _write_json(debug_json_path, debug_payload)
         _write_json(schema_json_path, output.model_dump(mode="json"))

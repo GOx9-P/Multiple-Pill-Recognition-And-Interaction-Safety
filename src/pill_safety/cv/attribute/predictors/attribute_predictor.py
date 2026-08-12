@@ -1,138 +1,262 @@
-"""
-Attribute Predictor for inference pipeline.
+"""Predictor inference cho ResNet18 shape/color của Module 2."""
 
-Provides a unified interface for loading the attribute model and predicting
-shapes and colors for single images.
-"""
+from __future__ import annotations
 
 import json
-import argparse
+import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Union, Dict
+from typing import Any
 
-import numpy as np
 import torch
+import yaml
 from PIL import Image
 from torchvision import transforms
 
-from pill_safety.cv.attribute.utils.config import AttributeConfig
-from pill_safety.cv.attribute.models import MultiTaskResNet18
-from pill_safety.cv.attribute.postprocessing.formatter import format_attribute_predictions
-from pill_safety.cv.attribute.labels.label_mapping import load_label_mapping
-from pill_safety.cv.attribute.utils.checkpoint import load_checkpoint
+from pill_safety.schemas import AttributeInferenceOutput, AttributeInferenceRequest
+
+from ..config import AttributeInferenceConfig
+from ..labels.label_mapping import load_label_mapping
+from ..models import MultiTaskResNet18
+from ..postprocessing import (
+    build_attribute_output,
+    format_attribute_predictions,
+)
+from ..utils.checkpoint import load_checkpoint
+
+
+@dataclass(frozen=True)
+class AttributeArtifacts:
+    """Tập hợp output schema và JSON artifact được sinh bởi Module 2."""
+
+    output: AttributeInferenceOutput
+    schema_json_path: Path
+
+
+def _safe_directory_name(value: str) -> str:
+    """Chuẩn hóa ID thành tên thư mục an toàn để tránh ghi đè artifact."""
+
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._")
+    return safe or "request"
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Ghi output JSON UTF-8 để các module phía sau đọc lại nguyên vẹn."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2, ensure_ascii=False)
+
+
+def _resolve_device(device_name: str) -> torch.device:
+    """Chọn CUDA khi cấu hình auto và runtime có GPU, ngược lại dùng CPU."""
+
+    if device_name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device_name.startswith("cuda") and not torch.cuda.is_available():
+        raise RuntimeError(
+            "Attribute inference requested CUDA but torch.cuda.is_available() is false."
+        )
+    return torch.device(device_name)
+
+
+def _load_color_thresholds(
+    path: Path,
+    color_names: list[str],
+) -> torch.Tensor:
+    """Nạp threshold multi-label theo list, key ``thresholds`` hoặc tên màu."""
+
+    with path.open("r", encoding="utf-8") as file:
+        raw = json.load(file)
+
+    if isinstance(raw, list):
+        values = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("thresholds"), list):
+        values = raw["thresholds"]
+    elif isinstance(raw, dict) and all(name in raw for name in color_names):
+        values = [raw[name] for name in color_names]
+    else:
+        raise ValueError(
+            "optimal_thresholds.json must be a list, contain a 'thresholds' list, "
+            "or map every label in label_mapping.json to a threshold."
+        )
+
+    if len(values) != len(color_names):
+        raise ValueError(
+            "Color threshold count does not match label mapping: "
+            f"{len(values)} != {len(color_names)}."
+        )
+    thresholds = torch.tensor(values, dtype=torch.float32)
+    if torch.any(thresholds < 0.0) or torch.any(thresholds > 1.0):
+        raise ValueError("Color thresholds must be in [0, 1].")
+    return thresholds
+
+
+def _validate_model_config(path: Path, image_size: int) -> None:
+    """Kiểm tra artifact config để không nạp nhầm weight khác kiến trúc hoặc resize."""
+
+    with path.open("r", encoding="utf-8") as file:
+        raw = yaml.safe_load(file) or {}
+
+    model = raw.get("model", raw)
+    architecture = str(model.get("architecture", "ResNet18"))
+    if architecture.lower() != "resnet18":
+        raise ValueError(
+            "Attribute inference only supports a ResNet18 artifact, got "
+            f"{architecture!r} from {path}."
+        )
+
+    training = raw.get("training", {})
+    trained_image_size = training.get("image_size", raw.get("image_size"))
+    if trained_image_size is not None and int(trained_image_size) != image_size:
+        raise ValueError(
+            "Inference image_size does not match model_config.yaml: "
+            f"{image_size} != {trained_image_size}."
+        )
+
+    tasks = raw.get("tasks") or raw.get("optional_tasks") or []
+    if tasks and not {"shape", "color"}.issubset(set(tasks)):
+        raise ValueError(
+            "model_config.yaml must declare both shape and color tasks."
+        )
 
 
 class AttributePredictor:
-    """Inference wrapper for the MultiTaskResNet18 attribute model."""
-    
-    def __init__(self, run_id: str, module_name: str, device: Union[str, torch.device] = None):
-        """
-        Initialize the predictor from a specific training run.
-        
-        Args:
-            run_id: The run ID (e.g. 'attr_last_v2' or 'attr_head_v2')
-            module_name: The module name ('attribute_resnet18_last_blocks_finetune' 
-                         or 'attribute_resnet18_head_tune')
-            device: Target device. If None, uses AttributeConfig.DEVICE.
-        """
-        self.device = device or AttributeConfig.DEVICE
-        self.run_id = run_id
-        self.module_name = module_name
-        
-        paths = AttributeConfig.get_experiment_paths(module_name, run_id)
-        
-        ckpt_path = paths["checkpoints"] / f"{run_id}_best.pt"
-        mapping_path = paths["logs"] / f"{run_id}_label_mapping.json"
-        threshold_path = paths["metrics"] / f"{run_id}_optimal_thresholds.json"
-        
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
-            
-        # Try to find mapping file. If it's a last-blocks run, it might not have its own
-        # mapping file, but we should find it from the head run. Wait, last-blocks run
-        # doesn't save a mapping file directly, it reads from head.
-        # But wait, in train_last_blocks, we load from head. 
-        # For simplicity, if mapping is not found in the run's logs, we check the dataset manifest
-        # to find the original mapping file path.
-        if not mapping_path.exists():
-            manifest_path = paths["logs"] / f"{run_id}_dataset_manifest.json"
-            if manifest_path.exists():
-                with open(manifest_path, "r", encoding="utf-8") as f:
-                    manifest = json.load(f)
-                    mapping_path = AttributeConfig.BASE_DIR / manifest.get("label_mapping_file", "")
-                    
-        if not Path(mapping_path).exists():
-            raise FileNotFoundError(f"Label mapping not found at {mapping_path}")
+    """Chạy ResNet18 đã chọn và xuất output Module 2 đúng schema."""
 
-        # Load mapping
-        self.label_mapping, num_shape_classes, num_color_classes, mapping_hash = load_label_mapping(mapping_path)
-        
-        # Load thresholds
-        if threshold_path.exists():
-            with open(threshold_path, "r", encoding="utf-8") as f:
-                self.thresholds = np.array(json.load(f))
-        else:
-            self.thresholds = np.full(num_color_classes, 0.5)
+    def __init__(self, config: AttributeInferenceConfig | None = None):
+        """Nạp artifact chính thức trong ``models/`` và chuẩn bị transform inference."""
 
-        # Load model
-        self.model = MultiTaskResNet18(
-            num_shape_classes=num_shape_classes, 
-            num_color_classes=num_color_classes,
-            pretrained=False
+        self.config = config or AttributeInferenceConfig()
+        required_artifacts = {
+            "checkpoint": self.config.weights_path,
+            "label mapping": self.config.label_mapping_path,
+            "color thresholds": self.config.color_thresholds_path,
+            "model config": self.config.model_config_path,
+        }
+        missing = [
+            f"{name}: {path}"
+            for name, path in required_artifacts.items()
+            if not path.is_file()
+        ]
+        if missing:
+            raise FileNotFoundError(
+                "Missing promoted Attribute inference artifacts in models/:\n- "
+                + "\n- ".join(missing)
+            )
+
+        _validate_model_config(self.config.model_config_path, self.config.image_size)
+        self.device = _resolve_device(self.config.device)
+        (
+            self.label_mapping,
+            num_shape_classes,
+            num_color_classes,
+            mapping_hash,
+        ) = load_label_mapping(self.config.label_mapping_path)
+        self.color_thresholds = _load_color_thresholds(
+            self.config.color_thresholds_path,
+            self.label_mapping["color"],
         ).to(self.device)
-        
-        ckpt = load_checkpoint(ckpt_path, self.device, expected_mapping_hash=mapping_hash)
-        self.model.load_state_dict(ckpt["model_state_dict"])
+
+        self.model = MultiTaskResNet18(
+            num_shape_classes=num_shape_classes,
+            num_color_classes=num_color_classes,
+            pretrained=False,
+        ).to(self.device)
+        checkpoint = load_checkpoint(
+            self.config.weights_path,
+            self.device,
+            expected_mapping_hash=mapping_hash,
+        )
+        if checkpoint.get("num_shape_classes", num_shape_classes) != num_shape_classes:
+            raise RuntimeError("Checkpoint shape class count differs from label mapping.")
+        if checkpoint.get("num_color_classes", num_color_classes) != num_color_classes:
+            raise RuntimeError("Checkpoint color class count differs from label mapping.")
+        self.model.load_state_dict(checkpoint["model_state_dict"], strict=True)
         self.model.eval()
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize((self.config.image_size, self.config.image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    self.config.normalization_mean,
+                    self.config.normalization_std,
+                ),
+            ]
+        )
 
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ])
+    def _predict_crop(self, crop_path: Path) -> dict[str, Any]:
+        """Chạy shape head và color head trên một crop đã được Module 1 mask sẵn."""
 
-    @torch.no_grad()
-    def predict(self, image_path: Union[str, Path]) -> Dict:
-        """Run inference on a single image.
-        
-        Args:
-            image_path: Path to the image.
-            
-        Returns:
-            Dictionary with formatted predictions.
-        """
-        image = Image.open(image_path).convert("RGB")
+        with Image.open(crop_path) as source:
+            image = source.convert("RGB")
         tensor = self.transform(image).unsqueeze(0).to(self.device)
 
-        s_out, c_out = self.model(tensor)
-        
-        # Shape prediction
-        s_prob = torch.softmax(s_out, dim=1)
-        s_pred_idx = torch.argmax(s_prob, dim=1).item()
-        
-        # Color prediction
-        c_probs = torch.sigmoid(c_out).cpu().numpy()[0]
-        c_preds = (c_probs > self.thresholds).astype(int)
-        
-        # Format names
+        with torch.inference_mode():
+            shape_logits, color_logits = self.model(tensor)
+            shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
+            color_probabilities = torch.sigmoid(color_logits)[0]
+
         shape_names = self.label_mapping["shape"]
         color_names = self.label_mapping["color"]
-        
-        s_label = shape_names[s_pred_idx] if s_pred_idx < len(shape_names) else "UNKNOWN"
-        c_labels = [color_names[i] for i, val in enumerate(c_preds) if val == 1]
-        
-        raw_color_probs = {color_names[i]: float(p) for i, p in enumerate(c_probs)}
-        
-        return format_attribute_predictions(s_label, float(s_prob[0][s_pred_idx]), c_labels, raw_color_probs)
+        top_k = min(self.config.shape_top_k, len(shape_names))
+        top_probabilities, top_indices = torch.topk(shape_probabilities, k=top_k)
+        selected_index = int(top_indices[0].item())
+        shape_alternatives = [
+            (shape_names[int(index.item())], float(probability.item()))
+            for index, probability in zip(top_indices[1:], top_probabilities[1:])
+        ]
 
+        color_values = color_probabilities.detach().cpu().tolist()
+        color_labels = [
+            color_names[index]
+            for index, probability in enumerate(color_values)
+            if probability > float(self.color_thresholds[index].item())
+        ]
+        color_scores = {
+            color_names[index]: float(probability)
+            for index, probability in enumerate(color_values)
+        }
+        return format_attribute_predictions(
+            shape_label=shape_names[selected_index],
+            shape_conf=float(shape_probabilities[selected_index].item()),
+            color_labels=color_labels,
+            color_probs=color_scores,
+            shape_alternatives=shape_alternatives,
+        )
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run attribute inference")
-    parser.add_argument("--image", type=str, required=True, help="Path to image")
-    parser.add_argument("--run_id", type=str, required=True, help="Run ID of the model")
-    parser.add_argument("--module", type=str, required=True, help="Module name (e.g. attribute_resnet18_head_tune)")
-    args = parser.parse_args()
+    def predict(
+        self,
+        request: AttributeInferenceRequest | dict[str, Any],
+    ) -> AttributeInferenceOutput:
+        """Chạy inference và chỉ trả payload Module 2 cho pipeline CV."""
 
-    predictor = AttributePredictor(run_id=args.run_id, module_name=args.module)
-    result = predictor.predict(args.image)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+        return self.predict_with_artifacts(request).output
+
+    def predict_with_artifacts(
+        self,
+        request: AttributeInferenceRequest | dict[str, Any],
+    ) -> AttributeArtifacts:
+        """Chạy inference, giữ ID nguồn và lưu JSON theo cây artifact của README."""
+
+        request = AttributeInferenceRequest.model_validate(request)
+        crop_path = Path(request.crop_path)
+        mask_path = Path(request.mask_path)
+        if not crop_path.is_file():
+            raise FileNotFoundError(f"Attribute crop does not exist: {crop_path}")
+        if not mask_path.is_file():
+            raise FileNotFoundError(f"Attribute mask does not exist: {mask_path}")
+
+        prediction = self._predict_crop(crop_path)
+        output = build_attribute_output(request, prediction)
+        artifact_directory = (
+            self.config.output_dir
+            / "predictions"
+            / "attribute"
+            / _safe_directory_name(request.request_id)
+            / _safe_directory_name(request.image_id)
+            / _safe_directory_name(request.instance_id)
+        )
+        schema_json_path = artifact_directory / "attribute_output.json"
+        _write_json(schema_json_path, output.model_dump(mode="json"))
+        return AttributeArtifacts(output=output, schema_json_path=schema_json_path)

@@ -573,7 +573,7 @@ Sinh 325 cặp hoạt chất
 
 1. Kiểm tra schema JSON và các trường bắt buộc.
 2. Nếu `cv_status != FEATURES_READY`, trả về `INSUFFICIENT_EVIDENCE`.
-3. Chuẩn hóa giá trị phân loại: uppercase, từ điển shape/color/dosage form.
+3. Chuẩn hóa shape/color và chỉ chuẩn hóa dosage form khi `source` cho biết đó là dự đoán thật; bỏ qua `not_predicted_by_attribute`.
 4. Chuẩn hóa imprint:
    - Chuyển uppercase.
    - Xóa khoảng trắng và ký tự phân cách không cần thiết.
@@ -585,8 +585,8 @@ Sinh 325 cặp hoạt chất
 Truy vấn theo tầng để không loại nhầm thuốc đúng:
 
 1. Exact match hoặc fuzzy match `imprint_normalized`.
-2. Lọc `dosage_form` và `shape`.
-3. Lọc mềm theo `color`, `size`, `score_line`, `logo_or_symbol`.
+2. Lọc `shape`; chỉ lọc `dosage_form` khi CV có dự đoán thật thay vì `unknown`.
+3. Lọc mềm theo `color`, `size`, `score_line`, `logo_or_symbol`; `score_line` phải lấy từ output OCR.
 4. Lấy Top-K, đề xuất `K = 10–20`, để đưa vào mô hình xếp hạng.
 
 Ví dụ logic SQL rút gọn:
@@ -601,7 +601,7 @@ FROM drug_appearance a
 JOIN drug_product p ON p.product_id = a.product_id
 WHERE
     a.imprint_normalized % :imprint
-    AND p.dosage_form = :dosage_form
+    AND (:dosage_form IS NULL OR p.dosage_form = :dosage_form)
 ORDER BY imprint_similarity DESC
 LIMIT 20;
 ```
@@ -621,6 +621,8 @@ logo_score
 ocr_confidence
 detection_confidence
 ```
+
+Feature không có evidence, ví dụ `dosage_form` hiện có `source = not_predicted_by_attribute`, phải được đánh dấu missing và bỏ khỏi phép chấm điểm. Không được thay missing bằng `0`. `score_line_score` dùng quyết định scoreline của OCR, không dùng placeholder từ Attribute.
 
 Mô hình đề xuất:
 
@@ -853,4 +855,3 @@ Kiến trúc này khả thi cho phạm vi MVP, giảm trùng lặp dữ liệu t
 - `llm_rag_pipeline(2).md`: pipeline, Safety Gate và các quy tắc cứng.
 - `ranking_ml_models(2).md`: Logistic Regression, XGBoost và hard negative mining.
 - `output(2).md`: yêu cầu output và bố cục cảnh báo.
-

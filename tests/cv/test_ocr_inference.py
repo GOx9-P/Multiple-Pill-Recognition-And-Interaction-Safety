@@ -15,14 +15,21 @@ SRC_DIRECTORY = PROJECT_ROOT / "src"
 if str(SRC_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(SRC_DIRECTORY))
 
+import pill_safety.cv.ocr.predictors.ocr_predictor as ocr_predictor_module
 from pill_safety.cv.ocr import OCRConfig, OCRPredictor, RotationTier
 from pill_safety.cv.ocr.engines import PaddleOCREngine
+from pill_safety.cv.ocr.engines.paddleocr_engine import parse_prediction_result
 from pill_safety.cv.ocr.postprocessing.candidates import (
+    finalize_scoreline,
     select_baseline_observation,
 )
 from pill_safety.cv.ocr.postprocessing.ordering import sequence_confidence
 from pill_safety.cv.ocr.postprocessing.schema_mapper import build_ocr_output
-from pill_safety.cv.ocr.postprocessing.scoreline import run_scoreline_side_split
+from pill_safety.cv.ocr.postprocessing.scoreline import (
+    map_scoreline_to_original,
+    run_scoreline_side_split,
+)
+from pill_safety.cv.ocr.preprocessing.image_ops import PreparedImage
 from pill_safety.cv.ocr.preprocessing import map_polygon_to_original
 from pill_safety.schemas import OCRInferenceRequest
 
@@ -54,6 +61,27 @@ class SideEngine:
                 "polygon": [[65, 30], [90, 30], [90, 60], [65, 60]],
             }
         ]
+
+
+def test_paddle_v3_json_property_is_parsed_into_ocr_items():
+    """PaddleOCR v3 exposes Result.json as a dictionary property."""
+
+    class PaddleV3Result:
+        json = {
+            "res": {
+                "rec_texts": ["K", "56"],
+                "rec_scores": [0.82, 0.99],
+                "rec_polys": [
+                    [[1, 1], [2, 1], [2, 2], [1, 2]],
+                    [[3, 1], [5, 1], [5, 2], [3, 2]],
+                ],
+            }
+        }
+
+    items = parse_prediction_result([PaddleV3Result()])
+
+    assert [item["text"] for item in items] == ["K", "56"]
+    assert [item["confidence"] for item in items] == [0.82, 0.99]
 
 
 def make_request(image_path: Path, instance_id: str = "pill_007"):
@@ -119,6 +147,7 @@ def test_predictor_preserves_ids_and_exports_exact_module_3_schema(tmp_path):
         "image_id",
         "instance_id",
         "instance_token",
+        "scoreline",
         "imprint_visibility",
         "imprint",
     }
@@ -126,6 +155,17 @@ def test_predictor_preserves_ids_and_exports_exact_module_3_schema(tmp_path):
     assert payload["image_id"] == "img_003"
     assert payload["instance_id"] == "pill_007"
     assert payload["instance_token"] == "pill_token_007"
+    assert payload["scoreline"] == {
+        "visible": False,
+        "confidence": 0.0,
+        "angle_degrees": None,
+        "orientation": "unknown",
+        "line_xyxy": None,
+        "support_count": 0,
+        "rotation_degrees": None,
+        "preprocessing": None,
+        "source": "ocr_hough_consensus",
+    }
     assert payload["imprint"]["raw"] == "K 56"
     assert payload["imprint"]["confidence"] == 0.8625
     assert payload["imprint"]["normalized_candidates"][0]["source"] == "raw_ocr"
@@ -168,7 +208,12 @@ def test_predictor_preserves_ids_and_exports_exact_module_3_schema(tmp_path):
     )[0]
     json_blocks = re.findall(r"```json\s*(\{.*?\})\s*```", module_3, re.S)
     documented_output = json.loads(json_blocks[1])
-    assert schema_shape(payload) == schema_shape(documented_output)
+    payload_shape = schema_shape(payload)
+    documented_shape = schema_shape(documented_output)
+    assert set(payload_shape["scoreline"]) == set(documented_shape["scoreline"])
+    payload_shape.pop("scoreline")
+    documented_shape.pop("scoreline")
+    assert payload_shape == documented_shape
 
 
 def test_no_text_still_returns_valid_module_3_output(tmp_path):
@@ -196,6 +241,52 @@ def test_no_text_still_returns_valid_module_3_output(tmp_path):
         "text_regions": [],
         "ocr_observations": [],
         "normalized_candidates": [],
+    }
+
+
+def test_no_text_still_exports_scoreline_owned_by_ocr(tmp_path, monkeypatch):
+    """Bảo đảm scoreline không bị mất khi OCR không đọc được imprint."""
+
+    image_path = tmp_path / "crop.png"
+    cv2.imwrite(str(image_path), np.full((100, 100, 3), 255, dtype=np.uint8))
+    config = replace(
+        OCRConfig(),
+        preprocessing_steps=("original",),
+        rotation_tiers=(RotationTier("tier1_0_180", (0,)),),
+        enable_scoreline_side_split=False,
+        output_dir=tmp_path / "outputs",
+    )
+    monkeypatch.setattr(
+        ocr_predictor_module,
+        "finalize_scoreline",
+        lambda observations, current_config: {
+            "visible": True,
+            "confidence": 0.77,
+            "angle_degrees": 79.99,
+            "orientation": "vertical",
+            "line_xyxy": [10.0, 20.0, 30.0, 80.0],
+            "support_count": 3,
+            "rotation_degrees": 0,
+            "preprocessing": "original",
+            "source": "ocr_hough_consensus",
+        },
+    )
+
+    output = OCRPredictor(config=config, engine=StaticEngine([])).predict(
+        make_request(image_path)
+    )
+
+    assert output.imprint.visible is False
+    assert output.scoreline.model_dump() == {
+        "visible": True,
+        "confidence": 0.77,
+        "angle_degrees": 79.99,
+        "orientation": "vertical",
+        "line_xyxy": [10.0, 20.0, 30.0, 80.0],
+        "support_count": 3,
+        "rotation_degrees": 0,
+        "preprocessing": "original",
+        "source": "ocr_hough_consensus",
     }
 
 
@@ -238,6 +329,8 @@ def test_yaml_defaults_match_the_notebook_configuration():
     assert config.min_usable_confidence == 0.50
     assert config.min_scoreline_detection_confidence == 0.45
     assert config.min_scoreline_support == 2
+    assert config.scoreline_angle_consensus_tolerance_degrees == 12.0
+    assert config.scoreline_consensus_distance_ratio == 0.08
     assert config.min_side_confidence == 0.60
 
 
@@ -343,6 +436,118 @@ def test_rotated_polygon_is_mapped_back_to_original_crop_coordinates():
         [30.0, 40.0],
         [10.0, 40.0],
     ]
+
+
+def test_rotated_scoreline_is_mapped_back_to_original_crop_coordinates():
+    prepared_image = PreparedImage(
+        bgr=np.zeros((120, 100, 3), dtype=np.uint8),
+        original_height=100,
+        original_width=80,
+        pad_px=10,
+    )
+    scoreline = map_scoreline_to_original(
+        {
+            "visible": True,
+            "confidence": 0.80,
+            "line_xyxy": [99.0, 50.0, 19.0, 50.0],
+            "angle_degrees": 0.0,
+            "orientation": "horizontal",
+        },
+        padded_shape=prepared_image.bgr.shape,
+        rotation_degrees=90,
+        prepared_image=prepared_image,
+    )
+
+    assert scoreline["line_xyxy"] == [40.0, 10.0, 40.0, 90.0]
+    assert scoreline["angle_degrees"] == 90.0
+    assert scoreline["orientation"] == "vertical"
+
+
+def test_predictor_exports_scoreline_in_original_crop_coordinates(
+    tmp_path, monkeypatch
+):
+    image_path = tmp_path / "crop.png"
+    cv2.imwrite(str(image_path), np.full((100, 80, 3), 255, dtype=np.uint8))
+    config = replace(
+        OCRConfig(),
+        preprocessing_steps=("original",),
+        rotation_tiers=(RotationTier("tier2_90", (90,)),),
+        enable_scoreline_side_split=False,
+        min_scoreline_support=1,
+        output_dir=tmp_path / "outputs",
+    )
+    monkeypatch.setattr(
+        ocr_predictor_module,
+        "detect_scoreline_for_split",
+        lambda variant, current_config: {
+            "visible": True,
+            "confidence": 0.80,
+            "line_xyxy": [99.0, 50.0, 19.0, 50.0],
+            "angle_degrees": 0.0,
+            "orientation": "horizontal",
+        },
+    )
+
+    output = OCRPredictor(config=config, engine=StaticEngine([])).predict(
+        make_request(image_path)
+    )
+
+    assert output.scoreline.line_xyxy == [40.0, 10.0, 40.0, 90.0]
+    assert output.scoreline.angle_degrees == 90.0
+    assert output.scoreline.orientation == "vertical"
+
+
+def test_scoreline_consensus_rejects_unrelated_hough_lines():
+    config = replace(OCRConfig(), min_scoreline_support=2)
+    scoreline = finalize_scoreline(
+        [
+            {
+                "visible": True,
+                "confidence": 0.90,
+                "line_xyxy": [30.0, 0.0, 30.0, 100.0],
+                "angle_degrees": 90.0,
+                "orientation": "vertical",
+            },
+            {
+                "visible": True,
+                "confidence": 0.90,
+                "line_xyxy": [0.0, 70.0, 100.0, 70.0],
+                "angle_degrees": 0.0,
+                "orientation": "horizontal",
+            },
+        ],
+        config,
+    )
+
+    assert scoreline["visible"] is False
+    assert scoreline["support_count"] == 1
+
+
+def test_scoreline_consensus_accepts_same_geometric_line():
+    config = replace(OCRConfig(), min_scoreline_support=2)
+    scoreline = finalize_scoreline(
+        [
+            {
+                "visible": True,
+                "confidence": 0.80,
+                "line_xyxy": [50.0, 0.0, 50.0, 100.0],
+                "angle_degrees": 90.0,
+                "orientation": "vertical",
+            },
+            {
+                "visible": True,
+                "confidence": 0.90,
+                "line_xyxy": [53.0, 0.0, 53.0, 100.0],
+                "angle_degrees": 90.0,
+                "orientation": "vertical",
+            },
+        ],
+        config,
+    )
+
+    assert scoreline["visible"] is True
+    assert scoreline["support_count"] == 2
+    assert scoreline["line_xyxy"] == [53.0, 0.0, 53.0, 100.0]
 
 
 def test_oblique_polygons_are_inverse_transformed_to_original_crop():

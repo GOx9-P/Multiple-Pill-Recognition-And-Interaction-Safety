@@ -498,16 +498,14 @@ Nếu `possible_merged_instance = true`, backend không được dùng crop đó
 
 Mục tiêu là nhận diện thuộc tính quan sát được, không định danh thuốc.
 
-Attributes MVP:
+Attributes do model hiện tại dự đoán:
 
 ```text
 shape
 color
-dosage_form
-scoreline
-imprint_visibility
-damage_or_occlusion
 ```
+
+`dosage_form`, `logo_or_symbol` và `damage_or_occlusion` chưa có head đã train nên phải trả `unknown/null`. `scoreline` không thuộc Attribute model hiện tại; Module 2 chỉ giữ placeholder `unknown/null` để fusion cập nhật bằng output của OCR.
 
 Dataset đề xuất:
 
@@ -522,7 +520,7 @@ Label policy:
 - Scoreline, imprint visibility và damage/occlusion có thể là optional heads nếu chưa có annotation đáng tin.
 - Dataset reference cần được kiểm tra domain gap với ảnh consumer-grade và ảnh tự chụp.
 
-Multi-task model:
+Kiến trúc có thể mở rộng trong tương lai:
 
 ```text
 Masked pill crop
@@ -531,22 +529,18 @@ Backbone: ResNet-18 / ResNet-34 / MobileNetV4 / ConvNeXt-Tiny
     ↓
 shape head
 color head
-dosage_form head
-scoreline head
-imprint_visibility head
-damage_or_occlusion head
+optional dosage_form head
+optional scoreline evidence head
+optional imprint_visibility head
+optional damage_or_occlusion head
 ```
 
-Loss huấn luyện:
+Loss của model hiện tại:
 
 ```text
 loss =
   λ_shape * CE(shape)
 + λ_color * CE_or_BCE(color)
-+ λ_form * CE(dosage_form)
-+ λ_scoreline * BCE(scoreline)
-+ λ_imprint_visible * BCE(imprint_visibility)
-+ λ_quality * BCE(damage_or_occlusion)
 ```
 
 Shape labels MVP:
@@ -612,16 +606,25 @@ Output attribute:
     "lighting_warning": false
   },
   "dosage_form": {
-    "label": "tablet",
-    "confidence": 0.89
+    "label": "unknown",
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   },
   "scoreline": {
-    "visible": true,
-    "confidence": 0.81
+    "label": "unknown",
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   },
-  "imprint_visibility": {
-    "visible": true,
-    "confidence": 0.86
+  "logo_or_symbol": {
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
+  },
+  "damage_or_occlusion": {
+    "visible": null,
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
   }
 }
 ```
@@ -640,18 +643,12 @@ color
     → không bao giờ là primary identifier
     → bỏ hoặc giảm trọng số nếu lighting_warning = true
 
-dosage_form
-    → rerank_evidence
-    → hard reject nếu tablet/capsule mâu thuẫn rõ và confidence cao
-
 scoreline
-    → rerank_evidence phụ
+    → Module 2 không quyết định
+    → Module 3 OCR là source of truth
 
-imprint_visibility
-    → safety_gate cho OCR/retrieval
-
-damage_or_occlusion
-    → safety_gate
+dosage_form, logo_or_symbol, damage_or_occlusion
+    → chưa được dùng làm evidence khi source = not_predicted_by_attribute
 ```
 
 ### 3.3. Imprint OCR
@@ -672,7 +669,7 @@ Pill crop
     → overlay và final_result.json
 ```
 
-Quyền quyết định `scoreline.visible` trong baseline thuộc **OCR module**. Attribute model không ghi đè quyết định này. Nếu sau này vẫn giữ scoreline head trong attribute model, output của head đó chỉ là evidence phụ để benchmark hoặc cảnh báo bất đồng.
+Quyền quyết định `scoreline.visible` thuộc **OCR module**. Attribute model hiện tại luôn trả placeholder `unknown/null`; fusion bắt buộc thay placeholder này bằng toàn bộ object `scoreline` của Module 3. Nếu sau này thêm scoreline head vào Attribute model, output của head đó chỉ là evidence phụ để benchmark hoặc cảnh báo bất đồng, không ghi đè OCR.
 
 #### 3.3.1. PaddleOCR Baseline
 
@@ -756,10 +753,12 @@ Ngưỡng baseline:
 ```text
 MIN_SCORELINE_DETECTION_CONFIDENCE = 0.45
 MIN_SCORELINE_SUPPORT = 2 variants
+SCORELINE_ANGLE_CONSENSUS_TOLERANCE_DEGREES = 12.0
+SCORELINE_CONSENSUS_DISTANCE_RATIO = 0.08
 SCORELINE_CENTER_MAX_DISTANCE_RATIO = 0.30
 ```
 
-OCR tổng hợp evidence giữa các preprocessing/rotation cardinal để quyết định `scoreline.visible`. Output gồm confidence, hai đầu mút, góc, orientation, support count và nguồn quyết định:
+OCR tổng hợp evidence giữa các preprocessing/rotation cardinal để quyết định `scoreline.visible`. Hai evidence chỉ cùng consensus khi góc lệch không quá `12°` và midpoint của mỗi line đủ gần line còn lại; vì vậy các Hough line không liên quan không thể chỉ cộng support count. Trước khi xuất JSON, hai đầu mút được map từ variant quay về hệ tọa độ crop gốc và tính lại góc/orientation. Output gồm confidence, hai đầu mút, góc, orientation, support count và nguồn quyết định:
 
 ```json
 {
@@ -948,6 +947,7 @@ Mapping bắt buộc:
 | `final_answer == null` | Hai field `visible = false` |
 | `final_answer.text` | `imprint.raw` |
 | `final_answer.score` | `imprint.confidence`; tạm dùng cho `imprint_visibility.confidence` ở baseline |
+| `final_scoreline` | `scoreline`; luôn map kể cả khi `final_answer == null` |
 | Item/polygon của selected observation | Inverse-transform về tọa độ crop gốc rồi ghi vào `imprint.text_regions[]` |
 | Các observation hợp lệ trong bộ nhớ | Ánh xạ về `region_id` canonical của selected observation rồi ghi vào `imprint.ocr_observations[]` |
 | Top 3–5 phần tử từ `candidates` | `imprint.normalized_candidates[]` |
@@ -956,9 +956,9 @@ Mapping bắt buộc:
 
 Mọi `ocr_observations[].region_id` phải tồn tại trong `text_regions[]`. Polygon từ ảnh đã padding hoặc rotation không được xuất trực tiếp; adapter phải inverse-transform, bỏ padding và clip về kích thước crop đầu vào. Artifact inference được namespace theo `request_id/image_id/instance_id` để không ghi đè khi nhiều request cùng có tên `pill_001`.
 
-Các field `scoreline`, `selected_observation`, `performed_steps`, `overlay_path`, `variant_path`, `modes`, `rotations` và `preprocessings` vẫn được lưu trong artifact debug. Chúng không được chèn trực tiếp vào Module 3 output nếu chưa có trong `schema.md`.
+Các field `selected_observation`, `performed_steps`, `overlay_path`, `variant_path`, `modes`, `rotations` và `preprocessings` chỉ được lưu trong artifact debug. `scoreline` là ngoại lệ: mapper phải chuẩn hóa `final_scoreline` và đưa vào output chính thức của Module 3.
 
-Scoreline Hough hiện là control signal nội bộ của OCR để quyết định side-split. Contract hiện tại vẫn đặt field `scoreline` ở Module 2/CV Pipeline. Nếu chuyển quyền sở hữu scoreline output hoàn toàn sang OCR, phải tạo phiên bản schema mới; không được tự ý thêm field vào Module 3 response hiện tại.
+Scoreline Hough vừa là control signal cho side-split, vừa là output chính thức do OCR sở hữu. Việc OCR không đọc được imprint không được làm mất kết quả scoreline: khi `final_answer = null`, output vẫn phải chứa quyết định `scoreline` đã tổng hợp.
 
 ### 3.4. CV Output JSON
 
@@ -966,7 +966,7 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
 
 ```json
 {
-  "schema_version": "cv_output_v0",
+  "schema_version": "cv_output_v1",
   "request_id": "req_2026_001",
   "session_id": "sess_2026_001",
   "image_id": "img_001",
@@ -1010,17 +1010,30 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
         "lighting_warning": false
       },
       "dosage_form": {
-        "label": "tablet",
-        "confidence": 0.89
+        "label": "unknown",
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
       },
       "scoreline": {
-        "label": "single",
         "visible": true,
-        "confidence": 0.81
+        "confidence": 0.77,
+        "angle_degrees": 79.99,
+        "orientation": "vertical",
+        "line_xyxy": [618.0, 259.0, 675.0, 582.0],
+        "support_count": 5,
+        "rotation_degrees": 180,
+        "preprocessing": "blackhat_bold",
+        "source": "ocr_hough_consensus"
       },
       "logo_or_symbol": {
-        "visible": false,
-        "confidence": 0.63
+        "visible": null,
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
+      },
+      "damage_or_occlusion": {
+        "visible": null,
+        "confidence": null,
+        "source": "not_predicted_by_attribute"
       },
       "imprint_visibility": {
         "visible": true,
@@ -1076,8 +1089,14 @@ bbox_xyxy, mask_path, crop_path
 segmentation.confidence, occlusion_estimate, possible_merged_instance, possible_non_pill
     → safety_gate
 
-shape, color, dosage_form, scoreline
+shape, color
     → rerank_evidence
+
+scoreline
+    → rerank_evidence do OCR cung cấp; fusion không lấy placeholder từ Attribute
+
+dosage_form, logo_or_symbol, damage_or_occlusion
+    → bỏ qua khi source = not_predicted_by_attribute
 
 imprint_visibility, imprint.confidence
     → safety_gate cho OCR/retrieval
@@ -1141,8 +1160,8 @@ Input:
 - Imprint candidates có trọng số từ CV.
 - Shape label và alternatives.
 - Color distribution, color confidence và lighting warning.
-- Dosage form quan sát được.
-- Scoreline/imprint visibility.
+- Dosage form nếu một module tương lai cung cấp dự đoán thật; giá trị `unknown` hiện tại phải bị bỏ qua.
+- Scoreline do OCR cung cấp và imprint visibility.
 - Country hoặc market nếu người dùng cung cấp.
 
 Query mẫu:
@@ -1169,8 +1188,16 @@ Query mẫu:
     "lighting_warning": false
   },
   "dosage_form": {
-    "label": "tablet",
-    "confidence": 0.89
+    "label": "unknown",
+    "confidence": null,
+    "source": "not_predicted_by_attribute"
+  },
+  "scoreline": {
+    "visible": true,
+    "confidence": 0.77,
+    "angle_degrees": 79.99,
+    "orientation": "vertical",
+    "source": "ocr_hough_consensus"
   },
   "market": "US"
 }
@@ -1245,9 +1272,11 @@ Sau khi có shortlist từ imprint index, backend mới tính attribute score ch
 ```text
 shape_score(record)       = consistency(predicted_shape, record.shape)
 color_score(record)       = overlap(predicted_color_distribution, record.colors)
-dosage_form_score(record) = consistency(predicted_form, record.dosage_form)
+scoreline_score(record)   = consistency(ocr_scoreline, record.score_line)
 market_score(record)      = availability(record.market, requested_market)
 ```
+
+Feature có `source = not_predicted_by_attribute` không được chấm thành `0` vì như vậy sẽ phạt candidate một cách giả tạo. Backend bỏ feature đó và chỉ chuẩn hóa trọng số trên các feature có evidence thật.
 
 Color score là phép tra trực tiếp trên distribution, không tạo query mới. Ví dụ:
 
@@ -1270,7 +1299,7 @@ final_score =
   0.65 * imprint_match_score
 + 0.15 * shape_score
 + 0.10 * color_score
-+ 0.05 * dosage_form_score
++ 0.05 * scoreline_score
 + 0.05 * market_score
 ```
 
@@ -1357,7 +1386,8 @@ Chỉ `identified` mới được đưa vào DDI lookup chắc chắn.
         "imprint_match_score": 0.655,
         "shape_score": 0.91,
         "color_score": 0.72,
-        "dosage_form_score": 0.89,
+        "dosage_form_score": null,
+        "scoreline_score": 0.77,
         "market_score": 1.0,
         "hard_reject": false
       }
@@ -1371,7 +1401,8 @@ Chỉ `identified` mới được đưa vào DDI lookup chắc chắn.
         "imprint_match_score": 0.598,
         "shape_score": 0.91,
         "color_score": 0.72,
-        "dosage_form_score": 0.89,
+        "dosage_form_score": null,
+        "scoreline_score": 0.77,
         "market_score": 1.0,
         "hard_reject": false
       }
