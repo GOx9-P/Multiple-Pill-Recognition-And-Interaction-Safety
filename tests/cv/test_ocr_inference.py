@@ -22,6 +22,7 @@ from pill_safety.cv.ocr.engines.paddleocr_engine import parse_prediction_result
 from pill_safety.cv.ocr.postprocessing.candidates import (
     build_final_candidate,
     finalize_scoreline,
+    rank_text_candidates,
     select_baseline_observation,
 )
 from pill_safety.cv.ocr.postprocessing.ordering import sequence_confidence
@@ -388,6 +389,43 @@ def test_final_answer_uses_top_ranked_candidate_not_legacy_observation():
     assert final_candidate["text"] == "AH12"
     assert final_candidate["score"] == 0.7732
     assert final_candidate["selection_method"] == "ranked_candidate_consensus"
+
+
+def test_ranker_suppresses_fragments_when_full_ocr_candidate_exists():
+    """Khong de AN, 627 hoac 0 danh bai AN 627 va 059 trong final ranking."""
+
+    def observation(text, confidence, *, rotation):
+        item = {"text": text, "confidence": confidence}
+        return {
+            "mode": "full_image",
+            "tier": "tier1",
+            "rotation_degrees": rotation,
+            "preprocessing": "original",
+            "detected_text": text,
+            "ordered_items": [item],
+            "text_candidates": [
+                {"ordering": "linear", "text": text, "items": [item]}
+            ],
+        }
+
+    candidates = rank_text_candidates(
+        [
+            observation("AN", 0.99, rotation=0),
+            observation("AN", 0.99, rotation=180),
+            observation("627", 0.99, rotation=90),
+            observation("AN 627", 0.80, rotation=270),
+            observation("0", 0.99, rotation=-45),
+            observation("059", 0.75, rotation=45),
+        ],
+        OCRConfig(),
+    )
+
+    normalized = {candidate["normalized_text"] for candidate in candidates}
+    assert "AN" not in normalized
+    assert "627" not in normalized
+    assert "0" not in normalized
+    assert "AN627" in normalized
+    assert "059" in normalized
 
 
 def test_yaml_defaults_match_the_notebook_configuration():

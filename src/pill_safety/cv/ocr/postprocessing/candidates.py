@@ -31,6 +31,30 @@ def normalize_candidate_text(text: str) -> str:
     return "".join(character for character in str(text).upper() if character.isalnum())
 
 
+def suppress_dominated_fragments(
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Loai candidate ngan khi no nam trong mot candidate dai hon da duoc OCR doc."""
+
+    retained = []
+    for candidate in candidates:
+        candidate_key = candidate["normalized_text"]
+        parent = next(
+            (
+                other
+                for other in candidates
+                if len(other["normalized_text"]) > len(candidate_key)
+                and candidate_key in other["normalized_text"]
+            ),
+            None,
+        )
+        if parent is not None:
+            candidate["_dominated_by"] = parent["normalized_text"]
+            continue
+        retained.append(candidate)
+    return retained
+
+
 def rank_text_candidates(
     observations: list[dict[str, Any]], config: OCRConfig
 ) -> list[dict[str, Any]]:
@@ -115,8 +139,9 @@ def rank_text_candidates(
                 "_best_items": best_evidence["items"],
             }
         )
+    retained_candidates = suppress_dominated_fragments(ranked)
     return sorted(
-        ranked,
+        retained_candidates,
         key=lambda candidate: (
             candidate["score"],
             candidate["support_count"],
