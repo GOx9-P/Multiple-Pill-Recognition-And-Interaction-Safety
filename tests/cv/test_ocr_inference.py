@@ -247,6 +247,43 @@ def test_no_text_still_returns_valid_module_3_output(tmp_path):
     }
 
 
+def test_unrankable_observation_returns_empty_imprint_instead_of_crashing(tmp_path):
+    """OCR co box yeu nhung khong co candidate hop le phai tra unknown an toan."""
+
+    image_path = tmp_path / "crop.png"
+    cv2.imwrite(str(image_path), np.full((100, 100, 3), 180, dtype=np.uint8))
+    engine = StaticEngine(
+        [
+            {
+                "text": "A",
+                "confidence": 0.99,
+                "polygon": [[20, 30], [40, 30], [40, 60], [20, 60]],
+            },
+            {
+                "text": "B",
+                "confidence": 0.01,
+                "polygon": [[50, 30], [70, 30], [70, 60], [50, 60]],
+            },
+        ]
+    )
+    config = replace(
+        OCRConfig(),
+        preprocessing_steps=("original",),
+        rotation_tiers=(RotationTier("tier1", (0,)),),
+        enable_scoreline_side_split=False,
+        output_dir=tmp_path / "outputs",
+    )
+
+    artifacts = OCRPredictor(config=config, engine=engine).predict_with_artifacts(
+        make_request(image_path)
+    )
+    debug_payload = json.loads(artifacts.debug_json_path.read_text(encoding="utf-8"))
+
+    assert artifacts.output.imprint.visible is False
+    assert artifacts.output.imprint.raw == ""
+    assert debug_payload["rejection_reason"] == "no_ranked_candidate"
+
+
 def test_no_text_still_exports_scoreline_owned_by_ocr(tmp_path, monkeypatch):
     """Bảo đảm scoreline không bị mất khi OCR không đọc được imprint."""
 

@@ -292,9 +292,7 @@ class OCRPredictor:
         schema_json_path = output_directory / f"{instance_directory}_ocr_schema.json"
         overlay_path: Path | None = None
 
-        if valid_observations:
-            if not ranked_candidates:
-                raise RuntimeError("Valid OCR observations produced no ranked candidate.")
+        if ranked_candidates:
             best = ranked_candidates[0]["_best_observation"]
             best_items = ranked_candidates[0]["_best_items"]
             final_candidate = build_final_candidate(best, ranked_candidates)
@@ -344,7 +342,14 @@ class OCRPredictor:
                 "image_name": image_path.name,
                 "final_answer": None,
                 "scoreline": final_scoreline,
-                "candidates": [],
+                "candidates": [
+                    public_candidate(candidate) for candidate in ranked_candidates
+                ],
+                "rejection_reason": (
+                    "no_valid_ocr_observation"
+                    if not valid_observations
+                    else "no_ranked_candidate"
+                ),
                 "performed_steps": performed_steps,
                 "overlay_path": None,
             }
