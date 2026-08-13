@@ -738,8 +738,8 @@ def test_region_filter_keeps_imprint_and_rejects_canvas_false_regions():
     ]
 
 
-def test_region_filter_rejects_canvas_edge_and_oversized_regions():
-    """Hai gate hinh hoc con lai phai loai dung text region bat thuong."""
+def test_region_filter_keeps_edge_text_inside_mask_and_rejects_oversized_region():
+    """Cham bien do phep xoay khong du de loai text van nam trong mask vien."""
 
     foreground_mask = np.ones((120, 120), dtype=np.uint8)
     items = [
@@ -757,10 +757,9 @@ def test_region_filter_rejects_canvas_edge_and_oversized_regions():
 
     accepted, rejected = filter_text_regions(items, foreground_mask, OCRConfig())
 
-    assert accepted == []
+    assert [item["text"] for item in accepted] == ["edge"]
     assert [item["rejection_reason"] for item in rejected] == [
-        "touches_canvas_edge",
-        "text_region_too_large",
+        "text_region_too_large"
     ]
 
 

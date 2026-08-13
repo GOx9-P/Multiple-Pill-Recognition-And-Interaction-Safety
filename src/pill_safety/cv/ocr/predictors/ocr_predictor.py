@@ -168,6 +168,18 @@ class OCRPredictor:
                             "scoreline_visible": scoreline.get("visible", False),
                             "text_regions_kept": len(items),
                             "text_regions_rejected": len(rejected_regions),
+                            "rejected_text_regions": [
+                                {
+                                    "text": str(item.get("text", "")),
+                                    "confidence": round(
+                                        float(item.get("confidence", 0.0)), 4
+                                    ),
+                                    "reason": str(
+                                        item.get("rejection_reason", "unknown")
+                                    ),
+                                }
+                                for item in rejected_regions
+                            ],
                         }
                     )
                     attach_original_polygons(

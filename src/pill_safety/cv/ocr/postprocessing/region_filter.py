@@ -33,7 +33,7 @@ def filter_text_regions(
     foreground_mask: np.ndarray | None,
     config: OCRConfig,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Bo text region nam ngoai vien, bam bien canvas, hoac qua lon bat thuong."""
+    """Bo text region nam ngoai vien hoac co dien tich qua lon bat thuong."""
 
     if foreground_mask is None:
         return list(items), []
@@ -43,8 +43,6 @@ def filter_text_regions(
     if foreground_area == 0:
         return [], [dict(item, rejection_reason="empty_foreground_mask") for item in items]
 
-    height, width = foreground.shape
-    edge_margin = max(1, int(round(min(height, width) * config.text_region_edge_margin_ratio)))
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
 
@@ -61,17 +59,8 @@ def filter_text_regions(
 
         foreground_coverage = float(foreground[region_mask > 0].mean())
         region_area_ratio = region_area / foreground_area
-        touches_canvas_edge = (
-            xs.min() <= edge_margin
-            or xs.max() >= width - 1 - edge_margin
-            or ys.min() <= edge_margin
-            or ys.max() >= height - 1 - edge_margin
-        )
         if foreground_coverage < config.min_text_region_foreground_coverage:
             rejected.append(dict(item, rejection_reason="outside_pill_mask"))
-            continue
-        if touches_canvas_edge:
-            rejected.append(dict(item, rejection_reason="touches_canvas_edge"))
             continue
         if region_area_ratio > config.max_text_region_area_ratio:
             rejected.append(dict(item, rejection_reason="text_region_too_large"))
