@@ -17,64 +17,10 @@ from pill_safety.cv.attribute.models.resnet18_multitask import MultiTaskResNet18
 from pill_safety.cv.attribute.datasets.shape_dataset import ShapeDataset
 from pill_safety.cv.attribute.datasets.color_dataset import ColorDataset
 from pill_safety.cv.attribute.utils.transforms import get_shape_transforms, get_color_transforms
-
-def evaluate(model, shape_val_loader, color_val_loader, criterion_shape, criterion_color, device):
-    """Hàm đánh giá độc lập trên tập Validation"""
-    model.eval()
-    val_loss = 0.0
-    val_shape_loss = 0.0
-    val_color_loss = 0.0
-    
-    all_s_preds, all_s_targets = [], []
-    all_c_preds, all_c_targets = [], []
-    
-    with torch.no_grad():
-        # Đánh giá nhánh Shape
-        for s_imgs, s_labels in shape_val_loader:
-            s_imgs = s_imgs.to(device)
-            s_labels = s_labels.long().to(device)
-            if s_labels.dim() > 1:
-                s_labels = s_labels.squeeze(1)
-                
-            s_logits = model(s_imgs, task_type='shape')
-            loss_s = criterion_shape(s_logits, s_labels)
-            val_shape_loss += loss_s.item()
-            
-            all_s_preds.extend(torch.argmax(s_logits, dim=1).cpu().numpy())
-            all_s_targets.extend(s_labels.cpu().numpy())
-            
-        # Đánh giá nhánh Color
-        for c_imgs, c_labels in color_val_loader:
-            c_imgs, c_labels = c_imgs.to(device), c_labels.float().to(device)
-            
-            c_logits = model(c_imgs, task_type='color')
-            loss_c = criterion_color(c_logits, c_labels)
-            val_color_loss += loss_c.item()
-            
-            c_preds_binary = (torch.sigmoid(c_logits) > 0.5).int()
-            all_c_preds.extend(c_preds_binary.cpu().numpy())
-            all_c_targets.extend(c_labels.int().cpu().numpy())
-            
-    avg_s_loss = val_shape_loss / max(len(shape_val_loader), 1)
-    avg_c_loss = val_color_loss / max(len(color_val_loader), 1)
-    avg_total_loss = avg_s_loss + avg_c_loss
-    
-    val_shape_f1 = f1_score(all_s_targets, all_s_preds, average='macro', zero_division=0)
-    val_color_f1 = f1_score(all_c_targets, all_c_preds, average='macro', zero_division=0)
-    val_combined_f1 = (val_shape_f1 + val_color_f1) / 2.0
-    
-    metrics = {
-        "val_loss": round(avg_total_loss, 4),
-        "shape_loss": round(avg_s_loss, 4),
-        "color_loss": round(avg_c_loss, 4),
-        "shape_f1": round(float(val_shape_f1), 4),
-        "color_f1": round(float(val_color_f1), 4),
-        "combined_f1": round(float(val_combined_f1), 4)
-    }
-    return metrics
+from pill_safety.cv.attribute.evaluators.metric_evaluator import evaluate
 
 def train():
-    run_id = "attr_head_v1"
+    run_id = "attr_head_v2"
     module_name = "attribute_resnet18_head_tune"
     author = "Nguyen Gia Bao"
     started_at_str = time.strftime("%Y-%m-%d %H:%M", time.localtime())
@@ -97,43 +43,47 @@ def train():
     config_data = {
         "run_id": run_id,
         "module": module_name,
+        "model": "ResNet18",
+        "pretrained_weight": "ImageNet",
+        "train_strategy": "head_tune",
+        "image_size": 224,
+        "epochs": 15,
+        "batch_size_shape": 32,
+        "batch_size_color": 64, 
+        "learning_rate": 0.001,
+        "optimizer": "adamw",
+        "scheduler": "ReduceLROnPlateau",
         "seed": 42,
-        "model": {
-            "architecture": "ResNet18",
-            "pretrained_weight": "ImageNet",
-            "train_strategy": "head_tune",
-            "frozen_backbone": True,
-            "trainable_layers": ["classification_heads"]
-        },
-        "training": {
-            "image_size": 224,
-            "epochs": 30,
-            "shape_batch_size": 32,
-            "color_batch_size": 64,
-            "learning_rate": 0.001,
-            "optimizer": "adamw",
-            "scheduler": "cosine_or_plateau"
-        },
+        "frozen_backbone": True,
+        "trainable_layers": ["classification_heads"],
         "tasks": ["shape", "color"],
         "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
+        "dataset": {
+            "name": "NIH PILL IMAGE",
+            "split_file": "data/splits/nih_attribute"
+        },
         "augmentation": {
-            "enabled": False,
-            "split": "train_only"
+            "enabled": True,
+            "online": False,
+            "sim2real": True
         }
     }
     with open(os.path.join(log_dir, f"{run_id}_config.yaml"), "w", encoding="utf-8") as f:
         yaml.dump(config_data, f, sort_keys=False)
 
+    shape_train_csv = "data/splits/nih_attribute/shape/train_combined_crop.csv"
+    color_train_csv = "data/splits/nih_attribute/color/train_multilabel.csv"
+
     manifest_data = {
         "run_id": run_id,
         "dataset_name": "NIH/RxImage",
-        "shape_csv": "data/splits/nih_attribute/shape/train_combined_crop.csv",
-        "color_csv": "data/splits/nih_attribute/color/train_multilabel.csv",
+        "shape_csv": shape_train_csv,
+        "color_csv": color_train_csv,
         "shape_val_csv": "data/splits/nih_attribute/shape/val_combined_crop.csv",
         "color_val_csv": "data/splits/nih_attribute/color/val_multilabel.csv",
         "train_shape_count": 17840,
-        "val_shape_count": 1000,
-        "test_shape_count": 1000,
+        "val_shape_count": 454,
+        "test_shape_count": 458,
         "train_color_count": 37312,
         "val_color_count": 876,
         "test_color_count": 880,
@@ -151,11 +101,34 @@ def train():
     with open(os.path.join(log_dir, f"{run_id}_dataset_manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest_data, f, indent=4, ensure_ascii=False)
 
-    # Khởi tạo Train Dataloaders
-    shape_loader = DataLoader(ShapeDataset(csv_file=manifest_data["shape_csv"], img_dir="data/image_all/nih_attribute/shape", transform=get_shape_transforms()), batch_size=32, shuffle=True, drop_last=True)
-    color_loader = DataLoader(ColorDataset(csv_file=manifest_data["color_csv"], img_dir="data/image_all/nih_attribute/color", transform=get_color_transforms()), batch_size=64, shuffle=True, drop_last=True)
+    # --- TỰ ĐỘNG TÍNH TOÁN TRỌNG SỐ CHO DỮ LIỆU MẤT CÂN BẰNG (Đã trỏ đúng chuẩn cột CSV) ---
+    print("[Info] Đang tính toán trọng số xử lý mất cân bằng dữ liệu (Imbalance Weights)...")
+    
+    # 1. Tính class_weights cho Shape (CrossEntropyLoss) - Lấy cột 'label_shape'
+    shape_df = pd.read_csv(shape_train_csv)
+    shape_labels = shape_df['label_shape'].values.astype(int)
+    class_counts = np.bincount(shape_labels)
+    total_samples = len(shape_labels)
+    num_classes = len(class_counts)
+    shape_class_weights = total_samples / (num_classes * class_counts.astype(float))
+    shape_weights_tensor = torch.FloatTensor(shape_class_weights).to(device)
+    print(f"[Info] Shape Class Weights: {shape_class_weights}")
 
-    # Khởi tạo Validation Dataloaders (Dùng transform chuẩn không augmentation)
+    # 2. Tính pos_weight cho Color (BCEWithLogitsLoss) - Bỏ qua 2 cột đầu (rximageFileName, is_synthetic), lấy từ label_BLACK trở đi (iloc[:, 2:])
+    color_df = pd.read_csv(color_train_csv)
+    color_labels_matrix = color_df.iloc[:, 2:].values.astype(float) 
+    pos_counts = color_labels_matrix.sum(axis=0)
+    neg_counts = len(color_labels_matrix) - pos_counts
+    pos_weights = neg_counts / np.clip(pos_counts, 1, None)
+    color_pos_weight_tensor = torch.FloatTensor(pos_weights).to(device)
+    print(f"[Info] Color Pos Weights: {pos_weights}")
+    # ---------------------------------------------------------------------------------------
+
+    # Khởi tạo Train Dataloaders
+    shape_loader = DataLoader(ShapeDataset(csv_file=shape_train_csv, img_dir="data/image_all/nih_attribute/shape", transform=get_shape_transforms()), batch_size=32, shuffle=True, drop_last=True)
+    color_loader = DataLoader(ColorDataset(csv_file=color_train_csv, img_dir="data/image_all/nih_attribute/color", transform=get_color_transforms()), batch_size=64, shuffle=True, drop_last=True)
+
+    # Khởi tạo Validation Dataloaders
     shape_val_loader = DataLoader(ShapeDataset(csv_file=manifest_data["shape_val_csv"], img_dir="data/image_all/nih_attribute/shape", transform=get_shape_transforms()), batch_size=32, shuffle=False)
     color_val_loader = DataLoader(ColorDataset(csv_file=manifest_data["color_val_csv"], img_dir="data/image_all/nih_attribute/color", transform=get_color_transforms()), batch_size=64, shuffle=False)
 
@@ -164,11 +137,21 @@ def train():
         param.requires_grad = False
 
     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-3)
-    criterion_shape = nn.CrossEntropyLoss()
-    criterion_color = nn.BCEWithLogitsLoss()
+    
+    # --- CẬP NHẬT: NÂNG CẤP LEARNING RATE SCHEDULER ---
+    # Sử dụng ReduceLROnPlateau: Theo dõi combined_f1 trên tập val, nếu sau 2 epoch không cải thiện thì giảm lr đi một nửa (factor=0.5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, 
+        mode='max', 
+        factor=0.5, 
+        patience=2, 
+    )
+    
+    criterion_shape = nn.CrossEntropyLoss(weight=shape_weights_tensor)
+    criterion_color = nn.BCEWithLogitsLoss(pos_weight=color_pos_weight_tensor)
     lambda_color = 1.0
 
-    epochs = 30
+    epochs = 15
     best_metric = 0.0
     epoch_logs = []
     best_val_metrics = {}
@@ -223,9 +206,12 @@ def train():
         avg_s_loss = running_shape_loss / num_steps
         avg_c_loss = running_color_loss / num_steps
         
-        # Đánh giá thực tế trên tập Validation sau mỗi epoch
         val_metrics = evaluate(model, shape_val_loader, color_val_loader, criterion_shape, criterion_color, device)
         current_metric = val_metrics["combined_f1"]
+        
+        # Cập nhật Learning Rate Scheduler dựa trên metric validation
+        scheduler.step(current_metric)
+        current_lr = optimizer.param_groups[0]['lr']
         
         is_best = current_metric > best_metric
         if is_best:
@@ -241,20 +227,36 @@ def train():
             "color_loss": round(avg_c_loss, 4),
             "val_shape_f1": val_metrics["shape_f1"],
             "val_color_f1": val_metrics["color_f1"],
-            "learning_rate": 0.001,
+            "val_combined_f1": val_metrics["combined_f1"],
+            "val_shape_acc": val_metrics["shape_acc"],
+            "val_color_acc": val_metrics["color_acc"],
+            "val_combined_acc": val_metrics["combined_acc"],
+            "learning_rate": current_lr,  # Ghi nhận learning rate thực tế thay đổi theo scheduler
             "best_metric": best_metric,
             "is_best": is_best
         })
-        print(f"Epoch [{epoch+1}/{epochs}] | Train Loss: {avg_loss:.4f} | Val Loss: {val_metrics['val_loss']} | Val Combined F1: {current_metric:.4f} | Best: {best_metric}")
+        print(
+            f"Epoch [{epoch+1}/{epochs}] | "
+            f"Train Loss: {avg_loss:.4f} | "
+            f"Val Loss: {val_metrics['val_loss']:.4f} | "
+            f"Shape (F1/Acc): {val_metrics['shape_f1']:.4f}/{val_metrics['shape_acc']:.4f} | "
+            f"Color (F1/Acc): {val_metrics['color_f1']:.4f}/{val_metrics['color_acc']:.4f} | "
+            f"LR: {current_lr:.6f} | "
+            f"Best: {best_metric:.4f}"
+        )
 
     torch.save(model.state_dict(), os.path.join(ckpt_dir, f"{run_id}_last.pt"))
 
-    # Xuất file val_metrics.json theo đúng Contract thư mục metrics/
     with open(os.path.join(metric_dir, f"{run_id}_val_metrics.json"), "w", encoding="utf-8") as f:
         json.dump(best_val_metrics, f, indent=4, ensure_ascii=False)
 
     log_df = pd.DataFrame(epoch_logs)
-    cols_order = ["epoch", "train_loss", "val_loss", "shape_loss", "color_loss", "val_shape_f1", "val_color_f1", "learning_rate", "best_metric", "is_best"]
+    cols_order = [
+        "epoch", "train_loss", "val_loss", "shape_loss", "color_loss", 
+        "val_shape_f1", "val_color_f1", "val_combined_f1",
+        "val_shape_acc", "val_color_acc", "val_combined_acc", 
+        "learning_rate", "best_metric", "is_best"
+    ]
     log_df = log_df[cols_order]
     log_df.to_csv(os.path.join(log_dir, f"{run_id}_train_log.csv"), index=False)
 
@@ -262,54 +264,30 @@ def train():
     elapsed_minutes = int((time.time() - start_time) / 60)
     
     runtime_content = f"""run_id: {run_id}
-                            module: {module_name}
-                            started_at: {started_at_str}
-                            finished_at: {finished_at_str}
-                            device: {device.type}
-                            gpu_name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}
-                            python_version: {sys.version.split()[0]}
-                            torch_version: {torch.__version__}
-                            cuda_available: {torch.cuda.is_available()}
-                            total_train_time_minutes: {elapsed_minutes}
+                        module: {module_name}
+                        started_at: {started_at_str}
+                        finished_at: {finished_at_str}
+                        device: {device.type}
+                        gpu_name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}
+                        python_version: {sys.version.split()[0]}
+                        torch_version: {torch.__version__}
+                        cuda_available: {torch.cuda.is_available()}
+                        total_train_time_minutes: {elapsed_minutes}
 """
     with open(os.path.join(log_dir, f"{run_id}_runtime.txt"), "w", encoding="utf-8") as f:
         f.write(runtime_content)
 
     # ==========================================
-    # PHẦN SỬA LẠI: XUẤT ĐỦ 5 BIỂU ĐỒ CHO THƯ MỤC PLOTS
+    # XUẤT BIỂU ĐỒ TRỰC QUAN HÓA QUÁ TRÌNH TRAIN
     # ==========================================
-    from sklearn.metrics import confusion_matrix
-    import seaborn as sns
-
-    # 1. Load lại model tốt nhất để tính toán các biểu đồ đánh giá chi tiết
     model.load_state_dict(torch.load(os.path.join(ckpt_dir, f"{run_id}_best.pt"), map_location=device))
     model.eval()
-
-    val_shape_preds, val_shape_targets = [], []
-    val_color_preds_list, val_color_targets_list = [], []
-
-    with torch.no_grad():
-        for s_imgs, s_labels in shape_val_loader:
-            s_imgs = s_imgs.to(device)
-            s_labels = s_labels.long().to(device)
-            if s_labels.dim() > 1: s_labels = s_labels.squeeze(1)
-            s_logits = model(s_imgs, task_type='shape')
-            val_shape_preds.extend(torch.argmax(s_logits, dim=1).cpu().numpy())
-            val_shape_targets.extend(s_labels.cpu().numpy())
-
-        for c_imgs, c_labels in color_val_loader:
-            c_imgs = c_imgs.to(device)
-            c_logits = model(c_imgs, task_type='color')
-            preds_bin = (torch.sigmoid(c_logits) > 0.5).int().cpu().numpy()
-            val_color_preds_list.extend(preds_bin)
-            val_color_targets_list.extend(c_labels.int().numpy())
 
     epochs_list = log_df['epoch'].values
     train_loss_list = log_df['train_loss'].values
     val_loss_list = log_df['val_loss'].values
-    metric_list = log_df['val_shape_f1'].values # Hoặc combined_f1 tuỳ chọn
 
-    # 1. <run_id>_loss_curve.png
+    # 1. Loss Curve
     plt.figure(figsize=(8, 5))
     plt.plot(epochs_list, train_loss_list, label='Train Loss', color='blue', marker='o')
     plt.plot(epochs_list, val_loss_list, label='Val Loss', color='orange', marker='x')
@@ -321,7 +299,7 @@ def train():
     plt.savefig(os.path.join(plot_dir, f"{run_id}_loss_curve.png"))
     plt.close()
 
-    # 2. <run_id>_metric_curve.png
+    # 2. Metric Curve
     plt.figure(figsize=(8, 5))
     plt.plot(epochs_list, log_df['val_shape_f1'].values, label='Shape F1', color='green', marker='s')
     plt.plot(epochs_list, log_df['val_color_f1'].values, label='Color F1', color='purple', marker='^')
@@ -333,31 +311,7 @@ def train():
     plt.savefig(os.path.join(plot_dir, f"{run_id}_metric_curve.png"))
     plt.close()
 
-    # 3. <run_id>_shape_confusion_matrix.png
-    plt.figure(figsize=(7, 6))
-    cm = confusion_matrix(val_shape_targets, val_shape_preds)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
-    plt.title(f"Shape Confusion Matrix - {run_id}")
-    plt.xlabel("Predicted Label")
-    plt.ylabel("True Label")
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, f"{run_id}_shape_confusion_matrix.png"))
-    plt.close()
-
-    # 4. <run_id>_color_f1_per_class.png
-    from sklearn.metrics import f1_score
-    color_f1s = f1_score(val_color_targets_list, val_color_preds_list, average=None, zero_division=0)
-    plt.figure(figsize=(10, 5))
-    plt.bar([f"Class {i}" for i in range(len(color_f1s))], color_f1s, color='teal')
-    plt.title(f"Color F1-Score Per Class - {run_id}")
-    plt.xlabel("Color Classes")
-    plt.ylabel("F1-Score")
-    plt.ylim(0, 1.0)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(plot_dir, f"{run_id}_color_f1_per_class.png"))
-    plt.close()
-
-    # 5. <run_id>_summary.png
+    # 3. Summary Plot
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     axes[0].plot(epochs_list, train_loss_list, label='Train Loss', color='blue')
     axes[0].plot(epochs_list, val_loss_list, label='Val Loss', color='orange')
@@ -378,7 +332,7 @@ def train():
     plt.savefig(os.path.join(plot_dir, f"{run_id}_summary.png"))
     plt.close()
 
-    print(f"[Done] Huấn luyện và đánh giá Validation thành công! Đã lưu file metric vào {metric_dir}")
+    print(f"[Done] Huấn luyện với Scheduler thành công! Đã lưu kết quả vào {base_exp_dir}")
 
 if __name__ == "__main__":
     train()
