@@ -1,25 +1,27 @@
 run_id: attr_head_v1
 module: attribute_resnet18_head_tune
+model: ResNet18
+pretrained_weight: ImageNet
+train_strategy: head_tune
+image_size: 224
+epochs: 15
+batch_size_shape: 32
+batch_size_color: 64
+learning_rate: 0.001
+optimizer: adamw
+scheduler: ReduceLROnPlateau
 seed: 42
-model:
-  architecture: ResNet18
-  pretrained_weight: ImageNet
-  train_strategy: head_tune
-  frozen_backbone: true
-  trainable_layers:
-  - classification_heads
-training:
-  image_size: 224
-  epochs: 30
-  shape_batch_size: 32
-  color_batch_size: 64
-  learning_rate: 0.001
-  optimizer: adamw
-  scheduler: cosine_or_plateau
+frozen_backbone: true
+trainable_layers:
+- classification_heads
 tasks:
 - shape
 - color
 label_mapping_file: data/processed/nih_attribute/label_mapping.json
+dataset:
+  name: NIH PILL IMAGE
+  split_file: data/splits/nih_attribute
 augmentation:
-  enabled: false
-  split: train_only
+  enabled: true
+  online: false
+  sim2real: true

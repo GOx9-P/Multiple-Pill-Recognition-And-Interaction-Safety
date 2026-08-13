@@ -1,0 +1,11 @@
+{
+    "val_loss": 0.3663,
+    "shape_loss": 0.1062,
+    "color_loss": 0.2601,
+    "shape_f1": 0.9231,
+    "color_f1": 0.6679,
+    "combined_f1": 0.7955,
+    "shape_acc": 0.9868,
+    "color_acc": 0.605,
+    "combined_acc": 0.7959
+}

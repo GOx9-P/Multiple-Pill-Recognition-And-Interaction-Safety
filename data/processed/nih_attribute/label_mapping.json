@@ -1,0 +1,45 @@
+{
+    "shape_classification": {
+        "CAPSULE": 0,
+        "IRREGULAR": 1,
+        "OVAL": 2,
+        "POLYGON": 3,
+        "ROUND": 4
+    },
+    "color_multilabel": {
+        "labels": [
+            "BEIGE",
+            "BLACK",
+            "BLUE",
+            "BROWN",
+            "CLEAR",
+            "GOLD",
+            "GRAY",
+            "GREEN",
+            "PINK",
+            "PURPLE",
+            "RED",
+            "SILVER",
+            "TURQUOISE",
+            "WHITE",
+            "YELLOW"
+        ],
+        "mapping": {
+            "BEIGE": 0,
+            "BLACK": 1,
+            "BLUE": 2,
+            "BROWN": 3,
+            "CLEAR": 4,
+            "GOLD": 5,
+            "GRAY": 6,
+            "GREEN": 7,
+            "PINK": 8,
+            "PURPLE": 9,
+            "RED": 10,
+            "SILVER": 11,
+            "TURQUOISE": 12,
+            "WHITE": 13,
+            "YELLOW": 14
+        }
+    }
+}

@@ -20,7 +20,7 @@ from pill_safety.cv.attribute.utils.transforms import get_shape_transforms, get_
 from pill_safety.cv.attribute.evaluators.metric_evaluator import evaluate
 
 def train():
-    run_id = "attr_head_v2"
+    run_id = "attr_head_v1"
     module_name = "attribute_resnet18_head_tune"
     author = "Nguyen Gia Bao"
     started_at_str = time.strftime("%Y-%m-%d %H:%M", time.localtime())
@@ -124,13 +124,57 @@ def train():
     print(f"[Info] Color Pos Weights: {pos_weights}")
     # ---------------------------------------------------------------------------------------
 
-    # Khởi tạo Train Dataloaders
-    shape_loader = DataLoader(ShapeDataset(csv_file=shape_train_csv, img_dir="data/image_all/nih_attribute/shape", transform=get_shape_transforms()), batch_size=32, shuffle=True, drop_last=True)
-    color_loader = DataLoader(ColorDataset(csv_file=color_train_csv, img_dir="data/image_all/nih_attribute/color", transform=get_color_transforms()), batch_size=64, shuffle=True, drop_last=True)
+    # Khởi tạo Train Dataloaders (Đã tối ưu num_workers và pin_memory)
+    shape_loader = DataLoader(
+        ShapeDataset(
+            csv_file=shape_train_csv, 
+            img_dir="data/image_all/nih_attribute/shape", 
+            transform=get_shape_transforms()
+        ), 
+        batch_size=32, 
+        shuffle=True, 
+        drop_last=True, 
+        num_workers=4, 
+        pin_memory=True
+    )
+    
+    color_loader = DataLoader(
+        ColorDataset(
+            csv_file=color_train_csv, 
+            img_dir="data/image_all/nih_attribute/color", 
+            transform=get_color_transforms()
+        ), 
+        batch_size=64, 
+        shuffle=True, 
+        drop_last=True, 
+        num_workers=4, 
+        pin_memory=True
+    )
 
-    # Khởi tạo Validation Dataloaders
-    shape_val_loader = DataLoader(ShapeDataset(csv_file=manifest_data["shape_val_csv"], img_dir="data/image_all/nih_attribute/shape", transform=get_shape_transforms()), batch_size=32, shuffle=False)
-    color_val_loader = DataLoader(ColorDataset(csv_file=manifest_data["color_val_csv"], img_dir="data/image_all/nih_attribute/color", transform=get_color_transforms()), batch_size=64, shuffle=False)
+    # Khởi tạo Validation Dataloaders (Đã tối ưu num_workers và pin_memory)
+    shape_val_loader = DataLoader(
+        ShapeDataset(
+            csv_file=manifest_data["shape_val_csv"], 
+            img_dir="data/image_all/nih_attribute/shape", 
+            transform=get_shape_transforms()
+        ), 
+        batch_size=32, 
+        shuffle=False, 
+        num_workers=2, 
+        pin_memory=True
+    )
+    
+    color_val_loader = DataLoader(
+        ColorDataset(
+            csv_file=manifest_data["color_val_csv"], 
+            img_dir="data/image_all/nih_attribute/color", 
+            transform=get_color_transforms()
+        ), 
+        batch_size=64, 
+        shuffle=False, 
+        num_workers=2, 
+        pin_memory=True
+    )
 
     model = MultiTaskResNet18(num_shape_classes=5, num_color_classes=12, pretrained=True).to(device)
     for param in model.backbone.parameters():

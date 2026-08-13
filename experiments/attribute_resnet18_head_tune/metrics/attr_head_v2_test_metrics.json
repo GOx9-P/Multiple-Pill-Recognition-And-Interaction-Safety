@@ -1,0 +1,20 @@
+{
+    "run_id": "attr_head_v1",
+    "module": "attribute_resnet18_head_tune",
+    "split": "test",
+    "best_checkpoint": "experiments\\attribute_resnet18_head_tune\\checkpoints\\attr_head_v1_best.pt",
+    "selection_metric": "overall_macro_f1",
+    "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
+    "metrics": {
+        "shape_macro_f1": 0.8456,
+        "color_macro_f1": 0.5751,
+        "overall_macro_f1": 0.7104,
+        "shape_acc": 0.976,
+        "color_acc": 0.6864,
+        "overall_acc": 0.8312
+    },
+    "per_class_metrics": {
+        "shape": {},
+        "color": {}
+    }
+}
