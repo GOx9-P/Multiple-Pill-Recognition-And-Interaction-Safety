@@ -33,6 +33,9 @@ class OCRConfig:
     )
     min_usable_confidence: float = 0.50
     min_usable_text_length: int = 1
+    min_text_region_foreground_coverage: float = 0.70
+    max_text_region_area_ratio: float = 0.75
+    text_region_edge_margin_ratio: float = 0.02
     force_run_all_rotation_tiers: bool = True
     enable_scoreline_side_split: bool = True
     min_scoreline_detection_confidence: float = 0.45
@@ -41,6 +44,7 @@ class OCRConfig:
     scoreline_consensus_distance_ratio: float = 0.08
     scoreline_center_max_distance_ratio: float = 0.30
     scoreline_use_center_roi: bool = True
+    scoreline_min_foreground_coverage: float = 0.75
     split_margin_ratio: float = 0.03
     min_side_confidence: float = 0.60
     enable_circular_text_order: bool = True
@@ -88,6 +92,18 @@ class OCRConfig:
             "min_usable_text_length": pipeline.get(
                 "min_usable_text_length", defaults.min_usable_text_length
             ),
+            "min_text_region_foreground_coverage": pipeline.get(
+                "min_text_region_foreground_coverage",
+                defaults.min_text_region_foreground_coverage,
+            ),
+            "max_text_region_area_ratio": pipeline.get(
+                "max_text_region_area_ratio",
+                defaults.max_text_region_area_ratio,
+            ),
+            "text_region_edge_margin_ratio": pipeline.get(
+                "text_region_edge_margin_ratio",
+                defaults.text_region_edge_margin_ratio,
+            ),
             "force_run_all_rotation_tiers": pipeline.get(
                 "force_run_all_rotation_tiers",
                 defaults.force_run_all_rotation_tiers,
@@ -116,6 +132,10 @@ class OCRConfig:
             ),
             "scoreline_use_center_roi": scoreline.get(
                 "use_center_roi", defaults.scoreline_use_center_roi
+            ),
+            "scoreline_min_foreground_coverage": scoreline.get(
+                "min_foreground_coverage",
+                defaults.scoreline_min_foreground_coverage,
             ),
             "split_margin_ratio": scoreline.get(
                 "split_margin_ratio", defaults.split_margin_ratio

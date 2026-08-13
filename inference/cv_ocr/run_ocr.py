@@ -52,10 +52,13 @@ def main() -> int:
     with args.request.open("r", encoding="utf-8") as file:
         request = OCRInferenceRequest.model_validate(json.load(file))
 
-    if not Path(request.crop_path).is_absolute():
-        request = request.model_copy(
-            update={"crop_path": str(PROJECT_ROOT / request.crop_path)}
-        )
+    path_updates = {}
+    for field_name in ("crop_path", "mask_path"):
+        value = Path(getattr(request, field_name))
+        if not value.is_absolute():
+            path_updates[field_name] = str(PROJECT_ROOT / value)
+    if path_updates:
+        request = request.model_copy(update=path_updates)
 
     config = OCRConfig.from_yaml(args.config)
     output_dir = args.output_dir or config.output_dir

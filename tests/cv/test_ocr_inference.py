@@ -20,12 +20,15 @@ from pill_safety.cv.ocr import OCRConfig, OCRPredictor, RotationTier
 from pill_safety.cv.ocr.engines import PaddleOCREngine
 from pill_safety.cv.ocr.engines.paddleocr_engine import parse_prediction_result
 from pill_safety.cv.ocr.postprocessing.candidates import (
+    build_final_candidate,
     finalize_scoreline,
     select_baseline_observation,
 )
 from pill_safety.cv.ocr.postprocessing.ordering import sequence_confidence
 from pill_safety.cv.ocr.postprocessing.schema_mapper import build_ocr_output
+from pill_safety.cv.ocr.postprocessing.region_filter import filter_text_regions
 from pill_safety.cv.ocr.postprocessing.scoreline import (
+    detect_scoreline_for_split,
     map_scoreline_to_original,
     run_scoreline_side_split,
 )
@@ -167,7 +170,7 @@ def test_predictor_preserves_ids_and_exports_exact_module_3_schema(tmp_path):
         "source": "ocr_hough_consensus",
     }
     assert payload["imprint"]["raw"] == "K 56"
-    assert payload["imprint"]["confidence"] == 0.8625
+    assert payload["imprint"]["confidence"] == 0.694
     assert payload["imprint"]["normalized_candidates"][0]["source"] == "raw_ocr"
     assert set(payload["imprint"]) == {
         "visible",
@@ -309,6 +312,47 @@ def test_notebook_sequence_confidence_formula_is_preserved():
     assert sequence_confidence(items) == expected
 
 
+def test_final_answer_uses_top_ranked_candidate_not_legacy_observation():
+    """Dung candidate consensus tot hon thay vi mot lan OCR co priority cao."""
+
+    legacy_observation = {
+        "detected_text": "829 AH12 18332",
+        "ordered_items": [{"confidence": 0.46}],
+        "mode": "full_image",
+        "rotation_degrees": 90,
+        "preprocessing": "blackhat_bold",
+    }
+    winner_observation = {
+        "detected_text": "AH12",
+        "ordered_items": [{"confidence": 0.90}],
+        "mode": "full_image",
+        "rotation_degrees": 0,
+        "preprocessing": "original",
+    }
+    ranked_candidates = [
+        {
+            "text": "AH12",
+            "normalized_text": "AH12",
+            "score": 0.7732,
+            "mean_ocr_confidence": 0.90,
+            "support_count": 3,
+            "modes": ["full_image"],
+            "rotations": [0, 180],
+            "preprocessings": ["original", "blackhat_bold"],
+            "_best_observation": winner_observation,
+            "_best_items": winner_observation["ordered_items"],
+        }
+    ]
+
+    final_candidate = build_final_candidate(
+        legacy_observation, ranked_candidates
+    )
+
+    assert final_candidate["text"] == "AH12"
+    assert final_candidate["score"] == 0.7732
+    assert final_candidate["selection_method"] == "ranked_candidate_consensus"
+
+
 def test_yaml_defaults_match_the_notebook_configuration():
     config = OCRConfig.from_yaml(PROJECT_ROOT / "configs" / "inference" / "ocr.yaml")
     assert config.ocr_version == "PP-OCRv5"
@@ -327,10 +371,14 @@ def test_yaml_defaults_match_the_notebook_configuration():
     ]
     assert config.force_run_all_rotation_tiers is True
     assert config.min_usable_confidence == 0.50
+    assert config.min_text_region_foreground_coverage == 0.70
+    assert config.max_text_region_area_ratio == 0.75
+    assert config.text_region_edge_margin_ratio == 0.02
     assert config.min_scoreline_detection_confidence == 0.45
     assert config.min_scoreline_support == 2
     assert config.scoreline_angle_consensus_tolerance_degrees == 12.0
     assert config.scoreline_consensus_distance_ratio == 0.08
+    assert config.scoreline_min_foreground_coverage == 0.75
     assert config.min_side_confidence == 0.60
 
 
@@ -479,7 +527,7 @@ def test_predictor_exports_scoreline_in_original_crop_coordinates(
     monkeypatch.setattr(
         ocr_predictor_module,
         "detect_scoreline_for_split",
-        lambda variant, current_config: {
+        lambda variant, current_config, foreground_mask=None: {
             "visible": True,
             "confidence": 0.80,
             "line_xyxy": [99.0, 50.0, 19.0, 50.0],
@@ -548,6 +596,97 @@ def test_scoreline_consensus_accepts_same_geometric_line():
     assert scoreline["visible"] is True
     assert scoreline["support_count"] == 2
     assert scoreline["line_xyxy"] == [53.0, 0.0, 53.0, 100.0]
+
+
+def test_scoreline_detector_rejects_line_outside_pill_foreground(monkeypatch):
+    """Line tren nen/padding khong duoc phep tro thanh scoreline."""
+
+    image = np.full((100, 100, 3), 180, dtype=np.uint8)
+    foreground_mask = np.zeros((100, 100), dtype=np.uint8)
+    foreground_mask[20:80, 20:80] = 1
+    monkeypatch.setattr(
+        cv2,
+        "HoughLinesP",
+        lambda *args, **kwargs: np.asarray([[[0, 50, 99, 50]]]),
+    )
+
+    scoreline = detect_scoreline_for_split(
+        image, OCRConfig(), foreground_mask
+    )
+
+    assert scoreline["visible"] is False
+
+
+def test_scoreline_detector_accepts_line_inside_pill_foreground(monkeypatch):
+    """Line nam trong mask vien duoc giu lai de xu ly side split."""
+
+    image = np.full((100, 100, 3), 180, dtype=np.uint8)
+    foreground_mask = np.zeros((100, 100), dtype=np.uint8)
+    foreground_mask[10:90, 10:90] = 1
+    monkeypatch.setattr(
+        cv2,
+        "HoughLinesP",
+        lambda *args, **kwargs: np.asarray([[[50, 10, 50, 89]]]),
+    )
+
+    scoreline = detect_scoreline_for_split(
+        image, OCRConfig(), foreground_mask
+    )
+
+    assert scoreline["visible"] is True
+    assert scoreline["foreground_coverage"] == 1.0
+
+
+def test_region_filter_keeps_imprint_and_rejects_canvas_false_regions():
+    """Box AH12 trong vien duoc giu, box nam ngoai vien bi loai."""
+
+    foreground_mask = np.zeros((120, 120), dtype=np.uint8)
+    cv2.circle(foreground_mask, (60, 60), 48, 1, -1)
+    items = [
+        {
+            "text": "AH12",
+            "confidence": 0.90,
+            "polygon": [[38, 44], [82, 44], [82, 76], [38, 76]],
+        },
+        {
+            "text": "829",
+            "confidence": 0.36,
+            "polygon": [[0, 45], [12, 45], [12, 75], [0, 75]],
+        },
+    ]
+
+    accepted, rejected = filter_text_regions(items, foreground_mask, OCRConfig())
+
+    assert [item["text"] for item in accepted] == ["AH12"]
+    assert [item["rejection_reason"] for item in rejected] == [
+        "outside_pill_mask"
+    ]
+
+
+def test_region_filter_rejects_canvas_edge_and_oversized_regions():
+    """Hai gate hinh hoc con lai phai loai dung text region bat thuong."""
+
+    foreground_mask = np.ones((120, 120), dtype=np.uint8)
+    items = [
+        {
+            "text": "edge",
+            "confidence": 0.80,
+            "polygon": [[0, 45], [12, 45], [12, 75], [0, 75]],
+        },
+        {
+            "text": "large",
+            "confidence": 0.80,
+            "polygon": [[3, 3], [116, 3], [116, 116], [3, 116]],
+        },
+    ]
+
+    accepted, rejected = filter_text_regions(items, foreground_mask, OCRConfig())
+
+    assert accepted == []
+    assert [item["rejection_reason"] for item in rejected] == [
+        "touches_canvas_edge",
+        "text_region_too_large",
+    ]
 
 
 def test_oblique_polygons_are_inverse_transformed_to_original_crop():

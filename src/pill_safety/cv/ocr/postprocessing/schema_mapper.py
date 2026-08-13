@@ -137,17 +137,17 @@ def _normalized_candidates(
     config: OCRConfig,
 ) -> list[dict[str, Any]]:
     final_key = normalize_candidate_text(final_candidate.get("text", ""))
+    final_source = (
+        "multi_angle_consensus"
+        if int(final_candidate.get("support_count", 0)) >= 2
+        else "raw_ocr"
+    )
     candidates = [
         {
             "text": final_candidate.get("text", ""),
             "score": round(float(final_candidate.get("score", 0.0)), 4),
-            "source": "raw_ocr",
-            "evidence": [
-                "legacy_priority_confidence",
-                f"mode={best_observation.get('mode', 'unknown')}",
-                f"rot={best_observation.get('rotation_degrees', 0)}",
-                f"preprocessing={best_observation.get('preprocessing', 'unknown')}",
-            ],
+            "source": final_source,
+            "evidence": _candidate_evidence(final_candidate),
         }
     ]
     seen = {final_key}

@@ -88,10 +88,32 @@ def point_to_segment_distance(
     )
 
 
+def line_foreground_coverage(
+    line_xyxy: list[float], foreground_mask: np.ndarray
+) -> float:
+    """Tinh ti le mau cua doan line nam trong foreground cua vien thuoc."""
+
+    x1, y1, x2, y2 = [float(value) for value in line_xyxy]
+    sample_count = max(2, int(np.hypot(x2 - x1, y2 - y1)) + 1)
+    xs = np.rint(np.linspace(x1, x2, sample_count)).astype(np.int32)
+    ys = np.rint(np.linspace(y1, y2, sample_count)).astype(np.int32)
+    height, width = foreground_mask.shape[:2]
+    valid = (xs >= 0) & (xs < width) & (ys >= 0) & (ys < height)
+    if not np.any(valid):
+        return 0.0
+    return float(np.mean(foreground_mask[ys[valid], xs[valid]] > 0))
+
+
 def detect_scoreline_for_split(
-    image: np.ndarray, config: OCRConfig
+    image: np.ndarray,
+    config: OCRConfig,
+    foreground_mask: np.ndarray | None = None,
 ) -> dict[str, Any]:
+    """Tim scoreline bang Hough va loai line nam tren padding hoac nen crop."""
+
     height, width = image.shape[:2]
+    if foreground_mask is not None and foreground_mask.shape[:2] != (height, width):
+        raise ValueError("Foreground mask must match the OCR variant size.")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
@@ -135,6 +157,13 @@ def detect_scoreline_for_split(
                 > config.scoreline_center_max_distance_ratio * min_dimension
             ):
                 continue
+            foreground_coverage = (
+                line_foreground_coverage([x1, y1, x2, y2], foreground_mask)
+                if foreground_mask is not None
+                else 1.0
+            )
+            if foreground_coverage < config.scoreline_min_foreground_coverage:
+                continue
             length_score = float(
                 np.clip(length / max(0.80 * min_dimension, 1.0), 0.0, 1.0)
             )
@@ -159,6 +188,7 @@ def detect_scoreline_for_split(
                     "line_xyxy": [x1, y1, x2, y2],
                     "angle_degrees": round(angle, 2),
                     "orientation": orientation,
+                    "foreground_coverage": round(foreground_coverage, 4),
                 }
     if best and best["confidence"] >= config.min_scoreline_detection_confidence:
         return best

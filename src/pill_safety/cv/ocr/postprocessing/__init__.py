@@ -6,6 +6,7 @@ from .candidates import (
     select_baseline_observation,
 )
 from .ordering import build_order_candidates, candidate_text, item_center
+from .region_filter import filter_text_regions
 from .schema_mapper import build_ocr_output
 from .scoreline import (
     detect_scoreline_for_split,
@@ -20,6 +21,7 @@ __all__ = [
     "candidate_text",
     "detect_scoreline_for_split",
     "finalize_scoreline",
+    "filter_text_regions",
     "is_usable_observation",
     "item_center",
     "map_scoreline_to_original",

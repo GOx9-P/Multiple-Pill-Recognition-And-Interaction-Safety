@@ -41,6 +41,55 @@ def prepare_image_bgr(path: str | Path) -> PreparedImage:
     )
 
 
+def prepare_foreground_mask(
+    path: str | Path,
+    prepared_image: PreparedImage,
+) -> np.ndarray | None:
+    """Doc mask Module 1, pad dong bo voi crop OCR va tra ve mask nhi phan."""
+
+    mask = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        return None
+    if mask.shape != (
+        prepared_image.original_height,
+        prepared_image.original_width,
+    ):
+        raise ValueError("Segmentation mask must have the same size as OCR crop.")
+    binary = (mask > 0).astype(np.uint8)
+    return cv2.copyMakeBorder(
+        binary,
+        prepared_image.pad_px,
+        prepared_image.pad_px,
+        prepared_image.pad_px,
+        prepared_image.pad_px,
+        cv2.BORDER_CONSTANT,
+        value=0,
+    )
+
+
+def rotate_foreground_mask(mask: np.ndarray, degrees: int) -> np.ndarray:
+    """Xoay mask nhi phan cung goc voi crop de kiem tra line nam trong vien."""
+
+    if degrees == 0:
+        return mask.copy()
+    if degrees == 90:
+        return cv2.rotate(mask, cv2.ROTATE_90_CLOCKWISE)
+    if degrees == 180:
+        return cv2.rotate(mask, cv2.ROTATE_180)
+    if degrees in (270, -90):
+        return cv2.rotate(mask, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+    matrix, new_width, new_height = _oblique_rotation_matrix(mask.shape, degrees)
+    return cv2.warpAffine(
+        mask,
+        matrix,
+        (new_width, new_height),
+        flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+
+
 def read_image_bgr(path: str | Path) -> np.ndarray:
     return prepare_image_bgr(path).bgr
 

@@ -20,6 +20,7 @@ class ProcessedInstance:
     confidence: float
     mask: np.ndarray
     crop: np.ndarray
+    crop_mask: np.ndarray
     occlusion_estimate: float
     possible_merged_instance: bool
     possible_non_pill: bool
@@ -126,7 +127,7 @@ def _prepare_crop(
     mask: np.ndarray,
     bbox_xyxy: tuple[int, int, int, int],
     config: SegmentationConfig,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """Tạo crop chuẩn đã áp mask, padding, căn trục và resize về hình vuông."""
 
     image_height, image_width = image_bgr.shape[:2]
@@ -169,19 +170,31 @@ def _prepare_crop(
     if nonzero is not None:
         tx, ty, tw, th = cv2.boundingRect(nonzero)
         crop = crop[ty : ty + th, tx : tx + tw]
+        crop_mask = crop_mask[ty : ty + th, tx : tx + tw]
     side = max(crop.shape[:2])
     square = np.full((side, side, 3), background_color, dtype=np.uint8)
+    square_mask = np.zeros((side, side), dtype=np.uint8)
     offset_y = (side - crop.shape[0]) // 2
     offset_x = (side - crop.shape[1]) // 2
     square[
         offset_y : offset_y + crop.shape[0],
         offset_x : offset_x + crop.shape[1],
     ] = crop
-    return cv2.resize(
+    square_mask[
+        offset_y : offset_y + crop_mask.shape[0],
+        offset_x : offset_x + crop_mask.shape[1],
+    ] = crop_mask
+    resized_crop = cv2.resize(
         square,
         (config.crop_size, config.crop_size),
         interpolation=cv2.INTER_AREA if side > config.crop_size else cv2.INTER_CUBIC,
     )
+    resized_mask = cv2.resize(
+        square_mask,
+        (config.crop_size, config.crop_size),
+        interpolation=cv2.INTER_NEAREST,
+    )
+    return resized_crop, (resized_mask > 0).astype(np.uint8)
 
 
 def process_prediction(
@@ -250,12 +263,13 @@ def process_prediction(
     if possible_non_pill:
         flags.append("possible_non_pill")
 
-    crop = _prepare_crop(image_bgr, cleaned_mask, bbox, config)
+    crop, crop_mask = _prepare_crop(image_bgr, cleaned_mask, bbox, config)
     return ProcessedInstance(
         bbox_xyxy=bbox,
         confidence=float(np.clip(prediction.confidence, 0.0, 1.0)),
         mask=cleaned_mask,
         crop=crop,
+        crop_mask=crop_mask,
         occlusion_estimate=round(float(occlusion_estimate), 4),
         possible_merged_instance=possible_merged,
         possible_non_pill=possible_non_pill,

@@ -119,8 +119,9 @@ def test_predictor_exports_exact_module_1_schema_and_artifacts(tmp_path):
     for instance in payload["instances"]:
         mask = cv2.imread(instance["mask_path"], cv2.IMREAD_GRAYSCALE)
         crop = cv2.imread(instance["crop_path"], cv2.IMREAD_COLOR)
-        assert mask.shape == image.shape[:2]
+        assert mask.shape == (224, 224)
         assert crop.shape == (224, 224, 3)
+        assert np.any(mask > 0)
     assert artifacts.schema_json_path == (
         tmp_path
         / "outputs"

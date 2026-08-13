@@ -183,7 +183,8 @@ class SegmentationPredictor:
             instance_token = _stable_instance_token(request, instance_id)
             mask_path = mask_directory / f"{instance_id}_mask.png"
             crop_path = crop_directory / f"{instance_id}_crop.png"
-            _write_image(mask_path, instance.mask * 255)
+            # Mask nay dong bo pixel voi crop_path cho Module 2 va Module 3.
+            _write_image(mask_path, instance.crop_mask * 255)
             _write_image(crop_path, instance.crop)
 
             flags = list(

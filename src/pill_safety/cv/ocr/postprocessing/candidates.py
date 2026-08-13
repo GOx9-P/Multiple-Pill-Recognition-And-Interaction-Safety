@@ -277,6 +277,24 @@ def select_baseline_observation(
 def build_final_candidate(
     best_observation: dict[str, Any], ranked_candidates: list[dict[str, Any]]
 ) -> dict[str, Any]:
+    """Chon candidate dung dau ranking, khong quay lai mot lan OCR uu tien don le."""
+
+    if ranked_candidates:
+        winner = ranked_candidates[0]
+        return {
+            "text": winner["text"],
+            "normalized_text": winner["normalized_text"],
+            "score": round(float(winner["score"]), 4),
+            "mean_ocr_confidence": round(
+                float(winner["mean_ocr_confidence"]), 4
+            ),
+            "support_count": int(winner["support_count"]),
+            "modes": winner["modes"],
+            "rotations": winner["rotations"],
+            "preprocessings": winner["preprocessings"],
+            "selection_method": "ranked_candidate_consensus",
+        }
+
     best_key = normalize_candidate_text(best_observation["detected_text"])
     final_sequence_confidence = sequence_confidence(
         best_observation.get("ordered_items", [])

@@ -16,20 +16,22 @@ from pill_safety.cv.ocr.postprocessing import (
     build_order_candidates,
     candidate_text,
     detect_scoreline_for_split,
+    filter_text_regions,
     finalize_scoreline,
     is_usable_observation,
     item_center,
     map_scoreline_to_original,
     rank_text_candidates,
     run_scoreline_side_split,
-    select_baseline_observation,
 )
 from pill_safety.cv.ocr.postprocessing.candidates import public_candidate
 from pill_safety.cv.ocr.preprocessing import (
     apply_preprocessing,
     attach_original_polygons,
     prepare_image_bgr,
+    prepare_foreground_mask,
     rotate_bgr,
+    rotate_foreground_mask,
 )
 from pill_safety.cv.ocr.utils import draw_items
 from pill_safety.schemas import OCRInferenceOutput, OCRInferenceRequest
@@ -75,6 +77,7 @@ class OCRPredictor:
         image_path = Path(request.crop_path)
         prepared_image = prepare_image_bgr(image_path)
         base_image = prepared_image.bgr
+        foreground_mask = prepare_foreground_mask(request.mask_path, prepared_image)
 
         instance_directory = _safe_directory_name(request.instance_id)
         output_directory = (
@@ -104,6 +107,11 @@ class OCRPredictor:
                 for preprocessing in self.config.preprocessing_steps:
                     rotated = rotate_bgr(base_image, rotation_degrees)
                     variant = apply_preprocessing(rotated, preprocessing)
+                    rotated_foreground_mask = (
+                        rotate_foreground_mask(foreground_mask, rotation_degrees)
+                        if foreground_mask is not None
+                        else None
+                    )
                     step_id = (
                         f"{tier_config.tier}_rot{rotation_degrees}_{preprocessing}"
                     )
@@ -113,7 +121,9 @@ class OCRPredictor:
                     # Oblique warp borders can look like scorelines to Hough.
                     if int(rotation_degrees) % 90 == 0:
                         scoreline_variant = detect_scoreline_for_split(
-                            variant, self.config
+                            variant,
+                            self.config,
+                            rotated_foreground_mask,
                         )
                     else:
                         scoreline_variant = {
@@ -141,19 +151,25 @@ class OCRPredictor:
                         prepared_image=prepared_image,
                     )
                     scoreline_observations.append(scoreline)
+                    raw_items = self.engine.predict(
+                        variant_path, paddle_json_directory, step_id
+                    )
+                    raw_items = [item for item in raw_items if item.get("text")]
+                    items, rejected_regions = filter_text_regions(
+                        raw_items,
+                        rotated_foreground_mask,
+                        self.config,
+                    )
                     performed_steps.append(
                         {
                             "step_id": step_id,
                             "rotation_degrees": rotation_degrees,
                             "preprocessing": preprocessing,
                             "scoreline_visible": scoreline.get("visible", False),
+                            "text_regions_kept": len(items),
+                            "text_regions_rejected": len(rejected_regions),
                         }
                     )
-
-                    items = self.engine.predict(
-                        variant_path, paddle_json_directory, step_id
-                    )
-                    items = [item for item in items if item.get("text")]
                     attach_original_polygons(
                         items,
                         padded_shape=base_image.shape,
@@ -277,10 +293,10 @@ class OCRPredictor:
         overlay_path: Path | None = None
 
         if valid_observations:
-            best = select_baseline_observation(valid_observations)
-            if best is None:
-                raise RuntimeError("Valid observations unexpectedly produced no baseline")
-            best_items = best["ordered_items"]
+            if not ranked_candidates:
+                raise RuntimeError("Valid OCR observations produced no ranked candidate.")
+            best = ranked_candidates[0]["_best_observation"]
+            best_items = ranked_candidates[0]["_best_items"]
             final_candidate = build_final_candidate(best, ranked_candidates)
             best_image = cv2.imread(best["variant_path"])
             if best_image is None:
