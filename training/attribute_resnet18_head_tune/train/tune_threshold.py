@@ -13,7 +13,7 @@ from pill_safety.cv.attribute.utils.transforms import get_color_transforms
 
 def find_optimal_thresholds():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    ckpt_path = "experiments/attribute_resnet18_head_tune/checkpoints/attr_head_v2_best.pt"
+    ckpt_path = "experiments/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt"
     
     print(f"[Info] Đang tải mô hình từ: {ckpt_path} trên thiết bị: {device}")
     

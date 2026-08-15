@@ -25,3 +25,8 @@ augmentation:
   enabled: true
   online: false
   sim2real: true
+  pipeline:
+  - Resize(image_size=224)
+  - ToTensor()
+  - Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+  note: Offline augmented transforms for shape/color datasets

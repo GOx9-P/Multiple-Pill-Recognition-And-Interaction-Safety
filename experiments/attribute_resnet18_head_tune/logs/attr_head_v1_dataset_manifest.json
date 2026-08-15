@@ -20,5 +20,27 @@
         "leakage_check_passed": true,
         "leakage_check_notes": "Val and test splits are strictly separated prior to any online/offline augmentation."
     },
-    "class_distribution": {}
+    "class_distribution": {
+        "shape": [
+            4720,
+            1152,
+            3840,
+            3008,
+            5120
+        ],
+        "color_positive_counts": [
+            1712.0,
+            2848.0,
+            1784.0,
+            2584.0,
+            2040.0,
+            2800.0,
+            3104.0,
+            2840.0,
+            3000.0,
+            2432.0,
+            13448.0,
+            4384.0
+        ]
+    }
 }

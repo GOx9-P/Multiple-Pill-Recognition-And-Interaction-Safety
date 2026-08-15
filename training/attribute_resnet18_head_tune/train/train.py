@@ -11,6 +11,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score
+import random
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../src')))
 from pill_safety.cv.attribute.models.resnet18_multitask import MultiTaskResNet18
@@ -23,6 +29,7 @@ def train():
     run_id = "attr_head_v1"
     module_name = "attribute_resnet18_head_tune"
     author = "Nguyen Gia Bao"
+    image_size = 224
     started_at_str = time.strftime("%Y-%m-%d %H:%M", time.localtime())
     start_time = time.time()
     
@@ -65,41 +72,20 @@ def train():
         "augmentation": {
             "enabled": True,
             "online": False,
-            "sim2real": True
-        }
+            "sim2real": True,
+            "pipeline": [
+                f"Resize(image_size={image_size})",
+                "ToTensor()",
+                "Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])"
+            ],
+            "note": "Offline augmented transforms for shape/color datasets"
+        },
     }
     with open(os.path.join(log_dir, f"{run_id}_config.yaml"), "w", encoding="utf-8") as f:
         yaml.dump(config_data, f, sort_keys=False)
 
     shape_train_csv = "data/splits/nih_attribute/shape/train_combined_crop.csv"
     color_train_csv = "data/splits/nih_attribute/color/train_multilabel.csv"
-
-    manifest_data = {
-        "run_id": run_id,
-        "dataset_name": "NIH/RxImage",
-        "shape_csv": shape_train_csv,
-        "color_csv": color_train_csv,
-        "shape_val_csv": "data/splits/nih_attribute/shape/val_combined_crop.csv",
-        "color_val_csv": "data/splits/nih_attribute/color/val_multilabel.csv",
-        "train_shape_count": 17840,
-        "val_shape_count": 454,
-        "test_shape_count": 458,
-        "train_color_count": 37312,
-        "val_color_count": 876,
-        "test_color_count": 880,
-        "split_before_augmentation": True,
-        "augmentation_train_only": True,
-        "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
-        "split_policy": {
-            "split_before_augmentation": True,
-            "group_key": "image_id",
-            "leakage_check_passed": True,
-            "leakage_check_notes": "Val and test splits are strictly separated prior to any online/offline augmentation."
-        },
-        "class_distribution": {}
-    }
-    with open(os.path.join(log_dir, f"{run_id}_dataset_manifest.json"), "w", encoding="utf-8") as f:
-        json.dump(manifest_data, f, indent=4, ensure_ascii=False)
 
     # --- TỰ ĐỘNG TÍNH TOÁN TRỌNG SỐ CHO DỮ LIỆU MẤT CÂN BẰNG (Đã trỏ đúng chuẩn cột CSV) ---
     print("[Info] Đang tính toán trọng số xử lý mất cân bằng dữ liệu (Imbalance Weights)...")
@@ -123,6 +109,38 @@ def train():
     color_pos_weight_tensor = torch.FloatTensor(pos_weights).to(device)
     print(f"[Info] Color Pos Weights: {pos_weights}")
     # ---------------------------------------------------------------------------------------
+
+    
+
+    manifest_data = {
+        "run_id": run_id,
+        "dataset_name": "NIH/RxImage",
+        "shape_csv": shape_train_csv,
+        "color_csv": color_train_csv,
+        "shape_val_csv": "data/splits/nih_attribute/shape/val_combined_crop.csv",
+        "color_val_csv": "data/splits/nih_attribute/color/val_multilabel.csv",
+        "train_shape_count": 17840,
+        "val_shape_count": 454,
+        "test_shape_count": 458,
+        "train_color_count": 37312,
+        "val_color_count": 876,
+        "test_color_count": 880,
+        "split_before_augmentation": True,
+        "augmentation_train_only": True,
+        "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
+        "split_policy": {
+            "split_before_augmentation": True,
+            "group_key": "image_id",
+            "leakage_check_passed": True,
+            "leakage_check_notes": "Val and test splits are strictly separated prior to any online/offline augmentation."
+        },
+        "class_distribution": {
+            "shape": class_counts.tolist(), 
+            "color_positive_counts": pos_counts.tolist()
+        }
+    }
+    with open(os.path.join(log_dir, f"{run_id}_dataset_manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=4, ensure_ascii=False)
 
     # Khởi tạo Train Dataloaders (Đã tối ưu num_workers và pin_memory)
     shape_loader = DataLoader(
@@ -199,6 +217,7 @@ def train():
     best_metric = 0.0
     epoch_logs = []
     best_val_metrics = {}
+    best_epoch_idx = 1
 
     print("[Info] Tiến hành vòng lặp huấn luyện và đánh giá trên Validation...")
     for epoch in range(epochs):
@@ -257,10 +276,11 @@ def train():
         scheduler.step(current_metric)
         current_lr = optimizer.param_groups[0]['lr']
         
-        is_best = current_metric > best_metric
+        is_best = current_metric >= best_metric
         if is_best:
             best_metric = current_metric
             best_val_metrics = val_metrics
+            best_epoch_idx = epoch + 1
             torch.save(model.state_dict(), os.path.join(ckpt_dir, f"{run_id}_best.pt"))
 
         epoch_logs.append({
@@ -291,8 +311,19 @@ def train():
 
     torch.save(model.state_dict(), os.path.join(ckpt_dir, f"{run_id}_last.pt"))
 
+    # Đóng gói dữ liệu theo đúng chuẩn contract yêu cầu
+    final_val_metrics_contract = {
+        "run_id": run_id,
+        "module": module_name,
+        "split": "val",
+        "best_epoch": best_epoch_idx,  # Lưu ý: Cần track lại biến epoch đạt best (xem hướng dẫn bên dưới)
+        "best_checkpoint": os.path.join(ckpt_dir, f"{run_id}_best.pt"),
+        "selection_metric": "val_combined_f1",
+        "metrics": best_val_metrics   # Dictionary metric thô ban đầu nằm ở đây
+    }
+
     with open(os.path.join(metric_dir, f"{run_id}_val_metrics.json"), "w", encoding="utf-8") as f:
-        json.dump(best_val_metrics, f, indent=4, ensure_ascii=False)
+        json.dump(final_val_metrics_contract, f, indent=4, ensure_ascii=False)
 
     log_df = pd.DataFrame(epoch_logs)
     cols_order = [

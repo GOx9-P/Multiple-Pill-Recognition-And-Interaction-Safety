@@ -1,10 +1,10 @@
 run_id: attr_last_blocks_v1
                         module: attribute_resnet18_last_blocks_finetune
-                        started_at: 2026-08-13 16:17
-                        finished_at: 2026-08-13 17:12
+                        started_at: 2026-08-15 14:58
+                        finished_at: 2026-08-15 15:50
                         device: cuda
-                        gpu_name: NVIDIA GeForce RTX 4050 Laptop GPU
+                        gpu_name: Tesla T4
                         python_version: 3.12.13
-                        torch_version: 2.13.0+cu126
+                        torch_version: 2.6.0+cu124
                         cuda_available: True
-                        total_train_time_minutes: 55
+                        total_train_time_minutes: 51

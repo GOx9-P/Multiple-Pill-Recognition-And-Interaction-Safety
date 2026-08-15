@@ -6,15 +6,73 @@
     "selection_metric": "overall_macro_f1",
     "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
     "metrics": {
-        "shape_macro_f1": 0.8227,
-        "color_macro_f1": 0.6791,
-        "overall_macro_f1": 0.7509,
-        "shape_acc": 0.9716,
-        "color_acc": 0.7193,
-        "overall_acc": 0.8455
+        "shape_macro_f1": 0.8185,
+        "color_macro_f1": 0.6624,
+        "overall_macro_f1": 0.7404,
+        "shape_acc": 0.9694,
+        "color_acc": 0.7284,
+        "overall_acc": 0.8489
     },
     "per_class_metrics": {
-        "shape": {},
-        "color": {}
+        "shape": {
+            "class_0": {
+                "f1_score": 0.9967,
+                "accuracy": 1.0
+            },
+            "class_1": {
+                "f1_score": 0.2857,
+                "accuracy": 0.25
+            },
+            "class_2": {
+                "f1_score": 0.9576,
+                "accuracy": 0.9417
+            },
+            "class_3": {
+                "f1_score": 0.8679,
+                "accuracy": 0.9583
+            },
+            "class_4": {
+                "f1_score": 0.9843,
+                "accuracy": 0.9812
+            }
+        },
+        "color": {
+            "color_0": {
+                "f1_score": 0.3636
+            },
+            "color_1": {
+                "f1_score": 0.8973
+            },
+            "color_2": {
+                "f1_score": 0.6226
+            },
+            "color_3": {
+                "f1_score": 0.5806
+            },
+            "color_4": {
+                "f1_score": 0.8929
+            },
+            "color_5": {
+                "f1_score": 0.7912
+            },
+            "color_6": {
+                "f1_score": 0.7596
+            },
+            "color_7": {
+                "f1_score": 0.5714
+            },
+            "color_8": {
+                "f1_score": 0.451
+            },
+            "color_9": {
+                "f1_score": 0.1905
+            },
+            "color_10": {
+                "f1_score": 0.9621
+            },
+            "color_11": {
+                "f1_score": 0.8655
+            }
+        }
     }
 }

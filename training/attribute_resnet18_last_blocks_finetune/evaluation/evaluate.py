@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shutil
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../src')))
 from pill_safety.cv.attribute.models.resnet18_multitask import MultiTaskResNet18
@@ -23,7 +24,8 @@ def evaluate_test():
     ckpt_path = os.path.join(base_exp_dir, "checkpoints", f"{run_id}_best.pt")
     threshold_path = os.path.join(base_exp_dir, "checkpoints", "optimal_thresholds.json")
     metric_dir = os.path.join(base_exp_dir, "metrics")
-    pred_dir = os.path.join(base_exp_dir, "predictions", run_id)
+    pred_dir = os.path.join(base_exp_dir, "predictions")
+    error_dir = pred_dir
     plot_dir = os.path.join(base_exp_dir, "plots")
     
     os.makedirs(metric_dir, exist_ok=True)
@@ -98,6 +100,20 @@ def evaluate_test():
     color_acc = accuracy_score(all_color_targets, all_color_preds)  # Subset accuracy cho multi-label
     overall_acc = (shape_acc + color_acc) / 2.0
 
+    # --- Tính toán per-class metrics chi tiết để lấp đầy báo cáo ---
+    shape_f1_per_class = f1_score(all_shape_targets, all_shape_preds, average=None, zero_division=0)
+    shape_acc_per_class = []
+    # Tính accuracy từng class cho shape (multiclass)
+    for c in range(len(shape_f1_per_class)):
+        mask = (all_shape_targets == c)
+        if mask.sum() > 0:
+            shape_acc_per_class.append(float((all_shape_preds[mask] == c).mean()))
+        else:
+            shape_acc_per_class.append(0.0)
+
+    color_f1_per_class = f1_score(all_color_targets, all_color_preds, average=None, zero_division=0)
+    color_acc_per_class = accuracy_score(all_color_targets, all_color_preds, normalize=False) # Hoặc per-label accuracy
+
     metrics_content = {
         "run_id": run_id,
         "module": module_name,
@@ -116,8 +132,17 @@ def evaluate_test():
             "overall_acc": round(float(overall_acc), 4)
         },
         "per_class_metrics": {
-            "shape": {},
-            "color": {}
+            "shape": {
+                f"class_{i}": {
+                    "f1_score": round(float(shape_f1_per_class[i]), 4),
+                    "accuracy": round(float(shape_acc_per_class[i]), 4)
+                } for i in range(len(shape_f1_per_class))
+            },
+            "color": {
+                f"color_{i}": {
+                    "f1_score": round(float(color_f1_per_class[i]), 4)
+                } for i in range(len(color_f1_per_class))
+            }
         }
     }
 
@@ -177,6 +202,53 @@ def evaluate_test():
     print(f"[Done] Đã xuất toàn bộ biểu đồ phân tích vào: {plot_dir}")
     print(f"[Done] Đã lưu metrics vào: {output_metric_path}")
     print(f"[Done] Đã lưu bảng predictions chi tiết vào: {output_pred_path}")
+
+    # ==========================================
+    # TỔNG HỢP CÁC MẪU LỖI RA FILE CSV (SHAPE & COLOR)
+    # ==========================================
+    
+    # 1. Chuẩn bị dữ liệu từ các dataset
+    shape_test_df = shape_loader.dataset.data_frame.reset_index(drop=True)
+    color_test_df = color_loader.dataset.df.reset_index(drop=True) # Lưu ý Color dùng .df
+    
+    # 2. Xác định các mẫu lỗi
+    shape_error_indices = np.where(all_shape_targets != all_shape_preds)[0]
+    # Lỗi Color: ít nhất 1 nhãn trong vector dự đoán khác với nhãn thật
+    color_error_indices = np.where(~np.all(all_color_targets == all_color_preds, axis=1))[0]
+    
+    print(f"[Info] Số lượng mẫu sai Shape: {len(shape_error_indices)}")
+    print(f"[Info] Số lượng mẫu sai Color: {len(color_error_indices)}")
+    
+    # 3. Tổng hợp Shape Errors
+    shape_error_records = []
+    for idx in shape_error_indices:
+        row = shape_test_df.iloc[idx].to_dict()
+        row.update({'true_shape': int(all_shape_targets[idx]), 'pred_shape': int(all_shape_preds[idx]), 'sample_index': int(idx)})
+        shape_error_records.append(row)
+        
+    # 4. Tổng hợp Color Errors
+    color_error_records = []
+    for idx in color_error_indices:
+        row = color_test_df.iloc[idx].to_dict()
+        # Thêm thông tin nhãn vào records
+        row.update({'true_color': all_color_targets[idx].tolist(), 'pred_color': all_color_preds[idx].tolist(), 'sample_index': int(idx)})
+        color_error_records.append(row)
+        
+    # 5. Lưu ra file CSV
+    pd.DataFrame(shape_error_records).to_csv(os.path.join(error_dir, "shape_error_cases.csv"), index=False)
+    pd.DataFrame(color_error_records).to_csv(os.path.join(error_dir, "color_error_cases.csv"), index=False)
+    
+    # 6. Lưu summary JSON
+    error_summary = {
+        "total_shape_errors": int(len(shape_error_indices)),
+        "total_color_errors": int(len(color_error_indices)),
+        "shape_error_indices": shape_error_indices.tolist(),
+        "color_error_indices": color_error_indices.tolist()
+    }
+    with open(os.path.join(error_dir, "error_cases_summary.json"), "w", encoding="utf-8") as f:
+        json.dump(error_summary, f, indent=4, ensure_ascii=False)
+        
+    print(f"[Done] Đã lưu báo cáo lỗi cho cả Shape và Color tại: {error_dir}")
 
 if __name__ == "__main__":
     evaluate_test()

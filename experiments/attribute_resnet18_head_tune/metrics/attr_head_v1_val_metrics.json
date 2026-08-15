@@ -1,0 +1,19 @@
+{
+    "run_id": "attr_head_v1",
+    "module": "attribute_resnet18_head_tune",
+    "split": "val",
+    "best_epoch": 9,
+    "best_checkpoint": "experiments/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
+    "selection_metric": "val_combined_f1",
+    "metrics": {
+        "val_loss": 0.361,
+        "shape_loss": 0.103,
+        "color_loss": 0.2581,
+        "shape_f1": 0.9234,
+        "color_f1": 0.664,
+        "combined_f1": 0.7937,
+        "shape_acc": 0.9868,
+        "color_acc": 0.5959,
+        "combined_acc": 0.7913
+    }
+}

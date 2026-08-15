@@ -7,13 +7,14 @@ image_size: 224
 epochs: 15
 batch_size_shape: 32
 batch_size_color: 64
-learning_rate: 0.001
+learning_rate: 1.0e-05
 optimizer: adamw
 scheduler: ReduceLROnPlateau
 seed: 42
-frozen_backbone: true
+frozen_backbone: false
 trainable_layers:
-- ''
+- layer4
+- head
 tasks:
 - shape
 - color

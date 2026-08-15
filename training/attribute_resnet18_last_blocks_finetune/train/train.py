@@ -11,6 +11,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score
+import random
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../src')))
 from pill_safety.cv.attribute.models.resnet18_multitask import MultiTaskResNet18
@@ -23,6 +29,7 @@ def train():
     run_id = "attr_last_blocks_v1"
     module_name = "attribute_resnet18_last_blocks_finetune"
     author = "Nguyen Gia Bao"
+    image_size = 224
     started_at_str = time.strftime("%Y-%m-%d %H:%M", time.localtime())
     start_time = time.time()
     
@@ -50,12 +57,12 @@ def train():
         "epochs": 15,
         "batch_size_shape": 32,
         "batch_size_color": 64, 
-        "learning_rate": 0.001,
+        "learning_rate": 0.00001,
         "optimizer": "adamw",
         "scheduler": "ReduceLROnPlateau",
         "seed": 42,
-        "frozen_backbone": True,
-        "trainable_layers": [""],
+        "frozen_backbone": False,
+        "trainable_layers": ["layer4", "head"],
         "tasks": ["shape", "color"],
         "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
         "dataset": {
@@ -70,9 +77,34 @@ def train():
     }
     with open(os.path.join(log_dir, f"{run_id}_config.yaml"), "w", encoding="utf-8") as f:
         yaml.dump(config_data, f, sort_keys=False)
-
+        
     shape_train_csv = "data/splits/nih_attribute/shape/train_combined_crop.csv"
     color_train_csv = "data/splits/nih_attribute/color/train_multilabel.csv"
+
+        # --- TỰ ĐỘNG TÍNH TOÁN TRỌNG SỐ CHO DỮ LIỆU MẤT CÂN BẰNG (Đã trỏ đúng chuẩn cột CSV) ---
+    print("[Info] Đang tính toán trọng số xử lý mất cân bằng dữ liệu (Imbalance Weights)...")
+    
+    # 1. Tính class_weights cho Shape (CrossEntropyLoss) - Lấy cột 'label_shape'
+    shape_df = pd.read_csv(shape_train_csv)
+    shape_labels = shape_df['label_shape'].values.astype(int)
+    class_counts = np.bincount(shape_labels)
+    total_samples = len(shape_labels)
+    num_classes = len(class_counts)
+    shape_class_weights = total_samples / (num_classes * class_counts.astype(float))
+    shape_weights_tensor = torch.FloatTensor(shape_class_weights).to(device)
+    print(f"[Info] Shape Class Weights: {shape_class_weights}")
+
+    # 2. Tính pos_weight cho Color (BCEWithLogitsLoss) - Bỏ qua 2 cột đầu (rximageFileName, is_synthetic), lấy từ label_BLACK trở đi (iloc[:, 2:])
+    color_df = pd.read_csv(color_train_csv)
+    color_labels_matrix = color_df.iloc[:, 2:].values.astype(float) 
+    pos_counts = color_labels_matrix.sum(axis=0)
+    neg_counts = len(color_labels_matrix) - pos_counts
+    pos_weights = neg_counts / np.clip(pos_counts, 1, None)
+    color_pos_weight_tensor = torch.FloatTensor(pos_weights).to(device)
+    print(f"[Info] Color Pos Weights: {pos_weights}")
+    # ---------------------------------------------------------------------------------------
+
+    
 
     manifest_data = {
         "run_id": run_id,
@@ -96,33 +128,25 @@ def train():
             "leakage_check_passed": True,
             "leakage_check_notes": "Val and test splits are strictly separated prior to any online/offline augmentation."
         },
-        "class_distribution": {}
+        "class_distribution": {
+            "shape": class_counts.tolist(), 
+            "color_positive_counts": pos_counts.tolist()
+        },
+        "augmentation": {
+            "enabled": True,
+            "online": False,
+            "sim2real": True,
+            "pipeline": [
+                f"Resize(image_size={image_size})",
+                "ToTensor()",
+                "Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])"
+            ],
+            "note": "Offline augmented transforms for shape/color datasets"
+        }
     }
     with open(os.path.join(log_dir, f"{run_id}_dataset_manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest_data, f, indent=4, ensure_ascii=False)
 
-    # --- TỰ ĐỘNG TÍNH TOÁN TRỌNG SỐ CHO DỮ LIỆU MẤT CÂN BẰNG (Đã trỏ đúng chuẩn cột CSV) ---
-    print("[Info] Đang tính toán trọng số xử lý mất cân bằng dữ liệu (Imbalance Weights)...")
-    
-    # 1. Tính class_weights cho Shape (CrossEntropyLoss) - Lấy cột 'label_shape'
-    shape_df = pd.read_csv(shape_train_csv)
-    shape_labels = shape_df['label_shape'].values.astype(int)
-    class_counts = np.bincount(shape_labels)
-    total_samples = len(shape_labels)
-    num_classes = len(class_counts)
-    shape_class_weights = total_samples / (num_classes * class_counts.astype(float))
-    shape_weights_tensor = torch.FloatTensor(shape_class_weights).to(device)
-    print(f"[Info] Shape Class Weights: {shape_class_weights}")
-
-    # 2. Tính pos_weight cho Color (BCEWithLogitsLoss) - Bỏ qua 2 cột đầu (rximageFileName, is_synthetic), lấy từ label_BLACK trở đi (iloc[:, 2:])
-    color_df = pd.read_csv(color_train_csv)
-    color_labels_matrix = color_df.iloc[:, 2:].values.astype(float) 
-    pos_counts = color_labels_matrix.sum(axis=0)
-    neg_counts = len(color_labels_matrix) - pos_counts
-    pos_weights = neg_counts / np.clip(pos_counts, 1, None)
-    color_pos_weight_tensor = torch.FloatTensor(pos_weights).to(device)
-    print(f"[Info] Color Pos Weights: {pos_weights}")
-    # ---------------------------------------------------------------------------------------
 
     # Khởi tạo Train Dataloaders (Đã tối ưu num_workers và pin_memory)
     shape_loader = DataLoader(
@@ -220,6 +244,7 @@ def train():
     best_metric = 0.0
     epoch_logs = []
     best_val_metrics = {}
+    best_epoch_idx = 1
 
     print("[Info] Tiến hành vòng lặp huấn luyện và đánh giá trên Validation...")
     for epoch in range(epochs):
@@ -278,10 +303,11 @@ def train():
         scheduler.step(current_metric)
         current_lr = optimizer.param_groups[0]['lr']
         
-        is_best = current_metric > best_metric
+        is_best = current_metric >= best_metric
         if is_best:
             best_metric = current_metric
             best_val_metrics = val_metrics
+            best_epoch_idx = epoch + 1
             torch.save(model.state_dict(), os.path.join(ckpt_dir, f"{run_id}_best.pt"))
 
         epoch_logs.append({
@@ -312,8 +338,19 @@ def train():
 
     torch.save(model.state_dict(), os.path.join(ckpt_dir, f"{run_id}_last.pt"))
 
+    # Đóng gói dữ liệu theo đúng chuẩn contract yêu cầu
+    final_val_metrics_contract = {
+        "run_id": run_id,
+        "module": module_name,
+        "split": "val",
+        "best_epoch": best_epoch_idx,  # Lưu ý: Cần track lại biến epoch đạt best (xem hướng dẫn bên dưới)
+        "best_checkpoint": os.path.join(ckpt_dir, f"{run_id}_best.pt"),
+        "selection_metric": "val_combined_f1",
+        "metrics": best_val_metrics   # Dictionary metric thô ban đầu nằm ở đây
+    }
+
     with open(os.path.join(metric_dir, f"{run_id}_val_metrics.json"), "w", encoding="utf-8") as f:
-        json.dump(best_val_metrics, f, indent=4, ensure_ascii=False)
+        json.dump(final_val_metrics_contract, f, indent=4, ensure_ascii=False)
 
     log_df = pd.DataFrame(epoch_logs)
     cols_order = [
