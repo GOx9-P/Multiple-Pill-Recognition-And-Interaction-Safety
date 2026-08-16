@@ -1,0 +1,62 @@
+# Python cache/runtime
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs (training runtime logs only)
+*.log
+
+# Model weights and checkpoints (too large for Git, use Git LFS or Drive)
+*.pt
+*.pth
+*.onnx
+*.engine
+*.ckpt
+*.safetensors
+
+# Large raw data
+data/raw/**
+data/processed/**
+data/augmented/**
+data/benchmark/**
+
+# Model weights directory (keep structure, block weights)
+models/**
+
+# Outputs (inference results, can be regenerated)
+outputs/**
+
+# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
+# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
+
+# Keep folder structure in Git
+!data/**/
+!data/**/.gitkeep
+!models/**/
+!models/**/.gitkeep
+!outputs/**/
+!outputs/**/.gitkeep
+!.gitkeep
