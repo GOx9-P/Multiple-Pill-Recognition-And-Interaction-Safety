@@ -1,53 +1,46 @@
-import numpy as np
+"""Chuyen logits shape/color thanh attribute JSON theo label mapping hien tai."""
+
+from __future__ import annotations
+
 import json
-import os
+from pathlib import Path
+
+import numpy as np
+
 
 class AttributeFormatter:
-    def __init__(self, label_mapping_path="src/pill_safety/cv/attribute/labels/label_mapping.json"):
-        if not os.path.exists(label_mapping_path):
-            raise FileNotFoundError(f"Không tìm thấy file mapping nhãn tại: {label_mapping_path}")
-            
-        with open(label_mapping_path, 'r', encoding='utf-8') as f:
-            self.mapping = json.load(f)
-            
-        self.shape_map = self.mapping["shape"]
-        self.color_list = self.mapping["color"]
+    """Giu thu tu label mapping de threshold va output khong bi lech class."""
 
-    def format_output(self, shape_logits, color_logits, color_threshold=0.5):
-        """
-        Chuẩn hóa logits thô từ mô hình thành kết quả JSON có ý nghĩa ngôn ngữ tự nhiên.
-        - shape_logits: numpy array hoặc tensor 1D cho nhánh shape
-        - color_logits: numpy array hoặc tensor 1D cho nhánh color (12 chiều)
-        - color_threshold: Ngưỡng xác suất để nhận diện màu (mặc định 0.5)
-        """
-        # 1. Xử lý Shape (Multi-class sử dụng Softmax)
-        shape_probs = np.exp(shape_logits - np.max(shape_logits)) # Tránh tràn số
-        shape_probs = shape_probs / np.sum(shape_probs)
-        shape_idx = int(np.argmax(shape_probs))
-        shape_label = self.shape_map.get(str(shape_idx), "UNKNOWN")
-        shape_conf = float(shape_probs[shape_idx])
-        
-        # 2. Xử lý Color (Multi-label sử dụng Sigmoid)
-        color_probs = 1 / (1 + np.exp(-color_logits))
-        color_labels = []
-        
-        for idx, prob in enumerate(color_probs):
-            if prob >= color_threshold:
-                color_labels.append({
-                    "label": self.color_list[idx],
-                    "confidence": float(prob)
-                })
-                
-        # Sắp xếp các màu theo độ tự tin giảm dần
-        color_labels = sorted(color_labels, key=lambda x: x["confidence"], reverse=True)
+    def __init__(self, label_mapping_path: str | Path):
+        """Nap mapping moi shape_classification/color_multilabel hoac mapping cu."""
+        path = Path(label_mapping_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Label mapping not found: {path}")
+        mapping = json.loads(path.read_text(encoding="utf-8"))
+        if "shape_classification" in mapping:
+            self.shape_labels = [label for label, _ in sorted(mapping["shape_classification"].items(), key=lambda item: item[1])]
+            self.color_labels = list(mapping["color_multilabel"]["labels"])
+        else:
+            self.shape_labels = [mapping["shape"][str(index)] for index in range(len(mapping["shape"]))]
+            self.color_labels = list(mapping["color"])
 
-        # 3. Trả về cấu trúc JSON Contract
+    def format_output(self, shape_logits: np.ndarray, color_logits: np.ndarray, color_threshold: float | np.ndarray = 0.5) -> dict:
+        """Tra shape top-1 va tat ca mau vuot qua threshold scalar hoac per-color."""
+        shape_logits = np.asarray(shape_logits, dtype=np.float64)
+        shape_probabilities = np.exp(shape_logits - shape_logits.max())
+        shape_probabilities /= shape_probabilities.sum()
+        shape_index = int(shape_probabilities.argmax())
+        color_probabilities = 1.0 / (1.0 + np.exp(-np.asarray(color_logits, dtype=np.float64)))
+        thresholds = np.full(len(self.color_labels), float(color_threshold)) if np.isscalar(color_threshold) else np.asarray(color_threshold, dtype=np.float64)
+        if thresholds.shape != color_probabilities.shape:
+            raise ValueError("Color thresholds must have the same length as color logits.")
+        colors = [
+            {"label": label, "confidence": float(probability)}
+            for label, probability, threshold in zip(self.color_labels, color_probabilities, thresholds)
+            if probability >= threshold
+        ]
+        colors.sort(key=lambda item: item["confidence"], reverse=True)
         return {
-            "shape": {
-                "label": shape_label,
-                "confidence": shape_conf
-            },
-            "color": {
-                "labels": color_labels
-            }
+            "shape": {"label": self.shape_labels[shape_index], "confidence": float(shape_probabilities[shape_index])},
+            "color": {"labels": colors},
         }

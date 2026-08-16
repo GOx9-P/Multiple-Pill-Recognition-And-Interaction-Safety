@@ -1,105 +1,94 @@
-import torch
-from tqdm import tqdm
+"""Reusable training loop cho multi-task shape/color."""
+
 
 class MultiTaskTrainer:
-    def __init__(self, model, optimizer, criterion_shape, criterion_color, device):
+    """Huấn luyện shared backbone với batch shape và nhiều batch color mỗi step."""
+
+    def __init__(self, model, optimizer, criterion_shape, criterion_color, device, lambda_color=1.0):
         self.model = model
         self.optimizer = optimizer
         self.criterion_shape = criterion_shape
         self.criterion_color = criterion_color
         self.device = device
+        self.lambda_color = lambda_color
 
-    def set_training_strategy(self, strategy="head_tune"):
-        """
-        Chiến thuật huấn luyện:
-        - 'head_tune': Đóng băng toàn bộ backbone, chỉ cho phép head học.
-        - 'last_blocks_fine_tune': Đóng băng phần đầu backbone và head, chỉ train các block cuối của backbone.
-        """
+    def set_training_strategy(self, strategy, trainable_layers=None):
+        """Freeze/unfreeze dung cac layer ResNet theo strategy cau hinh."""
+        for parameter in self.model.parameters():
+            parameter.requires_grad = False
+
         if strategy == "head_tune":
-            # Đóng băng toàn bộ backbone
-            for param in self.model.backbone.parameters():
-                param.requires_grad = False
-            # Mở khóa 2 head
-            for param in self.model.shape_head.parameters():
-                param.requires_grad = True
-            for param in self.model.color_head.parameters():
-                param.requires_grad = True
-            print("[Trainer] Chiến thuật: Train HEAD (Đã đóng băng Backbone)")
-
-        elif strategy == "last_blocks_fine_tune":
-            # Đóng băng toàn bộ trước
-            for param in self.model.parameters():
-                param.requires_grad = False
-            
-            # Đóng băng Head (không train head ở giai đoạn này)
-            for param in self.model.shape_head.parameters():
-                param.requires_grad = False
-            for param in self.model.color_head.parameters():
-                param.requires_grad = False
-
-            # Chỉ mở khóa các layer/block cuối cùng của ResNet18 (ví dụ: layer4)
-            if hasattr(self.model.backbone, 'layer4'):
-                for param in self.model.backbone.layer4.parameters():
-                    param.requires_grad = True
-            print("[Trainer] Chiến thuật: Train LAST BLOCKS (Đã đóng băng Head và tầng đầu Backbone)")
+            trainable_modules = [self.model.shape_head, self.model.color_head]
+        elif strategy == "last_blocks_finetune":
+            selected = trainable_layers or ["layer3", "layer4", "classification_heads"]
+            trainable_modules = []
+            for layer_name in ("layer3", "layer4"):
+                if layer_name in selected:
+                    trainable_modules.append(getattr(self.model.backbone, layer_name))
+            if "classification_heads" in selected:
+                trainable_modules.extend([self.model.shape_head, self.model.color_head])
         else:
-            raise ValueError(f"Không hỗ trợ chiến thuật: {strategy}")
+            raise ValueError(f"Unsupported training strategy: {strategy}")
 
-    def train_epoch(self, shape_loader, color_loader1, color_loader2):
+        for module in trainable_modules:
+            for parameter in module.parameters():
+                parameter.requires_grad = True
+
+        names = [name for name, parameter in self.model.named_parameters() if parameter.requires_grad]
+        if not names:
+            raise RuntimeError("No trainable parameters after applying training strategy.")
+        return names
+
+    @staticmethod
+    def _next_batch(iterator, loader):
+        """Lay batch tiep theo va quay lai dau loader khi da het epoch logic."""
+        try:
+            return next(iterator), iterator
+        except StopIteration:
+            iterator = iter(loader)
+            return next(iterator), iterator
+
+    def train_epoch(self, shape_loader, color_loader, steps_per_epoch, color_batches_per_step=2):
+        """Chay 1 shape batch + N color batch, tich luy gradient va step mot lan."""
+        if color_batches_per_step < 1:
+            raise ValueError("color_batches_per_step must be at least 1.")
+
         self.model.train()
-        self.optimizer.zero_grad()
-        
-        shape_iter = iter(shape_loader)
-        color_iter1 = iter(color_loader1)
-        color_iter2 = iter(color_loader2)
-        
-        num_steps = len(shape_loader)
-        total_shape_loss = 0.0
-        total_color_loss = 0.0
+        shape_iterator = iter(shape_loader)
+        color_iterator = iter(color_loader)
+        totals = {"loss": 0.0, "shape_loss": 0.0, "color_loss": 0.0, "shape_samples": 0, "color_samples": 0}
 
-        for _ in range(num_steps):
-            # 1. Batch Shape (Tỷ lệ 1)
-            try:
-                shape_imgs, shape_labels = next(shape_iter)
-            except StopIteration:
-                shape_iter = iter(shape_loader)
-                shape_imgs, shape_labels = next(shape_iter)
-                
-            shape_imgs, shape_labels = shape_imgs.to(self.device), shape_labels.to(self.device)
-            shape_preds = self.model(shape_imgs, task_type='shape')
-            loss_shape = self.criterion_shape(shape_preds, shape_labels)
-            loss_shape.backward()
-            total_shape_loss += loss_shape.item()
+        for _ in range(steps_per_epoch):
+            self.optimizer.zero_grad(set_to_none=True)
+            (shape_images, shape_labels), shape_iterator = self._next_batch(shape_iterator, shape_loader)
+            shape_images = shape_images.to(self.device, non_blocking=True)
+            shape_labels = shape_labels.long().to(self.device, non_blocking=True).reshape(-1)
+            shape_loss = self.criterion_shape(self.model(shape_images, task_type="shape"), shape_labels)
 
-            # 2. Batch Color 1
-            try:
-                color_imgs_1, color_labels_1 = next(color_iter1)
-            except StopIteration:
-                color_iter1 = iter(color_loader1)
-                color_imgs_1, color_labels_1 = next(color_iter1)
-                
-            color_imgs_1, color_labels_1 = color_imgs_1.to(self.device), color_labels_1.to(self.device)
-            color_preds_1 = self.model(color_imgs_1, task_type='color')
-            loss_color_1 = self.criterion_color(color_preds_1, color_labels_1)
-            loss_color_1.backward()
+            color_losses = []
+            color_samples = 0
+            for _ in range(color_batches_per_step):
+                (color_images, color_labels), color_iterator = self._next_batch(color_iterator, color_loader)
+                color_images = color_images.to(self.device, non_blocking=True)
+                color_labels = color_labels.float().to(self.device, non_blocking=True)
+                color_losses.append(self.criterion_color(self.model(color_images, task_type="color"), color_labels))
+                color_samples += color_images.shape[0]
 
-            # 3. Batch Color 2 (Đảm bảo tỷ lệ 1 shape : 2 color)
-            try:
-                color_imgs_2, color_labels_2 = next(color_iter2)
-            except StopIteration:
-                color_iter2 = iter(color_loader2)
-                color_imgs_2, color_labels_2 = next(color_iter2)
-                
-            color_imgs_2, color_labels_2 = color_imgs_2.to(self.device), color_labels_2.to(self.device)
-            color_preds_2 = self.model(color_imgs_2, task_type='color')
-            loss_color_2 = self.criterion_color(color_preds_2, color_labels_2)
-            loss_color_2.backward()
-            
-            avg_color_loss = (loss_color_1.item() + loss_color_2.item()) / 2.0
-            total_color_loss += avg_color_loss
-
-            # Tích lũy gradient hoàn tất cho nhóm batch, thực hiện optimizer step
+            mean_color_loss = sum(color_losses) / len(color_losses)
+            total_loss = shape_loss + self.lambda_color * mean_color_loss
+            total_loss.backward()
             self.optimizer.step()
-            self.optimizer.zero_grad()
 
-        return total_shape_loss / num_steps, total_color_loss / num_steps
+            totals["loss"] += total_loss.item()
+            totals["shape_loss"] += shape_loss.item()
+            totals["color_loss"] += mean_color_loss.item()
+            totals["shape_samples"] += shape_images.shape[0]
+            totals["color_samples"] += color_samples
+
+        return {
+            "train_loss": totals["loss"] / steps_per_epoch,
+            "shape_loss": totals["shape_loss"] / steps_per_epoch,
+            "color_loss": totals["color_loss"] / steps_per_epoch,
+            "shape_samples": totals["shape_samples"],
+            "color_samples": totals["color_samples"],
+        }
