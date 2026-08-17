@@ -1,46 +1,81 @@
 {
-    "run_id": "attr_head_v1",
-    "dataset_name": "NIH/RxImage",
-    "shape_csv": "data/splits/nih_attribute/shape/train_combined_crop.csv",
-    "color_csv": "data/splits/nih_attribute/color/train_multilabel.csv",
-    "shape_val_csv": "data/splits/nih_attribute/shape/val_combined_crop.csv",
-    "color_val_csv": "data/splits/nih_attribute/color/val_multilabel.csv",
-    "train_shape_count": 17840,
-    "val_shape_count": 454,
-    "test_shape_count": 458,
-    "train_color_count": 37312,
-    "val_color_count": 876,
-    "test_color_count": 880,
-    "split_before_augmentation": true,
-    "augmentation_train_only": true,
-    "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
-    "split_policy": {
-        "split_before_augmentation": true,
-        "group_key": "image_id",
-        "leakage_check_passed": true,
-        "leakage_check_notes": "Val and test splits are strictly separated prior to any online/offline augmentation."
+  "split_before_augmentation": true,
+  "augmentation_train_only": true,
+  "split_policy": {
+    "group_key": "source_image_group",
+    "source_group_rule": "remove file extension, optional _AUG_n/_ADV_n, then side suffix _1/_2",
+    "leakage_check_passed": true
+  },
+  "shape": {
+    "train": {
+      "samples": 17840,
+      "original_samples": 3644,
+      "synthetic_samples": 14196,
+      "source_image_groups": 2414
     },
-    "class_distribution": {
-        "shape": [
-            4720,
-            1152,
-            3840,
-            3008,
-            5120
-        ],
-        "color_positive_counts": [
-            1712.0,
-            2848.0,
-            1784.0,
-            2584.0,
-            2040.0,
-            2800.0,
-            3104.0,
-            2840.0,
-            3000.0,
-            2432.0,
-            13448.0,
-            4384.0
-        ]
+    "val": {
+      "samples": 454,
+      "original_samples": 454,
+      "synthetic_samples": 0,
+      "source_image_groups": 227
+    },
+    "test": {
+      "samples": 458,
+      "original_samples": 458,
+      "synthetic_samples": 0,
+      "source_image_groups": 229
     }
+  },
+  "color": {
+    "train": {
+      "samples": 37312,
+      "original_samples": 7016,
+      "synthetic_samples": 30296,
+      "source_image_groups": 5272
+    },
+    "val": {
+      "samples": 876,
+      "original_samples": 876,
+      "synthetic_samples": 0,
+      "source_image_groups": 438
+    },
+    "test": {
+      "samples": 880,
+      "original_samples": 880,
+      "synthetic_samples": 0,
+      "source_image_groups": 440
+    }
+  },
+  "run_id": "attr_head_v1",
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json",
+  "class_distribution": {
+    "shape_counts": [
+      4720,
+      1152,
+      3840,
+      3008,
+      5120
+    ],
+    "color_positive_counts": [
+      1712.0,
+      2848.0,
+      1784.0,
+      2584.0,
+      2040.0,
+      2800.0,
+      3104.0,
+      2840.0,
+      3000.0,
+      2432.0,
+      13448.0,
+      4384.0
+    ]
+  },
+  "sampling_policy": {
+    "shape_batches_per_optimizer_step": 1,
+    "color_batches_per_optimizer_step": 2,
+    "shape_batch_size": 32,
+    "color_batch_size": 32,
+    "gradient_accumulation": "shape_loss + lambda_color * mean(color_batch_losses), then one optimizer.step"
+  }
 }

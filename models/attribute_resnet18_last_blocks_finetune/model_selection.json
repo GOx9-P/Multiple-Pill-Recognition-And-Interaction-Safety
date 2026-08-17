@@ -1,0 +1,31 @@
+{
+  "selection_split": "validation",
+  "head_tune_run_id": "attr_head_v1",
+  "last_blocks_run_id": "attr_last_blocks_v1",
+  "head_metrics": {
+    "val_loss": 0.3425,
+    "shape_loss": 0.0968,
+    "color_loss": 0.2457,
+    "shape_f1": 0.9177,
+    "color_f1": 0.6648,
+    "combined_f1": 0.7913,
+    "shape_acc": 0.9846,
+    "color_acc": 0.597,
+    "combined_acc": 0.7908
+  },
+  "last_blocks_metrics": {
+    "val_loss": 0.6457,
+    "shape_loss": 0.2734,
+    "color_loss": 0.3723,
+    "shape_f1": 0.9583,
+    "color_f1": 0.873,
+    "combined_f1": 0.9157,
+    "shape_acc": 0.9956,
+    "color_acc": 0.8961,
+    "combined_acc": 0.9459
+  },
+  "overall_macro_f1_delta": 0.1244,
+  "worst_per_class_f1_delta": 0.0034,
+  "selected_for_inference": "last_blocks",
+  "selection_rule": "higher validation overall_macro_f1 and no class F1 drop below -0.05; test is reporting-only"
+}

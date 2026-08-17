@@ -1,19 +1,43 @@
 {
-    "run_id": "attr_head_v1",
-    "module": "attribute_resnet18_head_tune",
-    "split": "val",
-    "best_epoch": 9,
-    "best_checkpoint": "experiments/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
-    "selection_metric": "val_combined_f1",
-    "metrics": {
-        "val_loss": 0.361,
-        "shape_loss": 0.103,
-        "color_loss": 0.2581,
-        "shape_f1": 0.9234,
-        "color_f1": 0.664,
-        "combined_f1": 0.7937,
-        "shape_acc": 0.9868,
-        "color_acc": 0.5959,
-        "combined_acc": 0.7913
+  "run_id": "attr_head_v1",
+  "module": "attribute_resnet18_head_tune",
+  "split": "val",
+  "best_epoch": 16,
+  "best_checkpoint": "/kaggle/working/attribute_runs/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
+  "selection_metric": "overall_macro_f1_at_0.5",
+  "metrics": {
+    "val_loss": 0.3425,
+    "shape_loss": 0.0968,
+    "color_loss": 0.2457,
+    "shape_f1": 0.9177,
+    "color_f1": 0.6648,
+    "combined_f1": 0.7913,
+    "shape_acc": 0.9846,
+    "color_acc": 0.597,
+    "combined_acc": 0.7908
+  },
+  "per_class_metrics": {
+    "shape": {
+      "CAPSULE": 0.9966,
+      "IRREGULAR": 0.6667,
+      "OVAL": 0.9791,
+      "POLYGON": 0.9524,
+      "ROUND": 0.9938
+    },
+    "color": {
+      "BLACK": 0.9231,
+      "BLUE": 0.8351,
+      "BROWN": 0.4332,
+      "GRAY": 0.5385,
+      "GREEN": 0.7218,
+      "ORANGE": 0.7212,
+      "PINK": 0.6906,
+      "PURPLE": 0.4848,
+      "RED": 0.4954,
+      "TURQUOISE": 0.3019,
+      "WHITE": 0.9584,
+      "YELLOW": 0.8741
     }
+  },
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json"
 }

@@ -1,19 +1,43 @@
 {
-    "run_id": "attr_last_blocks_v1",
-    "module": "attribute_resnet18_last_blocks_finetune",
-    "split": "val",
-    "best_epoch": 11,
-    "best_checkpoint": "experiments/attribute_resnet18_last_blocks_finetune/checkpoints/attr_last_blocks_v1_best.pt",
-    "selection_metric": "val_combined_f1",
-    "metrics": {
-        "val_loss": 0.3614,
-        "shape_loss": 0.1022,
-        "color_loss": 0.2592,
-        "shape_f1": 0.9285,
-        "color_f1": 0.6763,
-        "combined_f1": 0.8024,
-        "shape_acc": 0.989,
-        "color_acc": 0.6221,
-        "combined_acc": 0.8056
+  "run_id": "attr_last_blocks_v1",
+  "module": "attribute_resnet18_last_blocks_finetune",
+  "split": "val",
+  "best_epoch": 14,
+  "best_checkpoint": "/kaggle/working/attribute_runs/attribute_resnet18_last_blocks_finetune/checkpoints/attr_last_blocks_v1_best.pt",
+  "selection_metric": "overall_macro_f1_at_0.5",
+  "metrics": {
+    "val_loss": 0.6457,
+    "shape_loss": 0.2734,
+    "color_loss": 0.3723,
+    "shape_f1": 0.9583,
+    "color_f1": 0.873,
+    "combined_f1": 0.9157,
+    "shape_acc": 0.9956,
+    "color_acc": 0.8961,
+    "combined_acc": 0.9459
+  },
+  "per_class_metrics": {
+    "shape": {
+      "CAPSULE": 1.0,
+      "IRREGULAR": 0.8,
+      "OVAL": 0.9917,
+      "POLYGON": 1.0,
+      "ROUND": 1.0
+    },
+    "color": {
+      "BLACK": 1.0,
+      "BLUE": 0.9697,
+      "BROWN": 0.7478,
+      "GRAY": 0.9677,
+      "GREEN": 0.9505,
+      "ORANGE": 0.7904,
+      "PINK": 0.8916,
+      "PURPLE": 0.9,
+      "RED": 0.7419,
+      "TURQUOISE": 0.5714,
+      "WHITE": 0.9897,
+      "YELLOW": 0.9555
     }
+  },
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json"
 }

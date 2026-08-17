@@ -43,8 +43,7 @@ data/processed/**
 data/augmented/**
 data/benchmark/**
 
-# Model weights directory (keep structure, block weights)
-models/**
+# Model packages: metadata is versioned; binary weights are blocked above.
 
 # Outputs (inference results, can be regenerated)
 outputs/**

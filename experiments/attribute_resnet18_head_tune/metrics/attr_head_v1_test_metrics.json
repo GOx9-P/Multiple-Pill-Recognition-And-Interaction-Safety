@@ -1,78 +1,40 @@
 {
-    "run_id": "attr_head_v1",
-    "module": "attribute_resnet18_head_tune",
-    "split": "test",
-    "best_checkpoint": "experiments\\attribute_resnet18_head_tune\\checkpoints\\attr_head_v1_best.pt",
-    "selection_metric": "overall_macro_f1",
-    "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
-    "metrics": {
-        "shape_macro_f1": 0.8187,
-        "color_macro_f1": 0.6898,
-        "overall_macro_f1": 0.7542,
-        "shape_acc": 0.9694,
-        "color_acc": 0.7295,
-        "overall_acc": 0.8495
+  "run_id": "attr_head_v1",
+  "module": "attribute_resnet18_head_tune",
+  "split": "test",
+  "checkpoint": "/kaggle/working/attribute_runs/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
+  "thresholds_file": "/kaggle/working/attribute_runs/attribute_resnet18_head_tune/checkpoints/attr_head_v1_optimal_thresholds.json",
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json",
+  "metrics": {
+    "shape_macro_f1": 0.8168,
+    "color_macro_f1": 0.6619,
+    "dosage_form_macro_f1": null,
+    "scoreline_macro_f1": null,
+    "overall_macro_f1": 0.7393,
+    "shape_accuracy": 0.9716,
+    "color_subset_accuracy": 0.733
+  },
+  "per_class_metrics": {
+    "shape": {
+      "CAPSULE": 0.9967,
+      "IRREGULAR": 0.2222,
+      "OVAL": 0.9576,
+      "POLYGON": 0.92,
+      "ROUND": 0.9875
     },
-    "per_class_metrics": {
-        "shape": {
-            "class_0": {
-                "f1_score": 0.9967,
-                "accuracy": 1.0
-            },
-            "class_1": {
-                "f1_score": 0.2857,
-                "accuracy": 0.25
-            },
-            "class_2": {
-                "f1_score": 0.9617,
-                "accuracy": 0.9417
-            },
-            "class_3": {
-                "f1_score": 0.8679,
-                "accuracy": 0.9583
-            },
-            "class_4": {
-                "f1_score": 0.9812,
-                "accuracy": 0.9812
-            }
-        },
-        "color": {
-            "color_0": {
-                "f1_score": 0.6667
-            },
-            "color_1": {
-                "f1_score": 0.8877
-            },
-            "color_2": {
-                "f1_score": 0.6379
-            },
-            "color_3": {
-                "f1_score": 0.5625
-            },
-            "color_4": {
-                "f1_score": 0.9107
-            },
-            "color_5": {
-                "f1_score": 0.7772
-            },
-            "color_6": {
-                "f1_score": 0.7573
-            },
-            "color_7": {
-                "f1_score": 0.5882
-            },
-            "color_8": {
-                "f1_score": 0.4889
-            },
-            "color_9": {
-                "f1_score": 0.1667
-            },
-            "color_10": {
-                "f1_score": 0.9653
-            },
-            "color_11": {
-                "f1_score": 0.8689
-            }
-        }
+    "color": {
+      "BLACK": 0.3333,
+      "BLUE": 0.8913,
+      "BROWN": 0.6316,
+      "GRAY": 0.5143,
+      "GREEN": 0.8972,
+      "ORANGE": 0.7343,
+      "PINK": 0.7653,
+      "PURPLE": 0.625,
+      "RED": 0.5063,
+      "TURQUOISE": 0.2,
+      "WHITE": 0.9633,
+      "YELLOW": 0.8807
     }
+  }
 }
