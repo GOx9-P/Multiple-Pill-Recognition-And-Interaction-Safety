@@ -91,7 +91,7 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │   │   └── nih_attribute/                        # NIH/RxImage đã crop và chuẩn hóa label attribute
 │   ├── splits/                                   # File train/val/test split, dùng để tái lập thí nghiệm
 │   │   ├── mediseg/                              # Split cho segmentation
-│   │   └── nih_attribute/                        # Split chống leakage cho attribute theo rxcui/ndc11
+│   │   └── nih_attribute/                        # Split chống leakage theo source-image group, giữ toàn bộ biến thể của một ảnh gốc trong cùng split
 │   ├── augmented/                                # Dữ liệu sinh thêm, chỉ nên sinh từ train split
 │   │   ├── mediseg/                              # Augmentation/copy-paste cho YOLOv11-Seg
 │   │   └── nih_attribute/                        # Augmentation/sim2real cho ResNet18 attribute

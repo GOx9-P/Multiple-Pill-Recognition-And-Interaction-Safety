@@ -17,12 +17,11 @@ from pill_safety.schemas import AttributeInferenceOutput, AttributeInferenceRequ
 
 from ..config import AttributeInferenceConfig
 from ..labels.label_mapping import load_label_mapping
-from ..models import MultiTaskResNet18
+from ..models.resnet18_multitask import MultiTaskResNet18
 from ..postprocessing import (
     build_attribute_output,
     format_attribute_predictions,
 )
-from ..utils.checkpoint import load_checkpoint
 
 
 @dataclass(frozen=True)
@@ -121,6 +120,49 @@ def _validate_model_config(path: Path, image_size: int) -> None:
         )
 
 
+def _load_model_state_dict(
+    path: Path,
+    device: torch.device,
+    num_shape_classes: int,
+    num_color_classes: int,
+    expected_mapping_hash: str,
+) -> dict[str, Any]:
+    """Nạp raw state dict của run mới hoặc checkpoint có metadata của run cũ."""
+
+    payload = torch.load(path, map_location=device, weights_only=False)
+    if not isinstance(payload, dict):
+        raise RuntimeError("Attribute checkpoint must contain a state dictionary.")
+
+    if "model_state_dict" in payload:
+        mapping_hash = payload.get("mapping_hash", "")
+        if expected_mapping_hash and mapping_hash and mapping_hash != expected_mapping_hash:
+            raise RuntimeError("Checkpoint label mapping hash differs from label_mapping.json.")
+        state_dict = payload["model_state_dict"]
+    else:
+        # Workflow của run attr_*_v1 lưu trực tiếp model.state_dict().
+        state_dict = payload
+
+    if not isinstance(state_dict, dict):
+        raise RuntimeError("Attribute checkpoint model_state_dict is invalid.")
+    state_dict = {
+        str(key).removeprefix("module."): value
+        for key, value in state_dict.items()
+    }
+
+    shape_weight = state_dict.get("shape_head.weight")
+    color_weight = state_dict.get("color_head.weight")
+    if shape_weight is None or color_weight is None:
+        raise RuntimeError(
+            "Checkpoint does not match the trained multi-task model: "
+            "missing shape_head.weight or color_head.weight."
+        )
+    if shape_weight.shape[0] != num_shape_classes:
+        raise RuntimeError("Checkpoint shape class count differs from label_mapping.json.")
+    if color_weight.shape[0] != num_color_classes:
+        raise RuntimeError("Checkpoint color class count differs from label_mapping.json.")
+    return state_dict
+
+
 class AttributePredictor:
     """Chạy ResNet18 đã chọn và xuất output Module 2 đúng schema."""
 
@@ -163,16 +205,14 @@ class AttributePredictor:
             num_color_classes=num_color_classes,
             pretrained=False,
         ).to(self.device)
-        checkpoint = load_checkpoint(
+        state_dict = _load_model_state_dict(
             self.config.weights_path,
             self.device,
-            expected_mapping_hash=mapping_hash,
+            num_shape_classes,
+            num_color_classes,
+            mapping_hash,
         )
-        if checkpoint.get("num_shape_classes", num_shape_classes) != num_shape_classes:
-            raise RuntimeError("Checkpoint shape class count differs from label mapping.")
-        if checkpoint.get("num_color_classes", num_color_classes) != num_color_classes:
-            raise RuntimeError("Checkpoint color class count differs from label mapping.")
-        self.model.load_state_dict(checkpoint["model_state_dict"], strict=True)
+        self.model.load_state_dict(state_dict, strict=True)
         self.model.eval()
         self.transform = transforms.Compose(
             [
@@ -193,7 +233,8 @@ class AttributePredictor:
         tensor = self.transform(image).unsqueeze(0).to(self.device)
 
         with torch.inference_mode():
-            shape_logits, color_logits = self.model(tensor)
+            shape_logits = self.model(tensor, task_type="shape")
+            color_logits = self.model(tensor, task_type="color")
             shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
             color_probabilities = torch.sigmoid(color_logits)[0]
 

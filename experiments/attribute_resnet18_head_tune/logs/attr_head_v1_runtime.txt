@@ -1,0 +1,17 @@
+run_id: attr_head_v1
+module: attribute_resnet18_head_tune
+author: NguyenGiaBao
+started_at: '2026-08-16T16:40:09'
+finished_at: '2026-08-16T18:32:22'
+git_commit: unknown
+device: cuda
+gpu_name: Tesla P100-PCIE-16GB
+total_train_seconds: 6733.09
+python_version: 3.12.13
+torch_version: 2.6.0+cu124
+trainable_parameters:
+- shape_head.weight
+- shape_head.bias
+- color_head.weight
+- color_head.bias
+pretrained_from: null

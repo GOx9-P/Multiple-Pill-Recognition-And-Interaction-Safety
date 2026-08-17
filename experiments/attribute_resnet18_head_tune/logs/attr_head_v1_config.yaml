@@ -1,0 +1,84 @@
+run:
+  module: attribute_resnet18_head_tune
+  run_id: attr_head_v1
+  author: NguyenGiaBao
+data:
+  root: data
+  verify_images: true
+  label_mapping: processed/nih_attribute/label_mapping.json
+  shape:
+    image_dir: image_all/nih_attribute/shape
+    train_csv: splits/nih_attribute/shape/train_combined_crop.csv
+    val_csv: splits/nih_attribute/shape/val_combined_crop.csv
+    test_csv: splits/nih_attribute/shape/test_combined_crop.csv
+  color:
+    image_dir: image_all/nih_attribute/color
+    train_csv: splits/nih_attribute/color/train_multilabel.csv
+    val_csv: splits/nih_attribute/color/val_multilabel.csv
+    test_csv: splits/nih_attribute/color/test_multilabel.csv
+offline_augmentation:
+  enabled: true
+  online_augmentation: false
+  split_before_augmentation: true
+  shape_policy: offline_geometry_variants_in_shape_train_csv
+  color_policy: offline_color_stable_variants_in_color_train_csv
+  synthetic_name_suffixes:
+  - _AUG_n
+  - _ADV_n
+sampling:
+  shape_batch_size: 32
+  color_batch_size: 32
+  shape_batches_per_step: 1
+  color_batches_per_step: 2
+  steps_per_epoch: null
+training:
+  strategy: head_tune
+  image_size: 224
+  epochs: 30
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  lambda_color: 1.0
+  seed: 42
+  num_workers: 2
+  trainable_layers:
+  - classification_heads
+  pretrained_weights: ImageNet
+  scheduler:
+    name: ReduceLROnPlateau
+    mode: max
+    factor: 0.5
+    patience: 2
+calibration:
+  threshold_candidates:
+  - 0.05
+  - 0.1
+  - 0.15
+  - 0.2
+  - 0.25
+  - 0.3
+  - 0.35
+  - 0.4
+  - 0.45
+  - 0.5
+  - 0.55
+  - 0.6
+  - 0.65
+  - 0.7
+  - 0.75
+  - 0.8
+  - 0.85
+  - 0.9
+  - 0.95
+reporting:
+  max_prediction_artifacts: 50
+output_root: experiments
+resolved_paths:
+  shape_image_dir: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/image_all/nih_attribute/shape
+  shape_train_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/shape/train_combined_crop.csv
+  shape_val_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/shape/val_combined_crop.csv
+  shape_test_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/shape/test_combined_crop.csv
+  color_image_dir: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/image_all/nih_attribute/color
+  color_train_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/color/train_multilabel.csv
+  color_val_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/color/val_multilabel.csv
+  color_test_csv: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/splits/nih_attribute/color/test_multilabel.csv
+  label_mapping: /kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json
