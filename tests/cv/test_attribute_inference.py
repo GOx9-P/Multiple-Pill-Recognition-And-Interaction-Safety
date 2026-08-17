@@ -12,6 +12,10 @@ if str(SRC_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(SRC_DIRECTORY))
 
 from pill_safety.cv.attribute.config import AttributeInferenceConfig
+from pill_safety.cv.attribute.labels.label_mapping import (
+    load_color_threshold_values,
+    load_label_mapping,
+)
 from pill_safety.cv.attribute.postprocessing.schema_mapper import (
     build_attribute_output,
 )
@@ -31,6 +35,33 @@ def test_attribute_yaml_selects_last_blocks_by_default():
     )
     assert config.image_size == 224
     assert config.shape_top_k == 3
+
+
+def test_promoted_last_block_artifacts_use_the_expected_label_and_threshold_order():
+    """Kiểm tra đúng format artifact thực tế của run last-block được chọn."""
+
+    artifact_directory = (
+        PROJECT_ROOT / "models" / "attribute_resnet18_last_blocks_finetune"
+    )
+    mapping, shape_count, color_count, _ = load_label_mapping(
+        artifact_directory / "label_mapping.json"
+    )
+    thresholds = load_color_threshold_values(
+        artifact_directory / "optimal_thresholds.json",
+        mapping["color"],
+    )
+
+    assert mapping["shape"] == [
+        "CAPSULE",
+        "IRREGULAR",
+        "OVAL",
+        "POLYGON",
+        "ROUND",
+    ]
+    assert shape_count == 5
+    assert color_count == 12
+    assert thresholds[mapping["color"].index("PINK")] == 0.4
+    assert thresholds[mapping["color"].index("ORANGE")] == 0.95
 
 
 def test_schema_mapper_preserves_ids_and_marks_untrained_fields_unknown():

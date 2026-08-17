@@ -14,6 +14,7 @@ Key design decisions:
 
 import hashlib
 import json
+from numbers import Real
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -143,19 +144,108 @@ def load_label_mapping(path: Path) -> Tuple[Dict, int, int, str]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    if "shape" not in data or "color" not in data:
+    # Head/last-block artifacts trong project đã từng dùng hai format. Inference
+    # phải giữ thứ tự index đúng lúc train, thay vì tự sort nhãn theo tên.
+    if "shape" in data and "color" in data:
+        shape_names = data["shape"]
+        color_names = data["color"]
+    elif "shape_classification" in data and "color_multilabel" in data:
+        shape_to_index = data["shape_classification"]
+        color_block = data["color_multilabel"]
+        color_names = color_block.get("labels")
+        color_to_index = color_block.get("mapping")
+
+        if not isinstance(shape_to_index, dict):
+            raise ValueError(
+                f"Malformed shape_classification mapping at {path}."
+            )
+        if not isinstance(color_names, list) or not isinstance(color_to_index, dict):
+            raise ValueError(
+                f"Malformed color_multilabel mapping at {path}."
+            )
+
+        def names_by_index(mapping: Dict, field_name: str) -> List[str]:
+            indices = list(mapping.values())
+            if (
+                not all(isinstance(index, int) for index in indices)
+                or sorted(indices) != list(range(len(indices)))
+            ):
+                raise ValueError(
+                    f"{field_name} indices at {path} must be consecutive from 0."
+                )
+            return [
+                name
+                for name, _ in sorted(mapping.items(), key=lambda item: item[1])
+            ]
+
+        shape_names = names_by_index(shape_to_index, "shape_classification")
+        indexed_color_names = names_by_index(color_to_index, "color_multilabel")
+        if color_names != indexed_color_names:
+            raise ValueError(
+                f"color_multilabel labels and mapping disagree at {path}."
+            )
+    else:
         raise ValueError(
-            f"Malformed label mapping at {path}. "
-            "Expected keys: 'shape', 'color'."
+            f"Malformed label mapping at {path}. Expected either "
+            "{'shape', 'color'} or {'shape_classification', 'color_multilabel'}."
         )
 
-    label_mapping = {
-        "shape": data["shape"],
-        "color": data["color"],
-    }
+    if (
+        not isinstance(shape_names, list)
+        or not isinstance(color_names, list)
+        or not all(isinstance(name, str) and name for name in shape_names + color_names)
+    ):
+        raise ValueError(f"Label names at {path} must be non-empty strings.")
 
-    num_shape_classes = len(data["shape"])
-    num_color_classes = len(data["color"])
+    label_mapping = {"shape": shape_names, "color": color_names}
+    num_shape_classes = len(shape_names)
+    num_color_classes = len(color_names)
     mapping_hash = data.get("mapping_hash", "")
 
     return label_mapping, num_shape_classes, num_color_classes, mapping_hash
+
+
+def load_color_threshold_values(path: Path, color_names: List[str]) -> List[float]:
+    """Nạp threshold color theo đúng thứ tự index trong label mapping.
+
+    Hỗ trợ cả artifact cũ dạng list và artifact run mới dạng
+    ``{\"thresholds\": {\"WHITE\": 0.7, ...}}``. Hàm này không phụ thuộc
+    PyTorch để có thể kiểm tra contract artifact trước khi khởi tạo model.
+    """
+
+    with Path(path).open("r", encoding="utf-8") as file:
+        raw = json.load(file)
+
+    if isinstance(raw, list):
+        values = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("thresholds"), list):
+        values = raw["thresholds"]
+    elif isinstance(raw, dict) and isinstance(raw.get("thresholds"), dict):
+        threshold_by_name = raw["thresholds"]
+        missing_names = [name for name in color_names if name not in threshold_by_name]
+        if missing_names:
+            raise ValueError(
+                "Color threshold mapping is missing labels from label_mapping.json: "
+                + ", ".join(missing_names)
+            )
+        values = [threshold_by_name[name] for name in color_names]
+    elif isinstance(raw, dict) and all(name in raw for name in color_names):
+        values = [raw[name] for name in color_names]
+    else:
+        raise ValueError(
+            "optimal_thresholds.json must be a list, contain a 'thresholds' "
+            "list or map, or map every label in label_mapping.json to a threshold."
+        )
+
+    if len(values) != len(color_names):
+        raise ValueError(
+            "Color threshold count does not match label mapping: "
+            f"{len(values)} != {len(color_names)}."
+        )
+    if not all(isinstance(value, Real) and not isinstance(value, bool) for value in values):
+        raise ValueError("Color thresholds must be numeric values.")
+
+    normalized_values = [float(value) for value in values]
+    if any(value < 0.0 or value > 1.0 for value in normalized_values):
+        raise ValueError("Color thresholds must be in [0, 1].")
+    return normalized_values

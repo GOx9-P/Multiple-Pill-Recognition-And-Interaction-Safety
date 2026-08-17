@@ -16,7 +16,7 @@ from torchvision import transforms
 from pill_safety.schemas import AttributeInferenceOutput, AttributeInferenceRequest
 
 from ..config import AttributeInferenceConfig
-from ..labels.label_mapping import load_label_mapping
+from ..labels.label_mapping import load_color_threshold_values, load_label_mapping
 from ..models.resnet18_multitask import MultiTaskResNet18
 from ..postprocessing import (
     build_attribute_output,
@@ -65,30 +65,8 @@ def _load_color_thresholds(
 ) -> torch.Tensor:
     """Nạp threshold multi-label theo list, key ``thresholds`` hoặc tên màu."""
 
-    with path.open("r", encoding="utf-8") as file:
-        raw = json.load(file)
-
-    if isinstance(raw, list):
-        values = raw
-    elif isinstance(raw, dict) and isinstance(raw.get("thresholds"), list):
-        values = raw["thresholds"]
-    elif isinstance(raw, dict) and all(name in raw for name in color_names):
-        values = [raw[name] for name in color_names]
-    else:
-        raise ValueError(
-            "optimal_thresholds.json must be a list, contain a 'thresholds' list, "
-            "or map every label in label_mapping.json to a threshold."
-        )
-
-    if len(values) != len(color_names):
-        raise ValueError(
-            "Color threshold count does not match label mapping: "
-            f"{len(values)} != {len(color_names)}."
-        )
-    thresholds = torch.tensor(values, dtype=torch.float32)
-    if torch.any(thresholds < 0.0) or torch.any(thresholds > 1.0):
-        raise ValueError("Color thresholds must be in [0, 1].")
-    return thresholds
+    values = load_color_threshold_values(path, color_names)
+    return torch.tensor(values, dtype=torch.float32)
 
 
 def _validate_model_config(path: Path, image_size: int) -> None:

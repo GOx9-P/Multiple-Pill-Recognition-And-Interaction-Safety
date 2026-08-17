@@ -49,6 +49,9 @@ models/**
 # Outputs (inference results, can be regenerated)
 outputs/**
 
+# Standalone artifact packages prepared for Kaggle Dataset upload
+kaggle_uploads/
+
 # Experiments: allow result files, block nothing except weights (already blocked by *.pt)
 # This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
 
