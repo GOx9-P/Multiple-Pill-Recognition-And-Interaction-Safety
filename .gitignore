@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -26,16 +27,10 @@ env/
 .DS_Store
 Thumbs.db
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-
+# Logs (training runtime logs only)
 *.log
 
-# Model weights and checkpoints
+# Model weights and checkpoints (too large for Git, use Git LFS or Drive)
 *.pt
 *.pth
 *.onnx
@@ -43,54 +38,35 @@ Thumbs.db
 *.ckpt
 *.safetensors
 
-# Large or generated project artifacts
+# Large raw data
 data/raw/**
 data/processed/**
 data/augmented/**
 data/benchmark/**
-experiments/**
+
+# Model weights directory (keep structure, block weights)
 models/**
+
+# Outputs (inference results, can be regenerated)
 outputs/**
+
+# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
+# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
 
 # Keep folder structure in Git
 !data/**/
 !data/**/.gitkeep
-!experiments/**/
-!experiments/**/.gitkeep
 !models/**/
 !models/**/.gitkeep
 !outputs/**/
 !outputs/**/.gitkeep
 !.gitkeep
 
-# Temporary scripts & scratch files
-scratch/
-tmp/
-temp/
-
-# Testing & Coverage
-.coverage
-.coverage.*
-htmlcov/
-.hypothesis/
-
-# Docker data & local overrides
-pgdata/
-docker-compose.override.yml
-compose.override.yaml
-
-# Build & packaging artifacts
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# Additional editor & OS files
-*.swp
-*.swo
-*~
-
-
-# tasks for agent
-tasks
-.agents
+# AI Agent Skills & Local Assistant Configs
+.agents/
+.claude/
+.codex/
+.gemini/
+.cursor/
+skills-lock.json
+tasks/
