@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -37,6 +38,12 @@ Thumbs.db
 *.ckpt
 *.safetensors
 
+# Standalone artifact packages prepared for Kaggle Dataset upload
+kaggle_uploads/
+
+# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
+# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
+
 # Large raw data
 data/raw/**
 data/processed/**
@@ -49,12 +56,6 @@ models/**
 # Outputs (inference results, can be regenerated)
 outputs/**
 
-# Standalone artifact packages prepared for Kaggle Dataset upload
-kaggle_uploads/
-
-# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
-# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
-
 # Keep folder structure in Git
 !data/**/
 !data/**/.gitkeep
@@ -63,3 +64,12 @@ kaggle_uploads/
 !outputs/**/
 !outputs/**/.gitkeep
 !.gitkeep
+
+# AI Agent Skills & Local Assistant Configs
+.agents/
+.claude/
+.codex/
+.gemini/
+.cursor/
+skills-lock.json
+tasks/
