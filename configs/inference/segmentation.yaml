@@ -9,7 +9,7 @@ model:
 
 postprocessing:
   # Giữ ngữ cảnh quanh mask cho Module 2/3; crop không được cắt sát viên.
-  bbox_padding_ratio: 0.12
+  bbox_padding_ratio: 0.20
   crop_size: 640
   crop_background_value: 127
   align_long_axis: true
