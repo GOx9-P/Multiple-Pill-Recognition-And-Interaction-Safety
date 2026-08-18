@@ -138,14 +138,6 @@ def _prepare_crop(
 
     crop = image_bgr[y1p:y2p, x1p:x2p].copy()
     crop_mask = mask[y1p:y2p, x1p:x2p].astype(np.uint8)
-    foreground = crop[crop_mask > 0]
-    background_color = (
-        tuple(int(value) for value in np.median(foreground, axis=0))
-        if foreground.size
-        else (0, 0, 0)
-    )
-    # Nền xám trung tính giữ được contour của viên sáng hoặc viên màu trắng.
-    # Màu median chỉ dùng cho padding ngoài khi xoay và tạo canvas vuông cho OCR.
     masked_background = (config.crop_background_value,) * 3
     crop[crop_mask == 0] = masked_background
 
@@ -156,7 +148,7 @@ def _prepare_crop(
                 crop,
                 -axis[0],
                 cv2.INTER_LINEAR,
-                background_color,
+                masked_background,
             )
             crop_mask = _rotate_bound(
                 crop_mask,
@@ -165,14 +157,25 @@ def _prepare_crop(
                 0,
             )
 
-    # Cắt padding thừa do phép xoay rồi đặt viên vào giữa canvas vuông ổn định.
+    # Sau khi xoay, lấy lại vùng quanh mask nhưng mở rộng cùng tỷ lệ padding.
+    # Không cắt sát boundingRect: Module 2 và Module 3 cần vùng ngữ cảnh ổn định.
     nonzero = cv2.findNonZero((crop_mask > 0).astype(np.uint8))
     if nonzero is not None:
         tx, ty, tw, th = cv2.boundingRect(nonzero)
-        crop = crop[ty : ty + th, tx : tx + tw]
-        crop_mask = crop_mask[ty : ty + th, tx : tx + tw]
+        rotated_padding = int(
+            round(max(tw, th) * config.bbox_padding_ratio)
+        )
+        tx1 = max(0, tx - rotated_padding)
+        ty1 = max(0, ty - rotated_padding)
+        tx2 = min(crop.shape[1], tx + tw + rotated_padding)
+        ty2 = min(crop.shape[0], ty + th + rotated_padding)
+        crop = crop[ty1:ty2, tx1:tx2]
+        crop_mask = crop_mask[ty1:ty2, tx1:tx2]
+
+    # Đặt nền ngoài mask về một giá trị trung tính sau phép xoay nội suy.
+    crop[crop_mask == 0] = masked_background
     side = max(crop.shape[:2])
-    square = np.full((side, side, 3), background_color, dtype=np.uint8)
+    square = np.full((side, side, 3), masked_background, dtype=np.uint8)
     square_mask = np.zeros((side, side), dtype=np.uint8)
     offset_y = (side - crop.shape[0]) // 2
     offset_x = (side - crop.shape[1]) // 2
@@ -194,7 +197,11 @@ def _prepare_crop(
         (config.crop_size, config.crop_size),
         interpolation=cv2.INTER_NEAREST,
     )
-    return resized_crop, (resized_mask > 0).astype(np.uint8)
+    binary_resized_mask = (resized_mask > 0).astype(np.uint8)
+    # Resize tuyến tính có thể làm màu viên tràn một pixel ra ngoài mask.
+    # Khôi phục nền cố định để input Attribute không phụ thuộc màu viên.
+    resized_crop[binary_resized_mask == 0] = masked_background
+    return resized_crop, binary_resized_mask
 
 
 def process_prediction(

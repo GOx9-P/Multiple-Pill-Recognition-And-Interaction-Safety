@@ -23,7 +23,7 @@ class SegmentationConfig:
     iou_threshold: float = 0.60
     mask_threshold: float = 0.50
 
-    bbox_padding_ratio: float = 0.08
+    bbox_padding_ratio: float = 0.12
     crop_size: int = 640
     crop_background_value: int = 127
     align_long_axis: bool = True

@@ -180,6 +180,45 @@ def test_fragmented_border_mask_sets_safety_flags():
     assert "touches_image_border" in processed.quality_flags
 
 
+def test_crop_keeps_mask_margin_and_neutral_background():
+    """Kiểm tra crop giữ margin quanh mask và nền cố định cho attribute/OCR."""
+
+    image = np.full((160, 160, 3), (20, 80, 190), dtype=np.uint8)
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.circle(mask, (80, 80), 30, 1, -1)
+    prediction = RawSegmentationPrediction((50, 50, 110, 110), 0.95, mask)
+    config = replace(
+        SegmentationConfig(),
+        crop_size=240,
+        bbox_padding_ratio=0.12,
+        crop_background_value=127,
+        align_long_axis=False,
+    )
+
+    processed = process_prediction(image, prediction, config)
+
+    assert processed is not None
+    assert not processed.crop_mask[0, :].any()
+    assert not processed.crop_mask[-1, :].any()
+    assert not processed.crop_mask[:, 0].any()
+    assert not processed.crop_mask[:, -1].any()
+    assert np.all(processed.crop[processed.crop_mask == 0] == 127)
+
+    rotated_mask = np.zeros_like(mask)
+    cv2.ellipse(rotated_mask, (80, 80), (18, 42), 32, 0, 360, 1, -1)
+    rotated = process_prediction(
+        image,
+        RawSegmentationPrediction((35, 25, 125, 135), 0.95, rotated_mask),
+        replace(config, align_long_axis=True),
+    )
+    assert rotated is not None
+    assert not rotated.crop_mask[0, :].any()
+    assert not rotated.crop_mask[-1, :].any()
+    assert not rotated.crop_mask[:, 0].any()
+    assert not rotated.crop_mask[:, -1].any()
+    assert np.all(rotated.crop[rotated.crop_mask == 0] == 127)
+
+
 def test_prediction_mask_must_use_original_image_coordinates():
     """Kiểm tra hậu xử lý từ chối mask không cùng hệ tọa độ với ảnh gốc."""
 
@@ -260,6 +299,7 @@ def test_yaml_defaults_match_segmentation_contract():
     assert config.confidence_threshold == 0.25
     assert config.iou_threshold == 0.60
     assert config.mask_threshold == 0.50
+    assert config.bbox_padding_ratio == 0.12
     assert config.crop_size == 640
     assert config.align_long_axis is True
     assert config.weights_path.name == "yolov11m_seg_mediseg_full_finetune_v1.pt"
