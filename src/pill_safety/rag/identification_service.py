@@ -41,7 +41,7 @@ class IdentificationService:
             )
 
         return {
-            "schema_version": "rag_identification_v0",
+            "schema_version": "rag_identification_v1",
             "request_id": rag_request.get("request_id") or cv_output.get("request_id"),
             "session_id": rag_request.get("session_id") or cv_output.get("session_id"),
             "pill_results": pill_results,

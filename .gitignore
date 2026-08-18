@@ -40,6 +40,7 @@ Thumbs.db
 
 # Standalone artifact packages prepared for Kaggle Dataset upload
 kaggle_uploads/
+pill_safety.db
 
 # Experiments: allow result files, block nothing except weights (already blocked by *.pt)
 # This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/

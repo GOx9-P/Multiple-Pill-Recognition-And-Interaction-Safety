@@ -108,6 +108,8 @@ class RagIdentifyRequest(BaseModel):
     schema_version: Optional[str] = None
     request_id: Optional[str] = None
     session_id: Optional[str] = None
+    market: str = "US"
+    known_drug_names: list[str] = Field(default_factory=list)
     cv_output: CvOutput
 
 

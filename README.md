@@ -169,7 +169,8 @@ Multiple-Pill-Recognition-And-Interaction-Safety/
 │   ├── cv_attribute/                             # Entrypoint load ResNet18 và dự đoán attribute
 │   ├── cv_ocr/                                   # Entrypoint chạy PaddleOCR và OCR normalization
 │   ├── cv_pipeline/                              # run_full_cv_pipeline.py chạy toàn bộ CV; run_cv_pipeline.py chỉ ghép JSON có sẵn
-│   └── rag_retrieval/                            # Entrypoint retrieval, ranking, safety gate và DDI lookup
+│   ├── rag_retrieval/                            # Entrypoint retrieval, ranking, safety gate và DDI lookup
+│   └── end_to_end/                               # run_end_to_end.py chạy CV -> retrieval -> DDI -> grounded LLM report
 │
 ├── models/                                       # Weight chính thức dùng cho inference, copy từ checkpoint tốt nhất
 │   ├── segmentation_yolov11_full_finetune/       # Weight YOLOv11-Seg được chọn để chạy inference
