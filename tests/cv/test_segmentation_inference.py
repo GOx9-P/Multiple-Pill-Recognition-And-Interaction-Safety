@@ -219,17 +219,19 @@ def test_crop_keeps_mask_margin_and_neutral_background():
     assert np.all(rotated.crop[rotated.crop_mask == 0] == 127)
 
 
-def test_dilation_only_expands_shape_crop_window_not_clean_foreground():
-    """Kiểm tra dilation mở rộng crop mask mà không sửa mask quality gốc."""
+def test_task_specific_masks_keep_color_interior_and_shape_rgb_roi():
+    """Kiểm tra color bo viền nền, OCR giữ clean mask va shape giữ RGB trong ROI."""
 
-    image = np.full((160, 160, 3), 180, dtype=np.uint8)
+    image = np.full((160, 160, 3), (0, 0, 255), dtype=np.uint8)
     mask = np.zeros(image.shape[:2], dtype=np.uint8)
     cv2.circle(mask, (80, 80), 24, 1, -1)
+    image[mask > 0] = (0, 255, 0)
     prediction = RawSegmentationPrediction((56, 56, 104, 104), 0.95, mask)
     base_config = replace(
         SegmentationConfig(),
         crop_size=240,
         bbox_padding_ratio=0.20,
+        color_mask_erosion_ratio=0.05,
         align_long_axis=False,
     )
 
@@ -247,9 +249,10 @@ def test_dilation_only_expands_shape_crop_window_not_clean_foreground():
     assert without_dilation is not None and with_dilation is not None
     assert np.array_equal(with_dilation.crop_mask, without_dilation.crop_mask)
     assert np.array_equal(with_dilation.mask, mask)
-    assert np.array_equal(with_dilation.ocr_crop, with_dilation.crop)
-    assert np.all(with_dilation.crop[with_dilation.crop_mask == 0] == 127)
-    assert not np.array_equal(with_dilation.shape_crop, without_dilation.shape_crop)
+    assert not np.array_equal(with_dilation.ocr_crop, with_dilation.crop)
+    assert not np.any(np.all(with_dilation.crop == (0, 0, 255), axis=2))
+    assert np.any(np.all(with_dilation.shape_crop == (0, 0, 255), axis=2))
+    assert np.all(with_dilation.ocr_crop[with_dilation.crop_mask == 0] == 127)
 
 
 def test_prediction_mask_must_use_original_image_coordinates():
@@ -334,6 +337,7 @@ def test_yaml_defaults_match_segmentation_contract():
     assert config.mask_threshold == 0.50
     assert config.bbox_padding_ratio == 0.20
     assert config.crop_mask_dilation_ratio == 0.02
+    assert config.color_mask_erosion_ratio == 0.01
     assert config.crop_size == 640
     assert config.align_long_axis is True
     assert config.weights_path.name == "yolov11m_seg_mediseg_full_finetune_v1.pt"

@@ -1,4 +1,4 @@
-"""Create task-specific crops with clean color/OCR masks and a dilated shape mask."""
+"""Create task-specific color, shape, and OCR crops from one clean pill mask."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def _principal_axis_angle(mask: np.ndarray) -> tuple[float, float] | None:
 
 
 def _dilate_region(mask: np.ndarray, ratio: float) -> np.ndarray:
-    """Dilate the shape-only foreground to compensate for under-segmented pill edges."""
+    """Dilate a region only to expand the shape crop ROI around under-segmented edges."""
 
     binary_mask = (mask > 0).astype(np.uint8)
     if ratio <= 0:
@@ -68,6 +68,25 @@ def _dilate_region(mask: np.ndarray, ratio: float) -> np.ndarray:
     kernel_size = radius * 2 + 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     return cv2.dilate(binary_mask, kernel, iterations=1)
+
+
+def _erode_region(mask: np.ndarray, ratio: float) -> np.ndarray:
+    """Keep an interior color mask so boundary pixels from the scene cannot affect color."""
+
+    binary_mask = (mask > 0).astype(np.uint8)
+    if ratio <= 0:
+        return binary_mask
+    nonzero = cv2.findNonZero(binary_mask)
+    if nonzero is None:
+        return binary_mask
+    _, _, width, height = cv2.boundingRect(nonzero)
+    radius = int(round(max(width, height) * ratio))
+    if radius <= 0:
+        return binary_mask
+    kernel_size = radius * 2 + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+    eroded = cv2.erode(binary_mask, kernel, iterations=1)
+    return eroded if np.any(eroded) else binary_mask
 
 
 def _crop_around_region(
@@ -128,6 +147,25 @@ def _render_square_crop(
     return crop, resized_mask
 
 
+def _render_square_rgb_crop(
+    image: np.ndarray,
+    config: SegmentationConfig,
+) -> np.ndarray:
+    """Place an unmasked RGB shape ROI on a square canvas without distorting the pill."""
+
+    background = (config.crop_background_value,) * 3
+    side = max(image.shape[:2])
+    square = np.full((side, side, 3), background, dtype=np.uint8)
+    offset_y = (side - image.shape[0]) // 2
+    offset_x = (side - image.shape[1]) // 2
+    square[
+        offset_y : offset_y + image.shape[0],
+        offset_x : offset_x + image.shape[1],
+    ] = image
+    interpolation = cv2.INTER_AREA if side > config.crop_size else cv2.INTER_CUBIC
+    return cv2.resize(square, (config.crop_size, config.crop_size), interpolation=interpolation)
+
+
 def prepare_task_crops(
     image_bgr: np.ndarray,
     clean_mask: np.ndarray,
@@ -158,23 +196,36 @@ def prepare_task_crops(
                 0,
             )
 
-    # Color and OCR retain only the clean mask. This prevents background color leaks.
+    # Color uses only the eroded interior. This removes scene pixels that leak through
+    # an imperfect YOLO boundary while retaining the original clean mask for OCR.
+    color_interior_mask = _erode_region(
+        base_clean_mask,
+        config.color_mask_erosion_ratio,
+    )
     color_source, color_mask = _crop_around_region(
         base_image,
-        base_clean_mask,
+        color_interior_mask,
         base_clean_mask,
         config.bbox_padding_ratio,
     )
-    color_crop, output_clean_mask = _render_square_crop(color_source, color_mask, config)
-    ocr_crop = color_crop.copy()
+    color_crop, _ = _render_square_crop(color_source, color_mask, config)
 
-    # Shape alone uses the dilated foreground and crop window to recover under-segmented edges.
-    shape_region = _dilate_region(base_clean_mask, config.crop_mask_dilation_ratio)
-    shape_source, shape_mask = _crop_around_region(
+    ocr_source, ocr_mask = _crop_around_region(
         base_image,
-        shape_region,
+        base_clean_mask,
+        base_clean_mask,
+        config.bbox_padding_ratio,
+    )
+    ocr_crop, output_clean_mask = _render_square_crop(ocr_source, ocr_mask, config)
+
+    # Shape uses a dilated region only to define a safer ROI. It keeps original RGB
+    # pixels inside that ROI instead of treating dilation as foreground mask.
+    shape_region = _dilate_region(base_clean_mask, config.crop_mask_dilation_ratio)
+    shape_source, _ = _crop_around_region(
+        base_image,
+        base_clean_mask,
         shape_region,
         config.bbox_padding_ratio,
     )
-    shape_crop, _ = _render_square_crop(shape_source, shape_mask, config)
+    shape_crop = _render_square_rgb_crop(shape_source, config)
     return color_crop, shape_crop, ocr_crop, output_clean_mask

@@ -25,6 +25,7 @@ class SegmentationConfig:
 
     bbox_padding_ratio: float = 0.20
     crop_mask_dilation_ratio: float = 0.02
+    color_mask_erosion_ratio: float = 0.01
     crop_size: int = 640
     crop_background_value: int = 127
     align_long_axis: bool = True
@@ -59,6 +60,7 @@ class SegmentationConfig:
             "mask_threshold",
             "bbox_padding_ratio",
             "crop_mask_dilation_ratio",
+            "color_mask_erosion_ratio",
             "min_mask_area_ratio",
             "max_mask_area_ratio",
             "min_component_area_ratio",
@@ -141,6 +143,10 @@ class SegmentationConfig:
             "crop_mask_dilation_ratio": post.get(
                 "crop_mask_dilation_ratio",
                 defaults.crop_mask_dilation_ratio,
+            ),
+            "color_mask_erosion_ratio": post.get(
+                "color_mask_erosion_ratio",
+                defaults.color_mask_erosion_ratio,
             ),
             "crop_size": post.get("crop_size", defaults.crop_size),
             "crop_background_value": post.get(
