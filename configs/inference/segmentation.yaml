@@ -9,7 +9,7 @@ model:
 
 postprocessing:
   # Giữ ngữ cảnh quanh mask cho Module 2/3; crop không được cắt sát viên.
-  bbox_padding_ratio: 0.15
+  bbox_padding_ratio: 0.1
   # Nở nhẹ mask chỉ khi tạo crop để bù phần viền YOLO cắt thiếu.
   crop_mask_dilation_ratio: 0.05
   crop_size: 640
