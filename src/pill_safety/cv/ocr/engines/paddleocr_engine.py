@@ -73,6 +73,28 @@ def extract_items_from_dict(data: Any) -> list[dict[str, Any]]:
 
 
 def parse_prediction_result(result: Any) -> list[dict[str, Any]]:
+    if not result:
+        return []
+
+    # Handle PaddleOCR v2 output format: [[[[x1,y1],...], ('text', conf)], ...]
+    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+        items = []
+        for line in result[0]:
+            if line and len(line) == 2 and isinstance(line[1], (tuple, list)):
+                polygon, text_score = line
+                text, score = text_score[0], text_score[1]
+                text = str(text).strip()
+                if text:
+                    items.append(
+                        {
+                            "text": text,
+                            "confidence": float(score or 0.0),
+                            "polygon": to_polygon(polygon),
+                        }
+                    )
+        if items:
+            return items
+
     pages = result if isinstance(result, (list, tuple)) else [result]
     items = []
     for page in pages:
@@ -85,7 +107,8 @@ def parse_prediction_result(result: Any) -> list[dict[str, Any]]:
             data = json_value() if callable(json_value) else json_value
             if data is None:
                 data = getattr(page, "res", None)
-        items.extend(extract_items_from_dict(data))
+        if data:
+            items.extend(extract_items_from_dict(data))
     return items
 
 
@@ -123,7 +146,12 @@ class PaddleOCREngine:
     ) -> list[dict[str, Any]]:
         (output_json_dir / step_id).mkdir(parents=True, exist_ok=True)
         try:
-            result = self._ocr.predict(input=str(image_path))
+            if hasattr(self._ocr, "predict"):
+                result = self._ocr.predict(input=str(image_path))
+            elif hasattr(self._ocr, "ocr"):
+                result = self._ocr.ocr(str(image_path), cls=False)
+            else:
+                result = self._ocr(str(image_path))
         except Exception as exc:
             LOGGER.warning(
                 "OCR failed for %s: %s: %s",
