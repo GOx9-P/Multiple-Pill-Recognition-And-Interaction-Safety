@@ -219,6 +219,36 @@ def test_crop_keeps_mask_margin_and_neutral_background():
     assert np.all(rotated.crop[rotated.crop_mask == 0] == 127)
 
 
+def test_crop_mask_dilation_only_expands_downstream_crop():
+    """Kiểm tra dilation mở rộng crop mask mà không sửa mask quality gốc."""
+
+    image = np.full((160, 160, 3), 180, dtype=np.uint8)
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.circle(mask, (80, 80), 24, 1, -1)
+    prediction = RawSegmentationPrediction((56, 56, 104, 104), 0.95, mask)
+    base_config = replace(
+        SegmentationConfig(),
+        crop_size=240,
+        bbox_padding_ratio=0.20,
+        align_long_axis=False,
+    )
+
+    without_dilation = process_prediction(
+        image,
+        prediction,
+        replace(base_config, crop_mask_dilation_ratio=0.0),
+    )
+    with_dilation = process_prediction(
+        image,
+        prediction,
+        replace(base_config, crop_mask_dilation_ratio=0.05),
+    )
+
+    assert without_dilation is not None and with_dilation is not None
+    assert with_dilation.crop_mask.sum() > without_dilation.crop_mask.sum()
+    assert np.array_equal(with_dilation.mask, mask)
+
+
 def test_prediction_mask_must_use_original_image_coordinates():
     """Kiểm tra hậu xử lý từ chối mask không cùng hệ tọa độ với ảnh gốc."""
 
@@ -300,6 +330,7 @@ def test_yaml_defaults_match_segmentation_contract():
     assert config.iou_threshold == 0.60
     assert config.mask_threshold == 0.50
     assert config.bbox_padding_ratio == 0.20
+    assert config.crop_mask_dilation_ratio == 0.02
     assert config.crop_size == 640
     assert config.align_long_axis is True
     assert config.weights_path.name == "yolov11m_seg_mediseg_full_finetune_v1.pt"

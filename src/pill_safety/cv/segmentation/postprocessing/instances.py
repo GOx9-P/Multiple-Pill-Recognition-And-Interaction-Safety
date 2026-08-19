@@ -122,6 +122,28 @@ def _principal_axis_angle(mask: np.ndarray) -> tuple[float, float] | None:
     return angle, sqrt(major / minor)
 
 
+def _dilate_crop_mask(mask: np.ndarray, ratio: float) -> np.ndarray:
+    """Nở nhẹ mask cục bộ để giữ viền viên thuốc khi tạo crop downstream."""
+
+    binary_mask = (mask > 0).astype(np.uint8)
+    if ratio <= 0:
+        return binary_mask
+    nonzero = cv2.findNonZero(binary_mask)
+    if nonzero is None:
+        return binary_mask
+
+    _, _, width, height = cv2.boundingRect(nonzero)
+    radius = int(round(max(width, height) * ratio))
+    if radius <= 0:
+        return binary_mask
+    kernel_size = radius * 2 + 1
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE,
+        (kernel_size, kernel_size),
+    )
+    return cv2.dilate(binary_mask, kernel, iterations=1)
+
+
 def _prepare_crop(
     image_bgr: np.ndarray,
     mask: np.ndarray,
@@ -139,7 +161,6 @@ def _prepare_crop(
     crop = image_bgr[y1p:y2p, x1p:x2p].copy()
     crop_mask = mask[y1p:y2p, x1p:x2p].astype(np.uint8)
     masked_background = (config.crop_background_value,) * 3
-    crop[crop_mask == 0] = masked_background
 
     if config.align_long_axis:
         axis = _principal_axis_angle(crop_mask)
@@ -156,6 +177,12 @@ def _prepare_crop(
                 cv2.INTER_NEAREST,
                 0,
             )
+
+    # Quality gate giữ mask gốc; chỉ mask dùng để cắt ảnh downstream mới nở ra.
+    crop_mask = _dilate_crop_mask(
+        crop_mask,
+        config.crop_mask_dilation_ratio,
+    )
 
     # Sau khi xoay, lấy lại vùng quanh mask nhưng mở rộng cùng tỷ lệ padding.
     # Không cắt sát boundingRect: Module 2 và Module 3 cần vùng ngữ cảnh ổn định.
