@@ -489,7 +489,7 @@ Crop preparation:
 
 - `mask_path` là clean mask, không dilation.
 - `color_crop_path` dùng clean mask trên nền xám cố định.
-- `shape_crop_path` dùng vùng bbox mở rộng bởi dilation, nhưng chỉ clean mask là foreground.
+- `shape_crop_path` dùng mask dilation làm foreground và vùng bbox mở rộng để bù phần viền YOLO cắt thiếu.
 - `ocr_crop_path` dùng clean mask có margin, không dilation foreground.
 - `crop_path` giữ tương thích ngược và trỏ tới `color_crop_path`.
 - Resize về kích thước chuẩn.

@@ -1,4 +1,4 @@
-"""Create task-specific crops without changing the clean segmentation foreground."""
+"""Create task-specific crops with clean color/OCR masks and a dilated shape mask."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def _principal_axis_angle(mask: np.ndarray) -> tuple[float, float] | None:
 
 
 def _dilate_region(mask: np.ndarray, ratio: float) -> np.ndarray:
-    """Dilate only a crop-selection region; it is never used as foreground."""
+    """Dilate the shape-only foreground to compensate for under-segmented pill edges."""
 
     binary_mask = (mask > 0).astype(np.uint8)
     if ratio <= 0:
@@ -95,7 +95,7 @@ def _render_square_crop(
     clean_mask: np.ndarray,
     config: SegmentationConfig,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Render one crop on a square fixed-gray canvas using only clean foreground."""
+    """Render one crop on a square fixed-gray canvas using the supplied foreground mask."""
 
     background = (config.crop_background_value,) * 3
     binary_mask = (clean_mask > 0).astype(np.uint8)
@@ -168,11 +168,11 @@ def prepare_task_crops(
     color_crop, output_clean_mask = _render_square_crop(color_source, color_mask, config)
     ocr_crop = color_crop.copy()
 
-    # Shape gets a slightly wider crop window, but the foreground remains clean.
+    # Shape alone uses the dilated foreground and crop window to recover under-segmented edges.
     shape_region = _dilate_region(base_clean_mask, config.crop_mask_dilation_ratio)
     shape_source, shape_mask = _crop_around_region(
         base_image,
-        base_clean_mask,
+        shape_region,
         shape_region,
         config.bbox_padding_ratio,
     )

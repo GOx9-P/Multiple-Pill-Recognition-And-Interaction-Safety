@@ -249,6 +249,7 @@ def test_dilation_only_expands_shape_crop_window_not_clean_foreground():
     assert np.array_equal(with_dilation.mask, mask)
     assert np.array_equal(with_dilation.ocr_crop, with_dilation.crop)
     assert np.all(with_dilation.crop[with_dilation.crop_mask == 0] == 127)
+    assert not np.array_equal(with_dilation.shape_crop, without_dilation.shape_crop)
 
 
 def test_prediction_mask_must_use_original_image_coordinates():
