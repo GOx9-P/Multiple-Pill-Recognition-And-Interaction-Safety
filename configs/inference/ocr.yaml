@@ -1,0 +1,46 @@
+model:
+  ocr_version: PP-OCRv5
+  language: en
+  device: auto
+  det_db_thresh: 0.2
+  det_db_unclip_ratio: 2.0
+
+pipeline:
+  preprocessing_steps: [original, clahe, blackhat, blackhat_bold]
+  min_usable_confidence: 0.50
+  min_usable_text_length: 1
+  min_text_region_foreground_coverage: 0.70
+  max_text_region_area_ratio: 0.75
+  text_region_edge_margin_ratio: 0.02
+  force_run_all_rotation_tiers: true
+  rotation_tiers:
+    - tier: tier1_0_180
+      rotations: [0, 180]
+    - tier: tier2_90_270
+      rotations: [90, 270]
+    - tier: tier3_oblique
+      rotations: [-45, -30, -15, 15, 30, 45]
+
+scoreline:
+  enable_side_split: true
+  min_detection_confidence: 0.45
+  min_support: 2
+  angle_consensus_tolerance_degrees: 12.0
+  consensus_distance_ratio: 0.08
+  center_max_distance_ratio: 0.30
+  use_center_roi: true
+  min_foreground_coverage: 0.75
+  split_margin_ratio: 0.03
+  min_side_confidence: 0.60
+
+candidates:
+  enable_circular_text_order: true
+  min_circular_boxes: 3
+  max_final_candidates: 10
+
+schema:
+  max_ocr_observations: 8
+  max_normalized_candidates: 5
+
+artifacts:
+  output_dir: outputs/predictions/ocr

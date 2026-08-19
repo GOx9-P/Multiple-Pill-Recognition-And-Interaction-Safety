@@ -1,0 +1,35 @@
+{
+  "run_id": "attr_head_v1",
+  "checkpoint": "/kaggle/working/attribute_runs/attribute_resnet18_head_tune/checkpoints/attr_head_v1_best.pt",
+  "split": "validation",
+  "selection_rule": "per_color_best_f1_with_tie_break_nearest_0.5",
+  "thresholds": {
+    "BLACK": 0.5,
+    "BLUE": 0.85,
+    "BROWN": 0.9,
+    "GRAY": 0.8,
+    "GREEN": 0.95,
+    "ORANGE": 0.75,
+    "PINK": 0.8,
+    "PURPLE": 0.9,
+    "RED": 0.85,
+    "TURQUOISE": 0.9,
+    "WHITE": 0.7,
+    "YELLOW": 0.9
+  },
+  "validation_f1_at_selected_threshold": {
+    "BLACK": 0.9231,
+    "BLUE": 0.8929,
+    "BROWN": 0.6142,
+    "GRAY": 0.8,
+    "GREEN": 0.9053,
+    "ORANGE": 0.75,
+    "PINK": 0.7657,
+    "PURPLE": 0.5957,
+    "RED": 0.5897,
+    "TURQUOISE": 0.4286,
+    "WHITE": 0.9716,
+    "YELLOW": 0.9461
+  },
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json"
+}

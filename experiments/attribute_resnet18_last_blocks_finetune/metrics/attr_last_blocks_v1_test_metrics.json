@@ -1,0 +1,40 @@
+{
+  "run_id": "attr_last_blocks_v1",
+  "module": "attribute_resnet18_last_blocks_finetune",
+  "split": "test",
+  "checkpoint": "/kaggle/working/attribute_runs/attribute_resnet18_last_blocks_finetune/checkpoints/attr_last_blocks_v1_best.pt",
+  "thresholds_file": "/kaggle/working/attribute_runs/attribute_resnet18_last_blocks_finetune/checkpoints/attr_last_blocks_v1_optimal_thresholds.json",
+  "label_mapping_file": "/kaggle/input/datasets/thuongnguoiquantu/ute-baomc/Multiple-Pill-Recognition-And-Interaction-Safety/data/processed/nih_attribute/label_mapping.json",
+  "metrics": {
+    "shape_macro_f1": 0.8713,
+    "color_macro_f1": 0.7941,
+    "dosage_form_macro_f1": null,
+    "scoreline_macro_f1": null,
+    "overall_macro_f1": 0.8327,
+    "shape_accuracy": 0.9891,
+    "color_subset_accuracy": 0.8682
+  },
+  "per_class_metrics": {
+    "shape": {
+      "CAPSULE": 0.9967,
+      "IRREGULAR": 0.4,
+      "OVAL": 0.9833,
+      "POLYGON": 0.9796,
+      "ROUND": 0.9969
+    },
+    "color": {
+      "BLACK": 0.8,
+      "BLUE": 0.96,
+      "BROWN": 0.68,
+      "GRAY": 0.963,
+      "GREEN": 0.9043,
+      "ORANGE": 0.7722,
+      "PINK": 0.8619,
+      "PURPLE": 0.9333,
+      "RED": 0.5846,
+      "TURQUOISE": 0.1667,
+      "WHITE": 0.9873,
+      "YELLOW": 0.9157
+    }
+  }
+}

@@ -432,7 +432,7 @@ ResNet18 pretrained ImageNet
   "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
   "augmentation": {
     "enabled": true,
-    "online": true,
+    "online": false,
     "sim2real": true
   }
 }
@@ -556,7 +556,7 @@ Load checkpoint tốt nhất từ head-tune
   "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
   "augmentation": {
     "enabled": true,
-    "online": true,
+    "online": false,
     "sim2real": true
   }
 }
@@ -593,8 +593,7 @@ Chỉ chọn last-blocks fine-tune làm model chính nếu:
 
 ```text
 overall_macro_f1 tăng rõ trên validation
-và không làm giảm mạnh class hiếm
-và test metric không tệ hơn head-tune
+và không làm giảm mạnh class hiếm trên validation
 ```
 
 Nếu cải thiện rất nhỏ hoặc overfit, giữ head-tune làm baseline chính.
@@ -633,7 +632,7 @@ Mọi job phải ghi rõ split được tạo trước augmentation.
     "train_count": 0,
     "val_count": 0,
     "test_count": 0,
-    "group_key": "image_id_or_ndc11_or_rxcui",
+    "group_key": "source_image_group",
     "leakage_check_passed": true,
     "leakage_check_notes": ""
   }

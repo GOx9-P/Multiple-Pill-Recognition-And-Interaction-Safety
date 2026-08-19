@@ -1,0 +1,2 @@
+"""Query-only database repositories."""
+

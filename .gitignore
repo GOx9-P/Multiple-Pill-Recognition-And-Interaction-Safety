@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -26,10 +27,10 @@ env/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs (training runtime logs only)
 *.log
 
-# Model weights and checkpoints
+# Model weights and checkpoints (too large for Git, use Git LFS or Drive)
 *.pt
 *.pth
 *.onnx
@@ -37,22 +38,39 @@ Thumbs.db
 *.ckpt
 *.safetensors
 
-# Large or generated project artifacts
+# Standalone artifact packages prepared for Kaggle Dataset upload
+kaggle_uploads/
+pill_safety.db
+
+# Experiments: allow result files, block nothing except weights (already blocked by *.pt)
+# This allows: .csv, .json, .yaml, .txt, .png, .jpg in experiments/
+
+# Large raw data
 data/raw/**
 data/processed/**
 data/augmented/**
 data/benchmark/**
-experiments/**
+
+# Model weights directory (keep structure, block weights)
 models/**
+
+# Outputs (inference results, can be regenerated)
 outputs/**
 
 # Keep folder structure in Git
 !data/**/
 !data/**/.gitkeep
-!experiments/**/
-!experiments/**/.gitkeep
 !models/**/
 !models/**/.gitkeep
 !outputs/**/
 !outputs/**/.gitkeep
 !.gitkeep
+
+# AI Agent Skills & Local Assistant Configs
+.agents/
+.claude/
+.codex/
+.gemini/
+.cursor/
+skills-lock.json
+tasks/

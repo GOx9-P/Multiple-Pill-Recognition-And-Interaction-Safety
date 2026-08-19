@@ -1,0 +1,89 @@
+{
+  "schema_version": "cv_output_v0",
+  "request_id": "req_scenario_moderate_02",
+  "session_id": "sess_scenario_moderate_02",
+  "image_quality": {
+    "status": "good",
+    "blur_score": 0.03,
+    "glare_detected": false,
+    "lighting_warning": false
+  },
+  "pills": [
+    {
+      "instance_id": "pill_instance_101",
+      "cv_status": "detected",
+      "bbox_xyxy": [120.0, 160.0, 320.0, 460.0],
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.96
+      },
+      "color": {
+        "primary": "WHITE",
+        "confidence": 0.95
+      },
+      "dosage_form": {
+        "label": "TABLET",
+        "confidence": 0.90
+      },
+
+      "scoreline": {
+        "visible": false,
+        "confidence": 0.90
+      },
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.94
+      },
+      "imprint": {
+        "visible": true,
+        "raw": "44438",
+        "confidence": 0.96,
+        "normalized_candidates": [
+          {
+            "text": "44438",
+            "score": 0.96,
+            "source": "paddle_ocr"
+          }
+        ]
+      }
+
+    },
+    {
+      "instance_id": "pill_instance_102",
+      "cv_status": "detected",
+      "bbox_xyxy": [520.0, 160.0, 720.0, 360.0],
+      "shape": {
+        "label": "ROUND",
+        "confidence": 0.95
+      },
+      "color": {
+        "primary": "WHITE",
+        "confidence": 0.95
+      },
+      "dosage_form": {
+        "label": "TABLET",
+        "confidence": 0.90
+      },
+      "scoreline": {
+        "visible": false,
+        "confidence": 0.88
+      },
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.90
+      },
+      "imprint": {
+        "visible": true,
+        "raw": "210",
+        "confidence": 0.95,
+        "normalized_candidates": [
+          {
+            "text": "210",
+            "score": 0.95,
+            "source": "paddle_ocr"
+          }
+        ]
+      }
+    }
+  ]
+}

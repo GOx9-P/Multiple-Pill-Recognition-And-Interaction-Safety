@@ -1,0 +1,282 @@
+[
+  {
+    "name": "acetaminophen",
+    "rxcui": "161",
+    "normalized_name": "acetaminophen",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/161/properties.json"
+  },
+  {
+    "name": "amiodarone",
+    "normalized_name": "amiodarone",
+    "rxcui": "703",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/703/properties.json"
+  },
+  {
+    "name": "amlodipine",
+    "rxcui": "17767",
+    "normalized_name": "amlodipine",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/17767/properties.json"
+  },
+  {
+    "name": "amoxicillin",
+    "rxcui": "723",
+    "normalized_name": "amoxicillin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/723/properties.json"
+  },
+  {
+    "name": "atorvastatin",
+    "normalized_name": "atorvastatin",
+    "rxcui": "83367",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/83367/properties.json"
+  },
+  {
+    "name": "azithromycin",
+    "rxcui": "18631",
+    "normalized_name": "azithromycin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/18631/properties.json"
+  },
+  {
+    "name": "bisoprolol",
+    "rxcui": "19484",
+    "normalized_name": "bisoprolol",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/19484/properties.json"
+  },
+  {
+    "name": "cetirizine",
+    "rxcui": "20610",
+    "normalized_name": "cetirizine",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/20610/properties.json"
+  },
+  {
+    "name": "ciprofloxacin",
+    "rxcui": "2551",
+    "normalized_name": "ciprofloxacin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/2551/properties.json"
+  },
+  {
+    "name": "clavulanic acid",
+    "rxcui": "21216",
+    "normalized_name": "clavulanic acid",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/21216/properties.json"
+  },
+  {
+    "name": "clopidogrel",
+    "rxcui": "32968",
+    "normalized_name": "clopidogrel",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/32968/properties.json"
+  },
+  {
+    "name": "diclofenac",
+    "rxcui": "3355",
+    "normalized_name": "diclofenac",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/3355/properties.json"
+  },
+  {
+    "name": "digoxin",
+    "rxcui": "3407",
+    "normalized_name": "digoxin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/3407/properties.json"
+  },
+  {
+    "name": "doxycycline",
+    "rxcui": "3640",
+    "normalized_name": "doxycycline",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/3640/properties.json"
+  },
+  {
+    "name": "fluoxetine",
+    "normalized_name": "fluoxetine",
+    "rxcui": "4493",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/4493/properties.json"
+  },
+  {
+    "name": "furosemide",
+    "rxcui": "4603",
+    "normalized_name": "furosemide",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/4603/properties.json"
+  },
+  {
+    "name": "gabapentin",
+    "normalized_name": "gabapentin",
+    "rxcui": "25480",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/25480/properties.json"
+  },
+  {
+    "name": "glimepiride",
+    "rxcui": "25789",
+    "normalized_name": "glimepiride",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/25789/properties.json"
+  },
+  {
+    "name": "hydrochlorothiazide",
+    "normalized_name": "hydrochlorothiazide",
+    "rxcui": "5487",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/5487/properties.json"
+  },
+  {
+    "name": "ibuprofen",
+    "rxcui": "5640",
+    "normalized_name": "ibuprofen",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/5640/properties.json"
+  },
+  {
+    "name": "levofloxacin",
+    "normalized_name": "levofloxacin",
+    "rxcui": "82122",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/82122/properties.json"
+  },
+  {
+    "name": "lisinopril",
+    "rxcui": "29046",
+    "normalized_name": "lisinopril",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/29046/properties.json"
+  },
+  {
+    "name": "loratadine",
+    "normalized_name": "loratadine",
+    "rxcui": "28889",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/28889/properties.json"
+  },
+  {
+    "name": "losartan",
+    "rxcui": "52175",
+    "normalized_name": "losartan",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/52175/properties.json"
+  },
+  {
+    "name": "metformin",
+    "rxcui": "6809",
+    "normalized_name": "metformin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/6809/properties.json"
+  },
+  {
+    "name": "metronidazole",
+    "rxcui": "6922",
+    "normalized_name": "metronidazole",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/6922/properties.json"
+  },
+  {
+    "name": "naproxen",
+    "rxcui": "7258",
+    "normalized_name": "naproxen",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/7258/properties.json"
+  },
+  {
+    "name": "omeprazole",
+    "rxcui": "7646",
+    "normalized_name": "omeprazole",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/7646/properties.json"
+  },
+  {
+    "name": "pantoprazole",
+    "rxcui": "40790",
+    "normalized_name": "pantoprazole",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/40790/properties.json"
+  },
+  {
+    "name": "prednisone",
+    "normalized_name": "prednisone",
+    "rxcui": "8640",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/8640/properties.json"
+  },
+  {
+    "name": "propranolol",
+    "normalized_name": "propranolol",
+    "rxcui": "8787",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/8787/properties.json"
+  },
+  {
+    "name": "sertraline",
+    "rxcui": "36437",
+    "normalized_name": "sertraline",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/36437/properties.json"
+  },
+  {
+    "name": "spironolactone",
+    "normalized_name": "spironolactone",
+    "rxcui": "9997",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/9997/properties.json"
+  },
+  {
+    "name": "tramadol",
+    "rxcui": "10689",
+    "normalized_name": "tramadol",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/10689/properties.json"
+  },
+  {
+    "name": "warfarin",
+    "rxcui": "11289",
+    "normalized_name": "warfarin",
+    "unii": null,
+    "source_name": "RxNorm",
+    "source_reference": "https://rxnav.nlm.nih.gov/REST/rxcui/11289/properties.json"
+  }
+]

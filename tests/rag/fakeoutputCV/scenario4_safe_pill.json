@@ -1,0 +1,51 @@
+{
+  "schema_version": "cv_output_v0",
+  "request_id": "req_scenario_safe_04",
+  "session_id": "sess_scenario_safe_04",
+  "image_quality": {
+    "status": "good",
+    "blur_score": 0.01,
+    "glare_detected": false,
+    "lighting_warning": false
+  },
+  "pills": [
+    {
+      "instance_id": "pill_instance_301",
+      "cv_status": "detected",
+      "bbox_xyxy": [200.0, 200.0, 400.0, 500.0],
+      "shape": {
+        "label": "OVAL",
+        "confidence": 0.99
+      },
+      "color": {
+        "primary": "WHITE",
+        "confidence": 0.98
+      },
+
+      "dosage_form": {
+        "label": "TABLET",
+        "confidence": 0.99
+      },
+      "scoreline": {
+        "visible": false,
+        "confidence": 0.95
+      },
+      "logo_or_symbol": {
+        "visible": false,
+        "confidence": 0.98
+      },
+      "imprint": {
+        "visible": true,
+        "raw": "TV5056",
+        "confidence": 0.99,
+        "normalized_candidates": [
+          {
+            "text": "TV5056",
+            "score": 0.99,
+            "source": "paddle_ocr"
+          }
+        ]
+      }
+    }
+  ]
+}
