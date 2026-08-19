@@ -2,15 +2,15 @@
 setuptools==75.6.0
 wheel==0.45.1
 
-# Core NumPy (Strictly 1.x for OpenCV, Paddle, and Torch C-extensions compatibility)
+# Core NumPy (Strictly 1.x for OpenCV and Torch C-extensions compatibility)
 numpy==1.26.4
 
-# Deep learning / CV
+# Deep learning / CV (PaddleOCR v3.0.3 & PaddleX v3.0.3 Stack)
 torch>=2.2.0,<=2.6.0
 torchvision>=0.17.0,<=0.21.0
 ultralytics==8.3.253
-paddlepaddle==2.6.2
-paddleocr==2.7.3
+paddleocr==3.0.3
+paddlex==3.0.3
 
 # Image processing / augmentation
 opencv-python-headless==4.10.0.84

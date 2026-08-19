@@ -101,10 +101,6 @@ def _build_cv_pipeline() -> Any:
         model_config_path=attr_model_cfg,
     ).with_output_dir(output_root)
 
-    valid_ocr_versions = {"PP-OCR", "PP-OCRv2", "PP-OCRv3", "PP-OCRv4"}
-    if ocr_config.ocr_version not in valid_ocr_versions:
-        from dataclasses import replace
-        ocr_config = replace(ocr_config, ocr_version="PP-OCRv4")
     ocr_config = ocr_config.with_output_dir(output_root / "predictions" / "ocr")
     pipeline_config = pipeline_config.with_output_dir(output_root)
 

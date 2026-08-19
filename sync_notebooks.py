@@ -10,11 +10,11 @@ def update_all_notebooks():
                 "### Multiple Pill Recognition & Clinical Drug-Drug Interaction Safety Platform\n",
                 "---\n",
                 "Notebook này tự động thiết lập và chạy toàn bộ hệ thống gồm:\n",
-                "1. **Mô hình AI Computer Vision**: YOLOv11 Segmentation + ResNet-18 Attribute Multi-Head + PaddleOCR\n",
+                "1. **Mô hình AI Computer Vision**: YOLOv11 Segmentation + ResNet-18 Attribute Multi-Head + PaddleOCR v3\n",
                 "2. **Cơ sở dữ liệu Dược thư Quốc gia (RxNorm CSDL)**: Định danh thuốc, mã khắc, hoạt chất, ma trận DDI\n",
                 "3. **Giao diện Lâm sàng Web & Mobile**: Streamlit + Cloudflare Tunnel (Truy cập trực tiếp không cần mật khẩu)\n",
                 "---\n",
-                "## 🔹 BƯỚC 1: Clone Mã Nguồn (Nhánh mergerBe/Fe) & Cài Đặt Dependencies Chuẩn Hóa"
+                "## 🔹 BƯỚC 1: Clone Mã Nguồn (Nhánh mergerBe/Fe) & Cài Đặt PaddleOCR v3 Chuẩn Hóa"
             ]
         },
         {
@@ -37,14 +37,15 @@ def update_all_notebooks():
                 "# 3. Chuyển vào thư mục repo\n",
                 "%cd /kaggle/working/repo\n",
                 "\n",
-                "# 4. Gỡ các package dễ gây xung đột trên môi trường mặc định của Kaggle\n",
-                "!pip uninstall -y -q paddlepaddle paddlepaddle-gpu paddleocr paddlex opencv-python opencv-python-headless numpy\n",
+                "# 4. Gỡ các package gây xung đột cũ\n",
+                "!pip uninstall -y -q paddlepaddle paddlepaddle-gpu paddleocr paddlex\n",
                 "\n",
-                "# 5. Cài đặt toàn bộ từ requirements.txt chuẩn hóa\n",
+                "# 5. Cài đặt các thư viện từ requirements.txt\n",
                 "!pip install -q --no-cache-dir -r requirements.txt\n",
                 "\n",
-                "# 6. Cố định tuyệt đối phiên bản cho các lõi C-extensions (NumPy 1.x, OpenCV, Paddle 2.6.2)\n",
-                "!pip install -q --no-deps \"numpy==1.26.4\" \"paddlepaddle==2.6.2\" \"paddleocr==2.7.3\" \"opencv-python-headless==4.10.0.84\"\n",
+                "# 6. Cài đặt Paddle GPU 3.0.0 & PaddleOCR v3.0.3 chính hãng từ official cu118 index theo chuẩn của đồng đội\n",
+                "!pip install -q paddlepaddle-gpu==3.0.0 --index-url https://www.paddlepaddle.org.cn/packages/stable/cu118/\n",
+                "!pip install -q paddleocr==3.0.3 paddlex==3.0.3 \"numpy==1.26.4\" \"opencv-python-headless==4.10.0.84\"\n",
                 "\n",
                 "print(\"✅ BƯỚC 1 HOÀN TẤT: Đã clone mã nguồn và cài đặt toàn bộ package thành công!\")"
             ]
