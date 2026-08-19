@@ -25,90 +25,82 @@ def render_analyze_view(cv_load_result: Any) -> None:
     st.session_state.setdefault("current_image", None)
     st.session_state.setdefault("current_image_name", None)
     st.session_state.setdefault("raw_cv_data", None)
+    st.session_state.setdefault("cv_error", None)
     st.session_state.setdefault("selected_pill_id", None)
     st.session_state.setdefault("manual_overrides", {})
     st.session_state.setdefault("pipeline_running", False)
 
-    # 1. Callback when user uploads an image or clicks a preset scenario
-    def on_image_selected(image: Image.Image, image_name: str, preset_cv_data: dict[str, Any] | None) -> None:
+    # 1. Callback when user uploads an image or captures from camera
+    def on_image_selected(image: Image.Image, image_name: str) -> None:
         st.session_state.current_image = image
         st.session_state.current_image_name = image_name
         st.session_state.manual_overrides = {}
         st.session_state.selected_pill_id = None
+        st.session_state.cv_error = None
 
-        if preset_cv_data is not None:
-            st.session_state.raw_cv_data = preset_cv_data
-            st.session_state.inference_source = "preset"
+        if cv_load_result and cv_load_result.available:
+            try:
+                import tempfile
+                from pathlib import Path
+                from uuid import uuid4
+                from pill_safety.schemas import SegmentationInferenceRequest
+
+                temp_dir = Path(tempfile.gettempdir()) / "pill_safety_uploads"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                temp_file = temp_dir / f"upload_{uuid4().hex[:8]}.png"
+                image.save(temp_file)
+
+                req = SegmentationInferenceRequest(
+                    request_id=str(uuid4()),
+                    session_id=str(uuid4()),
+                    image_id=temp_file.stem,
+                    image_path=str(temp_file),
+                )
+                with st.spinner("🤖 Đang chạy mô hình AI nhận diện (YOLOv11-Seg + ResNet18 + PaddleOCR)..."):
+                    artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
+                    st.session_state.raw_cv_data = artifacts.output
+                    st.session_state.cv_error = None
+            except Exception as err:
+                import traceback
+                st.session_state.raw_cv_data = None
+                st.session_state.cv_error = f"Lỗi trong quá trình chạy Inference: {err}\n{traceback.format_exc()}"
         else:
-            # If real image uploaded and CV pipeline is available, run inference
-            if cv_load_result and cv_load_result.available:
-                try:
-                    import tempfile
-                    from pathlib import Path
-                    from uuid import uuid4
-                    from pill_safety.schemas import SegmentationInferenceRequest
+            st.session_state.raw_cv_data = None
+            st.session_state.cv_error = cv_load_result.error if cv_load_result else "Mô hình Computer Vision chưa được khởi tạo thành công."
 
-                    temp_dir = Path(tempfile.gettempdir()) / "pill_safety_uploads"
-                    temp_dir.mkdir(parents=True, exist_ok=True)
-                    temp_file = temp_dir / f"upload_{uuid4().hex[:8]}.png"
-                    image.save(temp_file)
-
-                    req = SegmentationInferenceRequest(
-                        request_id=str(uuid4()),
-                        session_id=str(uuid4()),
-                        image_id=temp_file.stem,
-                        image_path=str(temp_file),
-                    )
-                    with st.spinner("Đang chạy mô hình AI nhận diện (YOLOv11-Seg + ResNet18 + PaddleOCR)..."):
-                        artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
-                        st.session_state.raw_cv_data = artifacts.output
-                        st.session_state.inference_source = "real_cv"
-                except Exception as err:
-                    st.error(f"Lỗi khi chạy model CV thực tế: {err}. Chuyển sang chế độ phân tích hỗ trợ.")
-                    st.session_state.raw_cv_data = None
-                    st.session_state.inference_source = "error"
-            else:
-                # Fallback template if CV weights are not loaded locally
-                st.session_state.inference_source = "fallback_mock"
-                st.session_state.cv_error = cv_load_result.error if cv_load_result else "Pipeline not initialized"
-                st.session_state.raw_cv_data = {
-                    "image_quality": {"status": "good", "blur_score": 0.05, "glare_detected": False},
-                    "pills": [
-                        {
-                            "instance_id": "pill_001",
-                            "bbox_xyxy": [100, 100, 300, 300],
-                            "shape": {"label": "ROUND", "confidence": 0.95},
-                            "color": {"primary": "WHITE", "confidence": 0.93},
-                            "imprint": {"raw": "84A", "confidence": 0.96},
-                            "scoreline": {"visible": False},
-                        },
-                        {
-                            "instance_id": "pill_002",
-                            "bbox_xyxy": [400, 100, 650, 300],
-                            "shape": {"label": "OVAL", "confidence": 0.94},
-                            "color": {"primary": "ORANGE", "confidence": 0.91},
-                            "imprint": {"raw": "8335BARR", "confidence": 0.94},
-                            "scoreline": {"visible": True},
-                        },
-                    ],
-                }
-
-    # 2. Render Upload / Preset Selection Zone
+    # 2. Render Upload Panel (Upload / Camera)
     with st.container():
         st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
         render_upload_panel(on_image_selected)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. Main Analysis Section if image/data is loaded
-    if st.session_state.current_image is not None and st.session_state.raw_cv_data is not None:
-        inf_source = st.session_state.get("inference_source", "preset")
-        if inf_source == "real_cv":
-            st.success("✅ **AI Pipeline Online:** Ảnh đã được nhận diện trực tiếp bằng YOLOv11 Segmentation + ResNet-18 Multi-Head + PaddleOCR!")
-        elif inf_source == "fallback_mock":
-            err_summary = str(st.session_state.get("cv_error", "")).splitlines()[0] if st.session_state.get("cv_error") else "Weights not found"
-            st.warning(f"⚠️ **Chế độ Giả lập (Demo Mode):** Mô hình CV chưa tải được trọng số ({err_summary}). Đang hiển thị kết quả mẫu đối chiếu.")
+    # 3. Handle Errors or Empty State
+    if st.session_state.cv_error:
+        st.error(f"❌ **Lỗi phân tích Computer Vision:**\n\n```\n{st.session_state.cv_error}\n```\n\n*Gợi ý: Kiểm tra file weights YOLOv11 (.pt) và ResNet-18 (.pt, .json) trên môi trường chạy.*")
 
+    if st.session_state.current_image is None:
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 40px 20px; background: white; border: 1.5px dashed var(--border-medium); border-radius: 12px; margin-top: 16px;">
+                <div style="font-size: 2.5rem; margin-bottom: 8px;">💊</div>
+                <h4 style="margin: 0 0 6px 0; color: var(--text-primary);">Chưa có ảnh nào được chọn</h4>
+                <p style="margin: 0; font-size: 0.875rem; color: var(--text-muted); max-width: 500px; margin: 0 auto;">
+                    Vui lòng tải tệp ảnh chụp hoặc dùng Camera ở khung phía trên để hệ thống bắt đầu quét viên thuốc, định danh RxNorm và phát hiện tương tác đối kháng DDI.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    # 4. Main Analysis Section if real image and CV data are ready
+    if st.session_state.current_image is not None and st.session_state.raw_cv_data is not None:
+        st.success("✅ **AI Pipeline Thành Công:** Ảnh đã được nhận diện trực tiếp bằng YOLOv11 Segmentation + ResNet-18 Multi-Head + PaddleOCR!")
         pills, quality = parse_cv_output(st.session_state.raw_cv_data)
+
+        if not pills:
+            st.warning("⚠️ Mô hình YOLOv11 không phát hiện viên thuốc nào trong bức ảnh này. Vui lòng chụp rõ nét hơn hoặc đặt thuốc trên nền tương phản sáng.")
+            return
 
         # Apply manual overrides and evaluate DDI & Report
         report: SafetyReportViewModel = evaluate_safety_and_report(

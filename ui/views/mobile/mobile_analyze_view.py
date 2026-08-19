@@ -17,7 +17,6 @@ import streamlit as st
 from ui.adapters.pipeline_adapter import evaluate_safety_and_report, parse_cv_output
 from ui.components.mobile.mobile_pill_row import render_mobile_pill_row
 from ui.components.mobile.mobile_interaction_card import render_mobile_interaction_card
-from ui.demo_data import get_preset_scenario
 from ui.drawing_utils import draw_cv_overlay
 
 
@@ -53,7 +52,7 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
     st.session_state.setdefault("chooser_open", False)
     st.session_state.setdefault("mobile_input_mode", "entry")  # "entry" | "chooser" | "camera" | "uploader"
 
-    def execute_analysis(image: Image.Image, image_name: str, preset_cv_data: dict[str, Any] | None = None) -> None:
+    def execute_analysis(image: Image.Image, image_name: str) -> None:
         st.session_state.current_image = image
         st.session_state.current_image_name = image_name
         st.session_state.pending_image = None
@@ -63,36 +62,37 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
         st.session_state.selected_pill_id = None
         st.session_state.chooser_open = False
         st.session_state.mobile_input_mode = "entry"
+        st.session_state.cv_error = None
 
-        if preset_cv_data is not None:
-            st.session_state.raw_cv_data = preset_cv_data
+        if cv_load_result and cv_load_result.available:
+            try:
+                import tempfile
+                from pathlib import Path
+                from uuid import uuid4
+                from pill_safety.schemas import SegmentationInferenceRequest
+
+                temp_dir = Path(tempfile.gettempdir()) / "pill_safety_uploads"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                temp_file = temp_dir / f"upload_{uuid4().hex[:8]}.png"
+                image.save(temp_file)
+
+                req = SegmentationInferenceRequest(
+                    request_id=str(uuid4()),
+                    session_id=str(uuid4()),
+                    image_id=temp_file.stem,
+                    image_path=str(temp_file),
+                )
+                with st.spinner("🤖 AI đang nhận diện thuốc (YOLOv11 + ResNet18 + OCR)..."):
+                    artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
+                    st.session_state.raw_cv_data = artifacts.output
+                    st.session_state.cv_error = None
+            except Exception as err:
+                import traceback
+                st.session_state.raw_cv_data = None
+                st.session_state.cv_error = f"Lỗi AI CV: {err}\n{traceback.format_exc()}"
         else:
-            if cv_load_result and cv_load_result.available:
-                try:
-                    import tempfile
-                    from pathlib import Path
-                    from uuid import uuid4
-                    from pill_safety.schemas import SegmentationInferenceRequest
-
-                    temp_dir = Path(tempfile.gettempdir()) / "pill_safety_uploads"
-                    temp_dir.mkdir(parents=True, exist_ok=True)
-                    temp_file = temp_dir / f"upload_{uuid4().hex[:8]}.png"
-                    image.save(temp_file)
-
-                    req = SegmentationInferenceRequest(
-                        request_id=str(uuid4()),
-                        session_id=str(uuid4()),
-                        image_id=temp_file.stem,
-                        image_path=str(temp_file),
-                    )
-                    with st.spinner("🤖 AI đang nhận diện thuốc..."):
-                        artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
-                        st.session_state.raw_cv_data = artifacts.output
-                except Exception as err:
-                    st.error(f"Lỗi pipeline CV: {err}")
-                    st.session_state.raw_cv_data = None
-            else:
-                st.session_state.raw_cv_data = get_preset_scenario("critical")
+            st.session_state.raw_cv_data = None
+            st.session_state.cv_error = cv_load_result.error if cv_load_result else "Mô hình Computer Vision chưa được nạp thành công."
 
     current_image = st.session_state.get("current_image", None)
     pending_image = st.session_state.get("pending_image", None)
@@ -200,47 +200,6 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
                 unsafe_allow_html=True,
             )
 
-            # Compact Demo Scenario Selector (Single Row)
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-            st.markdown("<div style='font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;'>⚡ Hoặc thử kịch bản mẫu nhanh:</div>", unsafe_allow_html=True)
-            d1, d2, d3, d4 = st.columns(4)
-            with d1:
-                if st.button("🔴 Crit", key="m_btn_scen_crit", use_container_width=True):
-                    data = get_preset_scenario("critical")
-                    img = Image.new("RGB", (800, 500), color=(241, 245, 249))
-                    _add_to_recent_images(img, "Critical Scenario", data)
-                    st.session_state.pending_image = img
-                    st.session_state.pending_image_name = "scenario_critical.json"
-                    st.session_state.pending_cv_data = data
-                    st.rerun()
-            with d2:
-                if st.button("🟡 Mod", key="m_btn_scen_mod", use_container_width=True):
-                    data = get_preset_scenario("moderate")
-                    img = Image.new("RGB", (800, 500), color=(241, 245, 249))
-                    _add_to_recent_images(img, "Moderate Scenario", data)
-                    st.session_state.pending_image = img
-                    st.session_state.pending_image_name = "scenario_moderate.json"
-                    st.session_state.pending_cv_data = data
-                    st.rerun()
-            with d3:
-                if st.button("❓ Unres", key="m_btn_scen_unres", use_container_width=True):
-                    data = get_preset_scenario("unresolved")
-                    img = Image.new("RGB", (800, 500), color=(241, 245, 249))
-                    _add_to_recent_images(img, "Unresolved Scenario", data)
-                    st.session_state.pending_image = img
-                    st.session_state.pending_image_name = "scenario_unresolved.json"
-                    st.session_state.pending_cv_data = data
-                    st.rerun()
-            with d4:
-                if st.button("🟢 Safe", key="m_btn_scen_safe", use_container_width=True):
-                    data = get_preset_scenario("safe")
-                    img = Image.new("RGB", (800, 500), color=(241, 245, 249))
-                    _add_to_recent_images(img, "Safe Scenario", data)
-                    st.session_state.pending_image = img
-                    st.session_state.pending_image_name = "scenario_safe.json"
-                    st.session_state.pending_cv_data = data
-                    st.rerun()
-
     # =========================================================================
     # STATE 2: PHOTO REVIEW STATE (Single Prominent Primary CTA)
     # =========================================================================
@@ -261,7 +220,6 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
             execute_analysis(
                 image=st.session_state.pending_image,
                 image_name=st.session_state.pending_image_name or "pill_photo.jpg",
-                preset_cv_data=st.session_state.pending_cv_data,
             )
             st.rerun()
 
@@ -276,7 +234,25 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
     # STATE 3: RESULTS WORKSPACE (After AI Analysis)
     # =========================================================================
     else:
+        if st.session_state.get("cv_error"):
+            st.error(f"❌ **Lỗi AI Computer Vision:**\n\n```\n{st.session_state.cv_error}\n```")
+            if st.button("🔄 Thử Lại Với Ảnh Khác", key="m_btn_retry_after_err", use_container_width=True):
+                st.session_state.current_image = None
+                st.session_state.raw_cv_data = None
+                st.session_state.cv_error = None
+                st.rerun()
+            return
+
         pills, quality = parse_cv_output(st.session_state.raw_cv_data)
+
+        if not pills:
+            st.warning("⚠️ Không phát hiện viên thuốc nào trong ảnh chụp. Vui lòng chụp rõ nét hơn.")
+            if st.button("📸 Chụp Lại", key="m_btn_retake_empty", use_container_width=True):
+                st.session_state.current_image = None
+                st.session_state.raw_cv_data = None
+                st.rerun()
+            return
+
         report = evaluate_safety_and_report(
             pills=pills,
             manual_overrides=st.session_state.manual_overrides,
