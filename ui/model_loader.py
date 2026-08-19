@@ -24,6 +24,25 @@ class CVPipelineLoadResult:
         return self.pipeline is not None
 
 
+def _find_path(preferred_path: Path, patterns: list[str]) -> Path:
+    """Find file from preferred path or search in models/ and kaggle input dirs."""
+    if preferred_path.exists():
+        return preferred_path
+    search_dirs = [
+        PROJECT_ROOT / "models",
+        Path("/kaggle/input"),
+        Path.cwd() / "models",
+        Path.cwd(),
+    ]
+    for s_dir in search_dirs:
+        if s_dir.exists():
+            for pat in patterns:
+                matches = list(s_dir.rglob(pat))
+                if matches:
+                    return matches[0]
+    return preferred_path
+
+
 def _build_cv_pipeline() -> Any:
     """Build the actual predictors and full orchestrator from inference YAML files."""
 
@@ -47,9 +66,41 @@ def _build_cv_pipeline() -> Any:
         return path if path.is_absolute() else PROJECT_ROOT / path
 
     output_root = project_path(pipeline_config.output_dir)
-    segmentation_config = segmentation_config.with_weights_path(
-        project_path(segmentation_config.weights_path)
+
+    # Auto-resolve segmentation weights
+    seg_weights = _find_path(
+        project_path(segmentation_config.weights_path),
+        ["*yolo*.pt", "*seg*.pt", "best.pt", "*.pt"]
+    )
+    segmentation_config = segmentation_config.with_weights_path(seg_weights).with_output_dir(output_root)
+
+    # Auto-resolve attribute weights & configs
+    attr_weights = _find_path(
+        attribute_config.weights_path,
+        ["*resnet*.pt", "*attribute*.pt", "best.pt"]
+    )
+    attr_labels = _find_path(
+        attribute_config.label_mapping_path,
+        ["label_mapping.json", "*mapping*.json"]
+    )
+    attr_thresh = _find_path(
+        attribute_config.color_thresholds_path,
+        ["optimal_thresholds.json", "*thresholds*.json"]
+    )
+    attr_model_cfg = _find_path(
+        attribute_config.model_config_path,
+        ["model_config.yaml", "*config*.yaml"]
+    )
+
+    from dataclasses import replace
+    attribute_config = replace(
+        attribute_config,
+        weights_path=attr_weights,
+        label_mapping_path=attr_labels,
+        color_thresholds_path=attr_thresh,
+        model_config_path=attr_model_cfg,
     ).with_output_dir(output_root)
+
     ocr_config = ocr_config.with_output_dir(output_root / "predictions" / "ocr")
     pipeline_config = pipeline_config.with_output_dir(output_root)
 
@@ -61,14 +112,15 @@ def _build_cv_pipeline() -> Any:
     )
 
 
-@st.cache_resource(show_spinner="Đang tải các mô hình CV...")
+@st.cache_resource(show_spinner="Đang khởi tạo các mô hình AI (YOLOv11, ResNet-18, PaddleOCR)...")
 def load_cv_pipeline() -> CVPipelineLoadResult:
     """Try to build the real CV pipeline; return unavailable state on failure."""
 
     try:
         return CVPipelineLoadResult(pipeline=_build_cv_pipeline(), error=None)
     except Exception as exc:
-        return CVPipelineLoadResult(pipeline=None, error=str(exc))
+        import traceback
+        return CVPipelineLoadResult(pipeline=None, error=f"{exc}\n{traceback.format_exc()}")
 
 
 @st.cache_resource

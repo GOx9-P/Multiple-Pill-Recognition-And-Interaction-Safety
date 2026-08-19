@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import textwrap
 import streamlit as st
+from ..drug_search_view import _fetch_all_drugs_from_db
 from ui.adapters.pipeline_adapter import KNOWN_DRUG_DATABASE
 
 
@@ -26,17 +27,30 @@ def render_mobile_drug_search_view() -> None:
         label_visibility="collapsed",
     )
 
+    db_drugs = _fetch_all_drugs_from_db()
     matches = []
-    for imprint, drug in KNOWN_DRUG_DATABASE.items():
-        name_match = (
-            not query
-            or query.lower() in drug["product_name"].lower()
-            or query.lower() in (drug.get("brand_name") or "").lower()
-            or query.lower() in (drug.get("generic_name") or "").lower()
-            or query.lower() in imprint.lower()
-        )
-        if name_match:
-            matches.append((imprint, drug))
+    if db_drugs:
+        for drug in db_drugs:
+            name_match = (
+                not query
+                or query.lower() in drug["product_name"].lower()
+                or query.lower() in (drug.get("brand_name") or "").lower()
+                or query.lower() in drug["imprint"].lower()
+                or query.lower() in (drug.get("ingredients") or "").lower()
+            )
+            if name_match:
+                matches.append((drug["imprint"], drug))
+    else:
+        for imprint, drug in KNOWN_DRUG_DATABASE.items():
+            name_match = (
+                not query
+                or query.lower() in drug["product_name"].lower()
+                or query.lower() in (drug.get("brand_name") or "").lower()
+                or query.lower() in (drug.get("generic_name") or "").lower()
+                or query.lower() in imprint.lower()
+            )
+            if name_match:
+                matches.append((imprint, drug))
 
     st.markdown(f"<div style='font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin: 8px 0;'>Tìm thấy {len(matches)} loại thuốc phù hợp:</div>", unsafe_allow_html=True)
 

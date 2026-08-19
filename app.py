@@ -66,8 +66,8 @@ def main() -> None:
     # VIEW MODE A: DESKTOP CLINICAL WORKSPACE
     # =========================================================================
     if selected_view == "🖥️ Desktop View":
-        # Header with live Database Health check
-        render_header()
+        # Header with live Database & CV Health checks
+        render_header(cv_load_result)
 
         # Desktop Navigation Tabs
         tabs = st.tabs([

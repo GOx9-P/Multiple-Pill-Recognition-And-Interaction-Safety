@@ -38,6 +38,7 @@ def render_analyze_view(cv_load_result: Any) -> None:
 
         if preset_cv_data is not None:
             st.session_state.raw_cv_data = preset_cv_data
+            st.session_state.inference_source = "preset"
         else:
             # If real image uploaded and CV pipeline is available, run inference
             if cv_load_result and cv_load_result.available:
@@ -61,11 +62,15 @@ def render_analyze_view(cv_load_result: Any) -> None:
                     with st.spinner("Đang chạy mô hình AI nhận diện (YOLOv11-Seg + ResNet18 + PaddleOCR)..."):
                         artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
                         st.session_state.raw_cv_data = artifacts.output
+                        st.session_state.inference_source = "real_cv"
                 except Exception as err:
                     st.error(f"Lỗi khi chạy model CV thực tế: {err}. Chuyển sang chế độ phân tích hỗ trợ.")
                     st.session_state.raw_cv_data = None
+                    st.session_state.inference_source = "error"
             else:
                 # Fallback template if CV weights are not loaded locally
+                st.session_state.inference_source = "fallback_mock"
+                st.session_state.cv_error = cv_load_result.error if cv_load_result else "Pipeline not initialized"
                 st.session_state.raw_cv_data = {
                     "image_quality": {"status": "good", "blur_score": 0.05, "glare_detected": False},
                     "pills": [
@@ -96,6 +101,13 @@ def render_analyze_view(cv_load_result: Any) -> None:
 
     # 3. Main Analysis Section if image/data is loaded
     if st.session_state.current_image is not None and st.session_state.raw_cv_data is not None:
+        inf_source = st.session_state.get("inference_source", "preset")
+        if inf_source == "real_cv":
+            st.success("✅ **AI Pipeline Online:** Ảnh đã được nhận diện trực tiếp bằng YOLOv11 Segmentation + ResNet-18 Multi-Head + PaddleOCR!")
+        elif inf_source == "fallback_mock":
+            err_summary = str(st.session_state.get("cv_error", "")).splitlines()[0] if st.session_state.get("cv_error") else "Weights not found"
+            st.warning(f"⚠️ **Chế độ Giả lập (Demo Mode):** Mô hình CV chưa tải được trọng số ({err_summary}). Đang hiển thị kết quả mẫu đối chiếu.")
+
         pills, quality = parse_cv_output(st.session_state.raw_cv_data)
 
         # Apply manual overrides and evaluate DDI & Report

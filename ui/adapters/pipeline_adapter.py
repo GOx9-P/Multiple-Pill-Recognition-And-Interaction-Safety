@@ -121,11 +121,93 @@ KNOWN_DDI_MATRIX: dict[tuple[str, str], dict[str, str]] = {
 }
 
 
+def _get_db_session():
+    """Safely get database session if database is initialized."""
+    try:
+        from pill_safety.database.session import SessionLocal
+        return SessionLocal()
+    except Exception:
+        return None
+
+
+def _find_drug_in_database(imprint_text: str, shape_label: str = "", color_primary: str = "") -> dict[str, Any] | None:
+    """Query real database for matching drug product by imprint, shape, color."""
+    db = _get_db_session()
+    if not db:
+        return None
+    try:
+        from sqlalchemy import func, select
+        from pill_safety.database.models import DrugAppearance, DrugProduct, Ingredient, ProductIngredient
+
+        clean_imprint = imprint_text.replace(" ", "").upper()
+        if not clean_imprint or clean_imprint == "—" or clean_imprint == "?":
+            return None
+
+        # 1. Exact or partial match on imprint_normalized
+        stmt = (
+            select(DrugProduct, DrugAppearance)
+            .join(DrugAppearance, DrugAppearance.drug_id == DrugProduct.drug_id)
+            .where(DrugProduct.active.is_(True))
+            .where(
+                (DrugAppearance.imprint_normalized == clean_imprint)
+                | (DrugAppearance.imprint.ilike(f"%{imprint_text}%"))
+                | (DrugProduct.name.ilike(f"%{imprint_text}%"))
+            )
+        )
+        row = db.execute(stmt).first()
+        if not row:
+            # Try fuzzy search if exact match not found
+            stmt_all = (
+                select(DrugProduct, DrugAppearance)
+                .join(DrugAppearance, DrugAppearance.drug_id == DrugProduct.drug_id)
+                .where(DrugProduct.active.is_(True))
+            )
+            rows = db.execute(stmt_all).all()
+            for prod, app in rows:
+                if app.imprint_normalized and (clean_imprint in app.imprint_normalized or app.imprint_normalized in clean_imprint):
+                    row = (prod, app)
+                    break
+
+        if row:
+            prod, app = row
+            # Fetch active ingredients
+            ing_stmt = (
+                select(Ingredient, ProductIngredient)
+                .join(ProductIngredient, ProductIngredient.ingredient_id == Ingredient.ingredient_id)
+                .where(ProductIngredient.drug_id == prod.drug_id)
+            )
+            ing_rows = db.execute(ing_stmt).all()
+            active_ingredients = [
+                {
+                    "ingredient_id": ing.ingredient_id,
+                    "name": ing.normalized_name.capitalize(),
+                    "strength": pi.strength or "",
+                }
+                for ing, pi in ing_rows
+            ]
+
+            return {
+                "drug_id": prod.drug_id,
+                "product_name": prod.name,
+                "brand_name": prod.generic_name,
+                "generic_name": prod.generic_name,
+                "strength": active_ingredients[0]["strength"] if active_ingredients else "",
+                "rxcui": prod.product_rxcui,
+                "ndc": prod.product_code,
+                "active_ingredients": active_ingredients,
+            }
+    except Exception:
+        pass
+    finally:
+        db.close()
+    return None
+
+
 def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQualityViewModel]:
     """Parse CV pipeline outputs or raw scenario dicts into PillViewModels and ImageQualityViewModel."""
     pills: list[PillViewModel] = []
 
-    # Handle dict input (e.g. from scenario JSON files)
+    # Handle dict input (e.g. from scenario JSON files or raw dicts)
     if isinstance(raw_cv_data, dict):
         quality_dict = raw_cv_data.get("image_quality", {})
         quality_vm = ImageQualityViewModel(
@@ -153,7 +235,13 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
                 candidates_list = [raw_imprint]
 
             clean_imprint = raw_imprint.replace(" ", "").upper()
-            matched_product = KNOWN_DRUG_DATABASE.get(clean_imprint) or KNOWN_DRUG_DATABASE.get(raw_imprint.upper())
+            
+            # 1. Query Real Database first
+            matched_product = _find_drug_in_database(raw_imprint, shape_info.get("label", ""), color_info.get("primary", ""))
+            
+            # 2. Fallback to embedded known drug database if DB is offline
+            if not matched_product:
+                matched_product = KNOWN_DRUG_DATABASE.get(clean_imprint) or KNOWN_DRUG_DATABASE.get(raw_imprint.upper())
 
             status = "accepted" if matched_product else ("unresolved" if not raw_imprint or raw_imprint == "?" else "ambiguous")
 
@@ -204,7 +292,7 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
 
         return pills, quality_vm
 
-    # Handle CVPipelineOutput object
+    # Handle CVPipelineOutput object directly from real inference
     pills_out = getattr(raw_cv_data, "pills", [])
     quality_out = getattr(raw_cv_data, "image_quality", None)
 
@@ -224,11 +312,15 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
 
         raw_imp = getattr(imprint_obj, "raw", "") or ""
         clean_imp = raw_imp.replace(" ", "").upper()
-        matched = KNOWN_DRUG_DATABASE.get(clean_imp) or KNOWN_DRUG_DATABASE.get(raw_imp.upper())
+        
+        # Real Database match
+        matched = _find_drug_in_database(raw_imp, getattr(shape_obj, "label", ""), getattr(color_obj, "primary", ""))
+        if not matched:
+            matched = KNOWN_DRUG_DATABASE.get(clean_imp) or KNOWN_DRUG_DATABASE.get(raw_imp.upper())
 
         pill_vm = PillViewModel(
             instance_id=inst_id,
-            status="accepted" if matched else "unresolved",
+            status="accepted" if matched else ("unresolved" if not raw_imp else "ambiguous"),
             shape=getattr(shape_obj, "label", "Round").capitalize(),
             shape_confidence=getattr(shape_obj, "confidence", 0.92),
             color_primary=getattr(color_obj, "primary", "White").capitalize(),
@@ -320,19 +412,52 @@ def evaluate_safety_and_report(
                 )
             )
 
-    # 3. Check pairwise interactions
+    # 3. Check pairwise interactions from real database
     interactions: list[InteractionPairViewModel] = []
     ing_names = list(active_ingredient_map.keys())
 
+    db = _get_db_session()
     for i in range(len(ing_names)):
         for j in range(i + 1, len(ing_names)):
             pair_a = ing_names[i]
             pair_b = ing_names[j]
 
-            rule = (
-                KNOWN_DDI_MATRIX.get((pair_a, pair_b))
-                or KNOWN_DDI_MATRIX.get((pair_b, pair_a))
-            )
+            rule = None
+            if db:
+                try:
+                    from sqlalchemy import or_, select
+                    from pill_safety.database.models import DrugInteraction, Ingredient
+                    
+                    # Find ingredient records by name
+                    ing_a_rec = db.scalars(select(Ingredient).where(Ingredient.normalized_name.ilike(pair_a))).first()
+                    ing_b_rec = db.scalars(select(Ingredient).where(Ingredient.normalized_name.ilike(pair_b))).first()
+                    
+                    if ing_a_rec and ing_b_rec:
+                        id_min, id_max = min(ing_a_rec.ingredient_id, ing_b_rec.ingredient_id), max(ing_a_rec.ingredient_id, ing_b_rec.ingredient_id)
+                        inter_row = db.scalars(
+                            select(DrugInteraction).where(
+                                (DrugInteraction.ingredient_a_id == id_min) & (DrugInteraction.ingredient_b_id == id_max)
+                            )
+                        ).first()
+                        if inter_row:
+                            rule = {
+                                "severity": inter_row.severity,
+                                "message": inter_row.clinical_risk or f"Tương tác giữa {pair_a} và {pair_b}",
+                                "mechanism": inter_row.mechanism or "",
+                                "clinical_risk": inter_row.clinical_risk or "",
+                                "management": inter_row.management or "",
+                                "source": f"{inter_row.source_name or 'NLM DDI'} ({inter_row.source_reference or ''})",
+                            }
+                except Exception:
+                    pass
+
+            # Fallback to known matrix rule if not in DB
+            if not rule:
+                rule = (
+                    KNOWN_DDI_MATRIX.get((pair_a, pair_b))
+                    or KNOWN_DDI_MATRIX.get((pair_b, pair_a))
+                )
+
             if rule:
                 interactions.append(
                     InteractionPairViewModel(
@@ -346,6 +471,9 @@ def evaluate_safety_and_report(
                         source=rule.get("source", "NLM DDI Standard"),
                     )
                 )
+
+    if db:
+        db.close()
 
     # 4. Determine overall severity
     has_unresolved = any(p.status in ("unresolved", "ambiguous") for p in pills)

@@ -7,6 +7,51 @@ import streamlit as st
 from ..adapters.pipeline_adapter import KNOWN_DRUG_DATABASE
 
 
+def _fetch_all_drugs_from_db() -> list[dict[str, Any]]:
+    """Query all drug products with appearances and ingredients from database."""
+    try:
+        from pill_safety.database.session import SessionLocal
+        from pill_safety.database.models import DrugProduct, DrugAppearance, ProductIngredient, Ingredient
+        from sqlalchemy import select
+
+        with SessionLocal() as db:
+            stmt = (
+                select(DrugProduct, DrugAppearance)
+                .outerjoin(DrugAppearance, DrugAppearance.drug_id == DrugProduct.drug_id)
+                .where(DrugProduct.active.is_(True))
+            )
+            rows = db.execute(stmt).all()
+            if not rows:
+                return []
+
+            results = []
+            for prod, app in rows:
+                # Get ingredients
+                ing_stmt = (
+                    select(Ingredient, ProductIngredient)
+                    .join(ProductIngredient, ProductIngredient.ingredient_id == Ingredient.ingredient_id)
+                    .where(ProductIngredient.drug_id == prod.drug_id)
+                )
+                ing_rows = db.execute(ing_stmt).all()
+                ingredients_str = ", ".join([f"{ing.name} ({pi.strength or ''})" for ing, pi in ing_rows])
+                
+                results.append({
+                    "imprint": (app.imprint if app and app.imprint else prod.name[:6]).upper(),
+                    "product_name": prod.name,
+                    "brand_name": prod.generic_name,
+                    "generic_name": prod.generic_name,
+                    "strength": ing_rows[0][1].strength if ing_rows and ing_rows[0][1].strength else "N/A",
+                    "rxcui": prod.product_rxcui or "N/A",
+                    "ndc": prod.product_code or "N/A",
+                    "shape": app.shape if app and app.shape else "N/A",
+                    "color": app.color if app and app.color else "N/A",
+                    "ingredients": ingredients_str,
+                })
+            return results
+    except Exception:
+        return []
+
+
 def render_drug_search_view() -> None:
     """Render the pharmaceutical database search and directory lookup interface."""
     st.markdown(
@@ -17,7 +62,7 @@ def render_drug_search_view() -> None:
                 <span style="font-size: 0.8rem; color: var(--text-muted);">RxNorm • DailyMed Directory</span>
             </div>
             <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0;">
-                Tra cứu thông tin định danh thuốc, mã khắc ký tự (Imprint), hình dáng, màu sắc và hàm lượng hoạt chất chuẩn hóa.
+                Tra cứu thông tin định danh thuốc, mã khắc ký tự (Imprint), hình dáng, màu sắc và hàm lượng hoạt chất chuẩn hóa từ Cơ sở dữ liệu Quốc gia.
             </p>
         </div>
         """,
@@ -27,25 +72,41 @@ def render_drug_search_view() -> None:
     # Search Bar & Filter Controls
     c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
-        query = st.text_input("🔍 Tìm theo tên thuốc hoặc mã khắc (Imprint):", placeholder="Ví dụ: Plavix, 84A, Aspirin, TV5056...")
+        query = st.text_input("🔍 Tìm theo tên thuốc hoặc mã khắc (Imprint):", placeholder="Ví dụ: Plavix, 84A, Aspirin, TV5056, Omeprazole...")
     with c2:
-        shape_filter = st.selectbox("Hình dáng (Shape):", ["Tất cả", "Round", "Oval", "Capsule"])
+        shape_filter = st.selectbox("Hình dáng (Shape):", ["Tất cả", "ROUND", "OVAL", "CAPSULE", "OBLONG"])
     with c3:
-        color_filter = st.selectbox("Màu sắc (Color):", ["Tất cả", "White", "Yellow", "Orange"])
+        color_filter = st.selectbox("Màu sắc (Color):", ["Tất cả", "WHITE", "YELLOW", "ORANGE", "PINK", "BLUE"])
 
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-    # Filter and display results
+    # Fetch from DB or fallback
+    db_drugs = _fetch_all_drugs_from_db()
+    
     matches = []
-    for imprint, drug in KNOWN_DRUG_DATABASE.items():
-        name_match = (
-            not query
-            or query.lower() in drug["product_name"].lower()
-            or query.lower() in (drug.get("brand_name") or "").lower()
-            or query.lower() in imprint.lower()
-        )
-        if name_match:
-            matches.append((imprint, drug))
+    if db_drugs:
+        for drug in db_drugs:
+            name_match = (
+                not query
+                or query.lower() in drug["product_name"].lower()
+                or query.lower() in (drug.get("brand_name") or "").lower()
+                or query.lower() in drug["imprint"].lower()
+                or query.lower() in (drug.get("ingredients") or "").lower()
+            )
+            shape_match = (shape_filter == "Tất cả" or shape_filter.lower() in (drug.get("shape") or "").lower())
+            color_match = (color_filter == "Tất cả" or color_filter.lower() in (drug.get("color") or "").lower())
+            if name_match and shape_match and color_match:
+                matches.append((drug["imprint"], drug))
+    else:
+        for imprint, drug in KNOWN_DRUG_DATABASE.items():
+            name_match = (
+                not query
+                or query.lower() in drug["product_name"].lower()
+                or query.lower() in (drug.get("brand_name") or "").lower()
+                or query.lower() in imprint.lower()
+            )
+            if name_match:
+                matches.append((imprint, drug))
 
     st.markdown(f"**Kết quả tra cứu ({len(matches)} loại thuốc):**")
 
