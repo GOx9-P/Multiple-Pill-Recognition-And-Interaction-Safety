@@ -45,6 +45,9 @@ def _segmentation_output() -> SegmentationInferenceOutput:
                     "instance_token": "token_001",
                     "bbox_xyxy": [10, 20, 70, 80],
                     "mask_path": "outputs/masks/pill_001_mask.png",
+                    "color_crop_path": "outputs/crops/pill_001_color_crop.png",
+                    "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
+                    "ocr_crop_path": "outputs/crops/pill_001_ocr_crop.png",
                     "crop_path": "outputs/crops/pill_001_crop.png",
                     "segmentation": {
                         "confidence": 0.96,
@@ -59,6 +62,9 @@ def _segmentation_output() -> SegmentationInferenceOutput:
                     "instance_token": "token_002",
                     "bbox_xyxy": [90, 20, 150, 80],
                     "mask_path": "outputs/masks/pill_002_mask.png",
+                    "color_crop_path": "outputs/crops/pill_002_color_crop.png",
+                    "shape_crop_path": "outputs/crops/pill_002_shape_crop.png",
+                    "ocr_crop_path": "outputs/crops/pill_002_ocr_crop.png",
                     "crop_path": "outputs/crops/pill_002_crop.png",
                     "segmentation": {
                         "confidence": 0.95,
@@ -227,7 +233,9 @@ def test_full_cv_pipeline_runs_modules_in_dependency_order(tmp_path):
         "token_001",
         "token_002",
     ]
-    assert attribute_predictor.requests[0].crop_path.endswith("pill_001_crop.png")
+    assert attribute_predictor.requests[0].crop_path.endswith("pill_001_color_crop.png")
+    assert attribute_predictor.requests[0].shape_crop_path.endswith("pill_001_shape_crop.png")
+    assert ocr_predictor.requests[0].crop_path.endswith("pill_001_ocr_crop.png")
     assert ocr_predictor.requests[1].mask_path.endswith("pill_002_mask.png")
     assert artifacts.output.schema_version == "cv_output_v1"
     assert len(artifacts.output.pills) == 2

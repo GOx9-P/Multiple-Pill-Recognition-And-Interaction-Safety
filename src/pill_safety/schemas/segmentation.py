@@ -45,6 +45,9 @@ class SegmentationInstance(StrictSchema):
     instance_token: str = Field(min_length=1)
     bbox_xyxy: list[int] = Field(min_length=4, max_length=4)
     mask_path: str = Field(min_length=1)
+    color_crop_path: str = Field(min_length=1)
+    shape_crop_path: str = Field(min_length=1)
+    ocr_crop_path: str = Field(min_length=1)
     crop_path: str = Field(min_length=1)
     segmentation: SegmentationEvidence
     quality_flags: list[str]

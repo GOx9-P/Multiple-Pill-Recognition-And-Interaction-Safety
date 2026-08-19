@@ -53,8 +53,11 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
       "instance_id": "pill_001",
       "instance_token": "pill_token_001",
       "bbox_xyxy": [142, 93, 326, 248],
-      "mask_path": "outputs/masks/pill_001_mask.png",
-      "crop_path": "outputs/crops/pill_001_crop.png",
+      "mask_path": "outputs/masks/pill_001_clean_mask.png",
+      "color_crop_path": "outputs/crops/pill_001_color_crop.png",
+      "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
+      "ocr_crop_path": "outputs/crops/pill_001_ocr_crop.png",
+      "crop_path": "outputs/crops/pill_001_color_crop.png",
       "segmentation": {
         "confidence": 0.96,
         "occlusion_estimate": 0.12,
@@ -80,8 +83,10 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
   "image_id": "img_001",
   "instance_id": "pill_001",
   "instance_token": "pill_token_001",
-  "crop_path": "outputs/crops/pill_001_crop.png",
-  "mask_path": "outputs/masks/pill_001_mask.png"
+  "crop_path": "outputs/crops/pill_001_color_crop.png",
+  "color_crop_path": "outputs/crops/pill_001_color_crop.png",
+  "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
+  "mask_path": "outputs/masks/pill_001_clean_mask.png"
 }
 ```
 
@@ -151,8 +156,8 @@ Model Attribute hiện tại chỉ có hai head đã train là `shape` và `colo
   "image_id": "img_001",
   "instance_id": "pill_001",
   "instance_token": "pill_token_001",
-  "crop_path": "outputs/crops/pill_001_crop.png",
-  "mask_path": "outputs/masks/pill_001_mask.png"
+  "crop_path": "outputs/crops/pill_001_ocr_crop.png",
+  "mask_path": "outputs/masks/pill_001_clean_mask.png"
 }
 ```
 

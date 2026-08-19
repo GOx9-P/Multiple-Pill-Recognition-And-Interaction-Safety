@@ -23,6 +23,8 @@ class AttributeInferenceRequest(StrictSchema):
     instance_token: str = Field(min_length=1)
     crop_path: str = Field(min_length=1)
     mask_path: str = Field(min_length=1)
+    color_crop_path: str | None = Field(default=None, min_length=1)
+    shape_crop_path: str | None = Field(default=None, min_length=1)
 
 
 class AttributeAlternative(StrictSchema):

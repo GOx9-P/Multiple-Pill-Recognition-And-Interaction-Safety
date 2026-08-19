@@ -65,6 +65,9 @@ def _segmentation_output(
                     "instance_token": "pill_token_001",
                     "bbox_xyxy": [10, 20, 70, 80],
                     "mask_path": "outputs/masks/pill_001_mask.png",
+                    "color_crop_path": "outputs/crops/pill_001_color_crop.png",
+                    "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
+                    "ocr_crop_path": "outputs/crops/pill_001_ocr_crop.png",
                     "crop_path": "outputs/crops/pill_001_crop.png",
                     "segmentation": {
                         "confidence": 0.96,

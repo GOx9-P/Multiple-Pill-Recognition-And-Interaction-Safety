@@ -476,16 +476,22 @@ Output instance segmentation:
     "possible_merged_instance": false,
     "possible_non_pill": false
   },
-  "mask_path": "outputs/pill_001_mask.png",
-  "crop_path": "outputs/pill_001_crop.png",
+  "mask_path": "outputs/pill_001_clean_mask.png",
+  "color_crop_path": "outputs/pill_001_color_crop.png",
+  "shape_crop_path": "outputs/pill_001_shape_crop.png",
+  "ocr_crop_path": "outputs/pill_001_ocr_crop.png",
+  "crop_path": "outputs/pill_001_color_crop.png",
   "quality_flags": ["minor_glare"]
 }
 ```
 
 Crop preparation:
 
-- Áp dụng mask lên ảnh gốc.
-- Crop theo bounding box có padding.
+- `mask_path` là clean mask, không dilation.
+- `color_crop_path` dùng clean mask trên nền xám cố định.
+- `shape_crop_path` dùng vùng bbox mở rộng bởi dilation, nhưng chỉ clean mask là foreground.
+- `ocr_crop_path` dùng clean mask có margin, không dilation foreground.
+- `crop_path` giữ tương thích ngược và trỏ tới `color_crop_path`.
 - Resize về kích thước chuẩn.
 - Căn chỉnh theo trục chính của contour bằng PCA hoặc minimum-area rectangle.
 - Tạo các biến thể ảnh: `crop_rgb`, `crop_masked_rgb`, `crop_gray`, `crop_clahe`, `crop_gamma_corrected`, `crop_adaptive_threshold`, `crop_sharpened`.

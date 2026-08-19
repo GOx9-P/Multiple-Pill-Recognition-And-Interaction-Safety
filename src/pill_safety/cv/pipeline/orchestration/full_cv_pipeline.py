@@ -80,17 +80,27 @@ class FullCVPipeline:
                 "image_id": segmentation_output.image_id,
                 "instance_id": instance.instance_id,
                 "instance_token": instance.instance_token,
-                "crop_path": instance.crop_path,
                 "mask_path": instance.mask_path,
+            }
+            attribute_request = {
+                **shared_request,
+                # crop_path remains a compatibility fallback for direct callers.
+                "crop_path": instance.color_crop_path,
+                "color_crop_path": instance.color_crop_path,
+                "shape_crop_path": instance.shape_crop_path,
+            }
+            ocr_request = {
+                **shared_request,
+                "crop_path": instance.ocr_crop_path,
             }
             attribute_artifacts.append(
                 self.attribute_predictor.predict_with_artifacts(
-                    AttributeInferenceRequest.model_validate(shared_request)
+                    AttributeInferenceRequest.model_validate(attribute_request)
                 )
             )
             ocr_artifacts.append(
                 self.ocr_predictor.predict_with_artifacts(
-                    OCRInferenceRequest.model_validate(shared_request)
+                    OCRInferenceRequest.model_validate(ocr_request)
                 )
             )
 

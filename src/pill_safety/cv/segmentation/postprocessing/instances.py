@@ -10,6 +10,7 @@ import numpy as np
 
 from ..config import SegmentationConfig
 from ..models import RawSegmentationPrediction
+from .crop_preparation import prepare_task_crops
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class ProcessedInstance:
     mask: np.ndarray
     crop: np.ndarray
     crop_mask: np.ndarray
+    shape_crop: np.ndarray
+    ocr_crop: np.ndarray
     occlusion_estimate: float
     possible_merged_instance: bool
     possible_non_pill: bool
@@ -297,13 +300,20 @@ def process_prediction(
     if possible_non_pill:
         flags.append("possible_non_pill")
 
-    crop, crop_mask = _prepare_crop(image_bgr, cleaned_mask, bbox, config)
+    color_crop, shape_crop, ocr_crop, clean_crop_mask = prepare_task_crops(
+        image_bgr,
+        cleaned_mask,
+        bbox,
+        config,
+    )
     return ProcessedInstance(
         bbox_xyxy=bbox,
         confidence=float(np.clip(prediction.confidence, 0.0, 1.0)),
         mask=cleaned_mask,
-        crop=crop,
-        crop_mask=crop_mask,
+        crop=color_crop,
+        crop_mask=clean_crop_mask,
+        shape_crop=shape_crop,
+        ocr_crop=ocr_crop,
         occlusion_estimate=round(float(occlusion_estimate), 4),
         possible_merged_instance=possible_merged,
         possible_non_pill=possible_non_pill,

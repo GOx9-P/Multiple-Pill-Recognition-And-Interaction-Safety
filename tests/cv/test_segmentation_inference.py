@@ -219,7 +219,7 @@ def test_crop_keeps_mask_margin_and_neutral_background():
     assert np.all(rotated.crop[rotated.crop_mask == 0] == 127)
 
 
-def test_crop_mask_dilation_only_expands_downstream_crop():
+def test_dilation_only_expands_shape_crop_window_not_clean_foreground():
     """Kiểm tra dilation mở rộng crop mask mà không sửa mask quality gốc."""
 
     image = np.full((160, 160, 3), 180, dtype=np.uint8)
@@ -245,8 +245,10 @@ def test_crop_mask_dilation_only_expands_downstream_crop():
     )
 
     assert without_dilation is not None and with_dilation is not None
-    assert with_dilation.crop_mask.sum() > without_dilation.crop_mask.sum()
+    assert np.array_equal(with_dilation.crop_mask, without_dilation.crop_mask)
     assert np.array_equal(with_dilation.mask, mask)
+    assert np.array_equal(with_dilation.ocr_crop, with_dilation.crop)
+    assert np.all(with_dilation.crop[with_dilation.crop_mask == 0] == 127)
 
 
 def test_prediction_mask_must_use_original_image_coordinates():

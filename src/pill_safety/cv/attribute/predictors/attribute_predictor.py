@@ -244,6 +244,56 @@ class AttributePredictor:
             shape_alternatives=shape_alternatives,
         )
 
+    def _predict_task_crops(
+        self,
+        shape_crop_path: Path,
+        color_crop_path: Path,
+    ) -> dict[str, Any]:
+        """Run shape and color heads on their respective Module 1 crops."""
+
+        if shape_crop_path == color_crop_path:
+            return self._predict_crop(shape_crop_path)
+
+        with Image.open(shape_crop_path) as source:
+            shape_image = source.convert("RGB")
+        with Image.open(color_crop_path) as source:
+            color_image = source.convert("RGB")
+        shape_tensor = self.transform(shape_image).unsqueeze(0).to(self.device)
+        color_tensor = self.transform(color_image).unsqueeze(0).to(self.device)
+
+        with torch.inference_mode():
+            shape_logits = self.model(shape_tensor, task_type="shape")
+            color_logits = self.model(color_tensor, task_type="color")
+            shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
+            color_probabilities = torch.sigmoid(color_logits)[0]
+
+        shape_names = self.label_mapping["shape"]
+        color_names = self.label_mapping["color"]
+        top_k = min(self.config.shape_top_k, len(shape_names))
+        top_probabilities, top_indices = torch.topk(shape_probabilities, k=top_k)
+        selected_index = int(top_indices[0].item())
+        shape_alternatives = [
+            (shape_names[int(index.item())], float(probability.item()))
+            for index, probability in zip(top_indices[1:], top_probabilities[1:])
+        ]
+        color_values = color_probabilities.detach().cpu().tolist()
+        color_labels = [
+            color_names[index]
+            for index, probability in enumerate(color_values)
+            if probability > float(self.color_thresholds[index].item())
+        ]
+        color_scores = {
+            color_names[index]: float(probability)
+            for index, probability in enumerate(color_values)
+        }
+        return format_attribute_predictions(
+            shape_label=shape_names[selected_index],
+            shape_conf=float(shape_probabilities[selected_index].item()),
+            color_labels=color_labels,
+            color_probs=color_scores,
+            shape_alternatives=shape_alternatives,
+        )
+
     def predict(
         self,
         request: AttributeInferenceRequest | dict[str, Any],
@@ -259,14 +309,21 @@ class AttributePredictor:
         """Chạy inference, giữ ID nguồn và lưu JSON theo cây artifact của README."""
 
         request = AttributeInferenceRequest.model_validate(request)
-        crop_path = Path(request.crop_path)
+        shape_crop_path = Path(request.shape_crop_path or request.crop_path)
+        color_crop_path = Path(request.color_crop_path or request.crop_path)
         mask_path = Path(request.mask_path)
-        if not crop_path.is_file():
-            raise FileNotFoundError(f"Attribute crop does not exist: {crop_path}")
+        if not shape_crop_path.is_file():
+            raise FileNotFoundError(
+                f"Attribute shape crop does not exist: {shape_crop_path}"
+            )
+        if not color_crop_path.is_file():
+            raise FileNotFoundError(
+                f"Attribute color crop does not exist: {color_crop_path}"
+            )
         if not mask_path.is_file():
             raise FileNotFoundError(f"Attribute mask does not exist: {mask_path}")
 
-        prediction = self._predict_crop(crop_path)
+        prediction = self._predict_task_crops(shape_crop_path, color_crop_path)
         output = build_attribute_output(request, prediction)
         artifact_directory = (
             self.config.output_dir

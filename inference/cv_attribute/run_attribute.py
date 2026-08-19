@@ -51,7 +51,14 @@ def _resolve_request_paths(
     """Đổi crop/mask tương đối trong request sang đường dẫn tuyệt đối của project."""
 
     updates = {}
-    for field_name in ("crop_path", "mask_path"):
+    for field_name in (
+        "crop_path",
+        "mask_path",
+        "color_crop_path",
+        "shape_crop_path",
+    ):
+        if getattr(request, field_name) is None:
+            continue
         value = Path(getattr(request, field_name))
         if not value.is_absolute():
             updates[field_name] = str(PROJECT_ROOT / value)

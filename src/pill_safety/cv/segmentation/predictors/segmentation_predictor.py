@@ -181,11 +181,15 @@ class SegmentationPredictor:
         for index, instance in enumerate(ordered_instances, start=1):
             instance_id = f"pill_{index:03d}"
             instance_token = _stable_instance_token(request, instance_id)
-            mask_path = mask_directory / f"{instance_id}_mask.png"
-            crop_path = crop_directory / f"{instance_id}_crop.png"
-            # Mask nay dong bo pixel voi crop_path cho Module 2 va Module 3.
+            mask_path = mask_directory / f"{instance_id}_clean_mask.png"
+            color_crop_path = crop_directory / f"{instance_id}_color_crop.png"
+            shape_crop_path = crop_directory / f"{instance_id}_shape_crop.png"
+            ocr_crop_path = crop_directory / f"{instance_id}_ocr_crop.png"
+            # mask_path la clean mask, dong bo pixel voi color_crop_path va ocr_crop_path.
             _write_image(mask_path, instance.crop_mask * 255)
-            _write_image(crop_path, instance.crop)
+            _write_image(color_crop_path, instance.crop)
+            _write_image(shape_crop_path, instance.shape_crop)
+            _write_image(ocr_crop_path, instance.ocr_crop)
 
             flags = list(
                 dict.fromkeys(
@@ -197,7 +201,11 @@ class SegmentationPredictor:
                     instance_id=instance_id,
                     instance_token=instance_token,
                     mask_path=str(mask_path),
-                    crop_path=str(crop_path),
+                    color_crop_path=str(color_crop_path),
+                    shape_crop_path=str(shape_crop_path),
+                    ocr_crop_path=str(ocr_crop_path),
+                    # crop_path duoc giu lai de tuong thich artifact cu; no tro toi color crop.
+                    crop_path=str(color_crop_path),
                     processed=instance,
                     quality_flags=flags,
                 )
