@@ -5,7 +5,7 @@ wheel==0.45.1
 # Core NumPy (Strictly 1.x for OpenCV and Torch C-extensions compatibility)
 numpy==1.26.4
 
-# Deep learning / CV (PaddleOCR v3.0.3 & PaddleX v3.0.3 Stack)
+# Deep learning / CV
 torch>=2.2.0,<=2.6.0
 torchvision>=0.17.0,<=0.21.0
 ultralytics==8.3.253
