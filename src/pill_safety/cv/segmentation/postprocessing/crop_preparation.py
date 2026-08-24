@@ -220,18 +220,30 @@ def prepare_task_crops(
     ocr_crop, output_clean_mask = _render_square_crop(ocr_source, ocr_mask, config)
 
     # Shape uses a perfectly square ROI directly from the original full image.
-    # This completely eliminates letterbox padding lines that trick the model into seeing a polygon.
+    # We use cv2.copyMakeBorder (REFLECT) to pad the crop if the pill is near the image edge,
+    # ensuring no artificial gray lines are added by downstream resizing (which causes Polygon bugs).
     cx = (bbox_xyxy[0] + bbox_xyxy[2]) // 2
     cy = (bbox_xyxy[1] + bbox_xyxy[3]) // 2
     max_s = max(bbox_xyxy[2] - bbox_xyxy[0], bbox_xyxy[3] - bbox_xyxy[1])
     pad_s = int(round(max_s * config.bbox_padding_ratio))
     half_s = (max_s // 2) + pad_s
     
-    sq_x1 = max(0, cx - half_s)
-    sq_y1 = max(0, cy - half_s)
-    sq_x2 = min(image_width, cx + half_s)
-    sq_y2 = min(image_height, cy + half_s)
+    target_x1, target_y1 = cx - half_s, cy - half_s
+    target_x2, target_y2 = cx + half_s, cy + half_s
     
-    shape_source = image_bgr[sq_y1:sq_y2, sq_x1:sq_x2].copy()
+    real_x1, real_y1 = max(0, target_x1), max(0, target_y1)
+    real_x2, real_y2 = min(image_width, target_x2), min(image_height, target_y2)
+    
+    real_crop = image_bgr[real_y1:real_y2, real_x1:real_x2].copy()
+    
+    shape_source = cv2.copyMakeBorder(
+        real_crop,
+        max(0, -target_y1),
+        max(0, target_y2 - image_height),
+        max(0, -target_x1),
+        max(0, target_x2 - image_width),
+        cv2.BORDER_REFLECT_101,
+    )
+    
     shape_crop = _render_square_rgb_crop(shape_source, config)
     return color_crop, shape_crop, ocr_crop, output_clean_mask
