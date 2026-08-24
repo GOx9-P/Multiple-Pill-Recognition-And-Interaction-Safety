@@ -10,6 +10,37 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS_DIR = PROJECT_ROOT / "tests" / "rag" / "fakeoutputCV"
 
 PRESET_SCENARIOS: dict[str, dict[str, Any]] = {
+    "empty": {
+        "schema_version": "cv_output_v0",
+        "request_id": "req_preset_empty_00",
+        "session_id": "sess_preset_empty_00",
+        "image_quality": {"status": "good", "blur_score": 0.01, "glare_detected": False, "lighting_warning": False},
+        "pills": [],
+    },
+    "duplicate": {
+        "schema_version": "cv_output_v0",
+        "request_id": "req_preset_duplicate_05",
+        "session_id": "sess_preset_duplicate_05",
+        "image_quality": {"status": "good", "blur_score": 0.02, "glare_detected": False, "lighting_warning": False},
+        "pills": [
+            {
+                "instance_id": "pill_001_acetaminophen",
+                "bbox_xyxy": [90.0, 100.0, 310.0, 320.0],
+                "shape": {"label": "OVAL", "confidence": 0.97},
+                "color": {"primary": "WHITE", "confidence": 0.96},
+                "scoreline": {"visible": False},
+                "imprint": {"raw": "TYLENOL", "confidence": 0.97, "normalized_candidates": [{"text": "TYLENOL", "score": 0.97}]},
+            },
+            {
+                "instance_id": "pill_002_acetaminophen",
+                "bbox_xyxy": [390.0, 100.0, 610.0, 320.0],
+                "shape": {"label": "OVAL", "confidence": 0.96},
+                "color": {"primary": "WHITE", "confidence": 0.95},
+                "scoreline": {"visible": False},
+                "imprint": {"raw": "TYLENOL", "confidence": 0.96, "normalized_candidates": [{"text": "TYLENOL", "score": 0.96}]},
+            },
+        ],
+    },
     "critical": {
         "schema_version": "cv_output_v0",
         "request_id": "req_preset_critical_01",
@@ -100,6 +131,15 @@ PRESET_SCENARIOS: dict[str, dict[str, Any]] = {
     },
 }
 
+DEMO_SCENARIO_LABELS: dict[str, str] = {
+    "critical": "Tương tác nguy hiểm cao",
+    "moderate": "Tương tác cần theo dõi",
+    "unresolved": "Có viên cần xác nhận",
+    "safe": "Chưa phát hiện tương tác",
+    "empty": "Không phát hiện viên thuốc",
+    "duplicate": "Trùng hoạt chất",
+}
+
 
 def get_preset_scenario(scenario_name: str) -> dict[str, Any]:
     """Retrieve demo preset scenario dictionary by key or JSON filename."""
@@ -114,3 +154,35 @@ def get_preset_scenario(scenario_name: str) -> dict[str, Any]:
 
     # Fallback to critical preset
     return PRESET_SCENARIOS["critical"]
+
+
+def get_demo_image(scenario_name: str):
+    """Create a lightweight illustrative image for deterministic UI demos."""
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", (800, 520), "#F8FAFC")
+    draw = ImageDraw.Draw(image)
+    scenario = get_preset_scenario(scenario_name)
+    pills = scenario.get("pills", [])
+
+    if not pills:
+        draw.rounded_rectangle((190, 170, 610, 350), radius=28, fill="#FFFFFF", outline="#CBD5E1", width=3)
+        draw.text((268, 245), "Khong co vien thuoc", fill="#475569")
+        return image
+
+    centers = [(245, 260), (555, 260), (400, 400)]
+    fills = {"WHITE": "#FFFFFF", "ORANGE": "#F59E0B", "YELLOW": "#FDE047", "PINK": "#FDA4AF"}
+    for index, pill in enumerate(pills[:3]):
+        center_x, center_y = centers[index]
+        color = pill.get("color", {}).get("primary", "WHITE")
+        shape = pill.get("shape", {}).get("label", "ROUND")
+        fill = fills.get(color, "#E2E8F0")
+        if shape == "OVAL":
+            bounds = (center_x - 105, center_y - 58, center_x + 105, center_y + 58)
+        else:
+            bounds = (center_x - 76, center_y - 76, center_x + 76, center_y + 76)
+        draw.ellipse(bounds, fill=fill, outline="#94A3B8", width=4)
+        imprint = pill.get("imprint", {}).get("raw", "?")
+        draw.text((center_x - 35, center_y - 8), imprint[:9], fill="#334155")
+
+    return image

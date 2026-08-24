@@ -121,6 +121,29 @@ KNOWN_DDI_MATRIX: dict[tuple[str, str], dict[str, str]] = {
 }
 
 
+def _find_known_drug_by_user_text(value: str) -> dict[str, Any] | None:
+    """Match an exact embedded imprint, product, brand, generic, or ingredient name."""
+    normalized = " ".join(value.strip().lower().split())
+    compact = normalized.replace(" ", "")
+    direct = KNOWN_DRUG_DATABASE.get(value.strip().upper()) or KNOWN_DRUG_DATABASE.get(value.replace(" ", "").upper())
+    if direct:
+        return direct
+
+    for product in KNOWN_DRUG_DATABASE.values():
+        names = {
+            str(product.get("product_name") or "").strip().lower(),
+            str(product.get("brand_name") or "").strip().lower(),
+            str(product.get("generic_name") or "").strip().lower(),
+        }
+        names.update(
+            str(ingredient.get("name") or "").strip().lower()
+            for ingredient in product.get("active_ingredients", [])
+        )
+        if normalized in names or compact in {name.replace(" ", "") for name in names}:
+            return product
+    return None
+
+
 def _get_db_session():
     """Safely get database session if database is initialized."""
     try:
@@ -365,7 +388,7 @@ def evaluate_safety_and_report(
         # Check if user manually resolved this pill
         if pill.instance_id in overrides:
             manual_val = overrides[pill.instance_id].strip().upper()
-            lookup = KNOWN_DRUG_DATABASE.get(manual_val) or KNOWN_DRUG_DATABASE.get(manual_val.replace(" ", ""))
+            lookup = _find_known_drug_by_user_text(manual_val) or _find_drug_in_database(manual_val)
             if lookup:
                 drug_name = lookup["product_name"]
                 ingredients = lookup["active_ingredients"]
@@ -380,11 +403,7 @@ def evaluate_safety_and_report(
                 pill.match_confidence = 1.0
                 pill.is_manual_override = True
             else:
-                drug_name = overrides[pill.instance_id]
-                ingredients = [{"ingredient_id": 999, "name": overrides[pill.instance_id]}]
-                pill.status = "accepted"
-                pill.drug_name = drug_name
-                pill.is_manual_override = True
+                pill.required_action = "Không tìm thấy thuốc này trong dữ liệu. Vui lòng kiểm tra lại tên hoặc mã in."
 
         if pill.status == "accepted" and drug_name:
             resolved_drugs.append({

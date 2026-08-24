@@ -19,7 +19,6 @@ from ui.views import (
     render_drug_search_view,
 )
 from ui.views.mobile import (
-    render_mobile_about_view,
     render_mobile_analyze_view,
     render_mobile_ddi_view,
     render_mobile_drug_search_view,
@@ -39,7 +38,7 @@ def main() -> None:
     inject_healthcare_css()
 
     # 2. Shared Session State Initialization
-    st.session_state.setdefault("view_mode", "🖥️ Desktop View")
+    st.session_state.setdefault("view_mode", "📱 iPhone 17 Pro Max Preview")
     st.session_state.setdefault("mobile_active_tab", "scan")
 
     # 3. Load ML models safely with caching (shared across all views)
@@ -48,7 +47,7 @@ def main() -> None:
     # 4. View Switcher Toolbar Stage (Isolated above the device stage)
     st.markdown("<div class='preview-toolbar-stage'>", unsafe_allow_html=True)
     view_options = ["🖥️ Desktop View", "📱 iPhone 17 Pro Max Preview"]
-    current_view_state = st.session_state.get("view_mode", "🖥️ Desktop View")
+    current_view_state = st.session_state.get("view_mode", "📱 iPhone 17 Pro Max Preview")
     view_index = view_options.index(current_view_state) if current_view_state in view_options else 0
 
     selected_view = st.radio(
@@ -100,18 +99,17 @@ def main() -> None:
             # Dynamic Island at top notch
             render_dynamic_island()
 
-            # Dedicated Inner Scroll Viewport (Hover Scroll Owner)
-            with st.container(key="mobile_scroll_viewport"):
-                active_tab = render_mobile_bottom_nav()
+            # Navigation stays outside the phone's single scroll owner.
+            active_tab = render_mobile_bottom_nav()
 
+            # Dedicated inner scroll viewport for app content.
+            with st.container(key="mobile_scroll_viewport"):
                 if active_tab == "scan":
                     render_mobile_analyze_view(cv_load_result)
                 elif active_tab == "drugs":
                     render_mobile_drug_search_view()
                 elif active_tab == "ddi":
                     render_mobile_ddi_view()
-                elif active_tab == "about":
-                    render_mobile_about_view()
 
             # Fixed Home Indicator anchored at bottom chassis edge
             render_home_indicator()

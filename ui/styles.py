@@ -203,16 +203,30 @@ def inject_healthcare_css() -> None:
             overflow: hidden !important; /* Containment: Lock all elements inside chassis */
         }
 
-        /* Streamlit's internal vertical block & mobile scroll viewport for hover mouse-wheel scrolling */
-        .st-key-mobile_scroll_viewport,
-        .st-key-mobile_scroll_viewport [data-testid="stVerticalBlock"],
-        .st-key-iphone_17_simulator [data-testid="stVerticalBlock"] {
+        /* The content viewport is the phone's only vertical scroll owner. */
+        .st-key-mobile_scroll_viewport {
+            height: 800px !important;
             max-height: 800px !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            padding-right: 2px !important;
-            padding-bottom: 60px !important;
-            scrollbar-width: thin !important;
+            padding-right: 0 !important;
+            padding-bottom: 84px !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            overscroll-behavior-y: contain !important;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .st-key-mobile_scroll_viewport::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        .st-key-mobile_scroll_viewport [data-testid="stVerticalBlock"] {
+            max-height: none !important;
+            overflow: visible !important;
         }
 
         /* Internal Scroll Viewport for Mobile App Content */
@@ -285,15 +299,13 @@ def inject_healthcare_css() -> None:
             margin: 0 auto !important;
         }
 
-        /* Demo Scenario Preset Buttons - Equal Height & Single Line */
+        /* Mobile controls use a comfortable iOS-sized touch target. */
         .st-key-mobile_scroll_viewport div.stButton > button,
         .st-key-iphone_17_simulator div.stButton > button {
             white-space: nowrap !important;
             font-size: 0.78rem !important;
-            height: 40px !important;
-            min-height: 40px !important;
-            max-height: 40px !important;
-            padding: 0.25rem 0.15rem !important;
+            min-height: 44px !important;
+            padding: 0.45rem 0.5rem !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -357,26 +369,55 @@ def inject_healthcare_css() -> None:
             color: var(--sev-safe-text);
         }
 
-        /* Mobile Segmented Nav Container */
-        .mobile-nav-container [data-testid="stRadio"] > div {
+        /* Mobile tab bar stays outside the scrolling content. */
+        .st-key-mobile_bottom_nav {
+            position: absolute !important;
+            left: 14px !important;
+            right: 14px !important;
+            bottom: 18px !important;
+            z-index: 900 !important;
+            padding: 7px !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 18px !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08) !important;
+            backdrop-filter: blur(12px) !important;
+        }
+
+        .st-key-mobile_bottom_nav [data-testid="stRadio"] > div {
             flex-direction: row !important;
             background: var(--bg-surface-elevated) !important;
             border-radius: var(--radius-md) !important;
             padding: 3px !important;
-            gap: 2px !important;
+            gap: 4px !important;
         }
 
-        .mobile-nav-container [data-testid="stRadio"] label {
-            padding: 6px 10px !important;
+        .st-key-mobile_bottom_nav [data-testid="stRadio"] label {
+            flex: 1 1 0 !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            padding: 8px 6px !important;
             border-radius: var(--radius-sm) !important;
-            font-size: 0.8rem !important;
+            font-size: 0.76rem !important;
             font-weight: 600 !important;
             color: var(--text-secondary) !important;
+            margin: 0 !important;
+        }
+
+        .st-key-mobile_bottom_nav label:has(input:checked) {
+            background: var(--bg-surface) !important;
+            color: var(--accent-brand) !important;
+            box-shadow: var(--shadow-sm) !important;
+        }
+
+        .st-key-mobile_bottom_nav label:focus-within {
+            outline: 2px solid var(--accent-brand) !important;
+            outline-offset: 2px !important;
         }
 
         /* Hide radio circles in mobile nav for clean segmented tabs */
-        .mobile-nav-container [data-testid="stRadio"] input[type="radio"],
-        .mobile-nav-container [data-testid="stRadio"] div[data-baseweb="radio"] > div:first-child {
+        .st-key-mobile_bottom_nav [data-testid="stRadio"] input[type="radio"],
+        .st-key-mobile_bottom_nav [data-testid="stRadio"] div[data-baseweb="radio"] > div:first-child {
             display: none !important;
         }
 
@@ -656,6 +697,79 @@ def inject_healthcare_css() -> None:
             color: var(--text-secondary);
         }
 
+        /* Consumer mobile flow */
+        .mobile-app-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 2px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 18px;
+        }
+
+        .mobile-app-kicker { color: var(--accent-brand); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.12em; margin-bottom: 2px; }
+        .mobile-app-bar h1 { font-size: 1.28rem !important; line-height: 1.15 !important; margin: 0 !important; }
+        .mobile-app-mark { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-brand); color: #FFFFFF; font-size: 1.35rem; font-weight: 500; }
+
+        .mobile-intro { padding: 12px 2px 18px; }
+        .mobile-intro.compact { padding-bottom: 10px; }
+        .mobile-intro h2 { font-size: 1.42rem !important; line-height: 1.18 !important; margin: 0 0 8px !important; max-width: 320px; }
+        .mobile-intro p { color: var(--text-muted) !important; font-size: 0.88rem !important; line-height: 1.5 !important; margin: 0 !important; }
+
+        .mobile-photo-guide,
+        .mobile-image-warning,
+        .mobile-medical-disclaimer,
+        .mobile-empty-state {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            border-radius: var(--radius-md);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
+        .mobile-photo-guide { margin: 14px 0 10px; padding: 12px 14px; background: var(--bg-surface-elevated); color: var(--text-secondary); }
+        .mobile-image-warning { margin-bottom: 12px; padding: 12px 14px; background: var(--sev-unresolved-bg); border: 1px solid var(--sev-unresolved-border); color: var(--sev-unresolved-text); }
+        .mobile-empty-state { margin: 22px 0 14px; padding: 24px 18px; text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-medium); color: var(--text-secondary); }
+        .mobile-empty-state strong { font-size: 1rem; color: var(--text-primary); }
+        .mobile-empty-state.error { border-style: solid; border-color: var(--sev-critical-border); }
+
+        .mobile-safety-hero { padding: 16px !important; gap: 12px !important; margin-bottom: 22px !important; box-shadow: none !important; }
+        .mobile-safety-symbol { flex: 0 0 32px; width: 32px; height: 32px; display: grid; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; font-weight: 800; line-height: 1; }
+        .mobile-safety-content { min-width: 0; }
+        .mobile-safety-eyebrow { font-size: 0.67rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+        .mobile-safety-content h2 { color: inherit !important; font-size: 1.08rem !important; line-height: 1.22 !important; margin: 0 0 6px !important; }
+        .mobile-safety-content p { color: inherit !important; font-size: 0.82rem !important; line-height: 1.45 !important; margin: 0 0 10px !important; }
+        .mobile-safety-action { display: flex; flex-direction: column; gap: 3px; padding: 10px 11px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.72); color: var(--text-primary); font-size: 0.8rem; line-height: 1.42; }
+        .mobile-safety-action strong,
+        .mobile-medical-disclaimer strong { color: inherit !important; }
+        .mobile-completeness-note { margin-top: 8px; font-size: 0.75rem; font-weight: 700; }
+
+        .mobile-section-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+        .mobile-section-heading.simple { margin-top: 24px; }
+        .mobile-section-heading span { display: block; color: var(--text-muted); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 2px; }
+        .mobile-section-heading h2 { font-size: 1.02rem !important; margin: 0 !important; }
+        .mobile-progress-count { min-width: 42px; padding: 6px 8px; border-radius: var(--radius-full); background: var(--accent-brand-light); color: var(--accent-brand); text-align: center; font-size: 0.78rem; font-weight: 800; }
+
+        .mobile-pill-row { padding: 13px 14px !important; margin-bottom: 8px !important; box-shadow: none !important; }
+        .mobile-pill-row.unresolved,
+        .mobile-pill-row.ambiguous { border-color: var(--sev-unresolved-border); }
+        .mobile-pill-index { color: var(--text-muted); font-size: 0.72rem; font-weight: 700; }
+        .mobile-pill-confidence { color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; margin-bottom: 3px; }
+        .mobile-pill-evidence { color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }
+        .pill-badge.manual { background: var(--sev-unresolved-bg); color: var(--sev-unresolved-text); border: 1px solid var(--sev-unresolved-border); }
+
+        .st-key-mobile_scroll_viewport [data-testid="stForm"] { margin: -2px 0 10px; padding: 12px !important; border: 1px solid var(--sev-unresolved-border) !important; border-radius: var(--radius-md) !important; background: var(--sev-unresolved-bg) !important; }
+
+        .mobile-ddi-card,
+        .mobile-duplicate-card { padding: 14px !important; margin-bottom: 10px !important; box-shadow: none !important; }
+        .mobile-duplicate-card { background: var(--sev-duplicate-bg); border: 1px solid var(--sev-duplicate-border); border-left: 4px solid var(--sev-duplicate); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+        .mobile-ddi-badge.duplicate { background: #FFFFFF; color: var(--sev-duplicate-text); border: 1px solid var(--sev-duplicate-border); margin-bottom: 6px; }
+        .mobile-ddi-action { display: flex; flex-direction: column; gap: 3px; padding: 10px 11px; border-radius: var(--radius-sm); background: var(--bg-surface-elevated); color: var(--text-primary); font-size: 0.8rem; line-height: 1.42; margin-bottom: 10px; }
+        .mobile-ddi-action strong { color: var(--accent-brand) !important; }
+
+        .mobile-medical-disclaimer { margin: 18px 0 10px; padding: 13px 14px; background: #F8FAFC; border: 1px solid var(--border-subtle); color: var(--text-muted); }
+
         /* -------------------------------------------------------------
            DESKTOP WORKSPACE COMPONENTS
            ------------------------------------------------------------- */
@@ -826,7 +940,7 @@ def inject_healthcare_css() -> None:
         }
 
         div.stButton > button[kind="primary"] {
-            background: linear-gradient(135deg, #0891B2 0%, #06B6D4 100%) !important;
+            background: var(--accent-brand) !important;
             color: #FFFFFF !important;
             border: none !important;
             min-height: 46px !important;
@@ -835,7 +949,7 @@ def inject_healthcare_css() -> None:
         }
 
         div.stButton > button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #0E7490 0%, #0891B2 100%) !important;
+            background: var(--accent-brand-hover) !important;
             box-shadow: 0 6px 16px rgba(8, 145, 178, 0.35) !important;
             transform: translateY(-1px);
         }
@@ -862,6 +976,29 @@ def inject_healthcare_css() -> None:
             }
             .iphone-home-indicator-container {
                 display: none !important;
+            }
+            .st-key-mobile_scroll_viewport {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                padding-bottom: 96px !important;
+            }
+            .st-key-mobile_bottom_nav {
+                position: fixed !important;
+                left: 8px !important;
+                right: 8px !important;
+                bottom: max(8px, env(safe-area-inset-bottom)) !important;
+            }
+            html, body, .stApp, [data-testid="stAppViewContainer"] {
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+            }
+            html::-webkit-scrollbar,
+            body::-webkit-scrollbar,
+            .stApp::-webkit-scrollbar,
+            [data-testid="stAppViewContainer"]::-webkit-scrollbar {
+                display: none !important;
+                width: 0 !important;
             }
             .block-container {
                 padding-top: 3.5rem !important;
