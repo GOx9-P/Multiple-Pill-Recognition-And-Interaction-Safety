@@ -184,6 +184,11 @@ def prepare_task_crops(
 
     base_image = image_bgr[y1:y2, x1:x2].copy()
     base_clean_mask = clean_mask[y1:y2, x1:x2].astype(np.uint8)
+    
+    # LƯU LẠI BẢN CHƯA XOAY DÀNH RIÊNG CHO SHAPE CROP
+    original_base_image = base_image.copy()
+    original_base_clean_mask = base_clean_mask.copy()
+
     background = (config.crop_background_value,) * 3
     if config.align_long_axis:
         axis = _principal_axis_angle(base_clean_mask)
@@ -218,12 +223,11 @@ def prepare_task_crops(
     )
     ocr_crop, output_clean_mask = _render_square_crop(ocr_source, ocr_mask, config)
 
-    # Shape uses a dilated region only to define a safer ROI. It keeps original RGB
-    # pixels inside that ROI instead of treating dilation as foreground mask.
-    shape_region = _dilate_region(base_clean_mask, config.crop_mask_dilation_ratio)
+    # Shape uses original unrotated images to prevent polygon-like border artifacts
+    shape_region = _dilate_region(original_base_clean_mask, config.crop_mask_dilation_ratio)
     shape_source, _ = _crop_around_region(
-        base_image,
-        base_clean_mask,
+        original_base_image,
+        original_base_clean_mask,
         shape_region,
         config.bbox_padding_ratio,
     )
