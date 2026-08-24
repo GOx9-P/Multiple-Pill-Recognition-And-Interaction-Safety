@@ -184,10 +184,6 @@ def prepare_task_crops(
 
     base_image = image_bgr[y1:y2, x1:x2].copy()
     base_clean_mask = clean_mask[y1:y2, x1:x2].astype(np.uint8)
-    
-    # LƯU LẠI BẢN CHƯA XOAY DÀNH RIÊNG CHO SHAPE CROP
-    original_base_image = base_image.copy()
-    original_base_clean_mask = base_clean_mask.copy()
 
     background = (config.crop_background_value,) * 3
     if config.align_long_axis:
@@ -223,13 +219,19 @@ def prepare_task_crops(
     )
     ocr_crop, output_clean_mask = _render_square_crop(ocr_source, ocr_mask, config)
 
-    # Shape uses original unrotated images to prevent polygon-like border artifacts
-    shape_region = _dilate_region(original_base_clean_mask, config.crop_mask_dilation_ratio)
-    shape_source, _ = _crop_around_region(
-        original_base_image,
-        original_base_clean_mask,
-        shape_region,
-        config.bbox_padding_ratio,
-    )
+    # Shape uses a perfectly square ROI directly from the original full image.
+    # This completely eliminates letterbox padding lines that trick the model into seeing a polygon.
+    cx = (bbox_xyxy[0] + bbox_xyxy[2]) // 2
+    cy = (bbox_xyxy[1] + bbox_xyxy[3]) // 2
+    max_s = max(bbox_xyxy[2] - bbox_xyxy[0], bbox_xyxy[3] - bbox_xyxy[1])
+    pad_s = int(round(max_s * config.bbox_padding_ratio))
+    half_s = (max_s // 2) + pad_s
+    
+    sq_x1 = max(0, cx - half_s)
+    sq_y1 = max(0, cy - half_s)
+    sq_x2 = min(image_width, cx + half_s)
+    sq_y2 = min(image_height, cy + half_s)
+    
+    shape_source = image_bgr[sq_y1:sq_y2, sq_x1:sq_x2].copy()
     shape_crop = _render_square_rgb_crop(shape_source, config)
     return color_crop, shape_crop, ocr_crop, output_clean_mask
