@@ -9,11 +9,11 @@ model:
 
 postprocessing:
   # Giữ ngữ cảnh quanh mask cho Module 2/3; crop không được cắt sát viên.
-  bbox_padding_ratio: 0.20
+  bbox_padding_ratio: 0.12
   # Nở nhẹ mask chỉ khi tạo crop để bù phần viền YOLO cắt thiếu.
   crop_mask_dilation_ratio: 0.02
   # Thu nhẹ mask cho color crop để loại pixel nền lẫn ở viền viên.
-  color_mask_erosion_ratio: 0.4
+  color_mask_erosion_ratio: 0.04
   crop_size: 640
   crop_background_value: 127
   align_long_axis: true
