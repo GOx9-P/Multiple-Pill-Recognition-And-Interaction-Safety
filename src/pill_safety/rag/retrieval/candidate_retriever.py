@@ -13,7 +13,7 @@ from pill_safety.rag.retrieval.normalization import (
     normalize_shape,
     normalize_token,
 )
-from pill_safety.rag.retrieval.similarity import weighted_edit_similarity
+from pill_safety.rag.retrieval.similarity import multi_aspect_imprint_similarity, weighted_edit_similarity
 from pill_safety.rag.retrieval.types import CandidateRecord, RecognitionInput, RetrievalDiagnostics
 
 
@@ -50,20 +50,24 @@ class CandidateRetriever:
         *,
         idf_statistics: Any = None,
         limit: int = 20,
-        fuzzy_threshold: float = 0.55,
+        fuzzy_threshold: float = 0.40,
     ) -> tuple[RetrievalDiagnostics, list[CandidateRecord]]:
         queried_imprints = [candidate.text for candidate in pill.imprint_candidates]
 
         if queried_imprints:
-            min_len = max(1, min((len(q) + 1) // 2 for q in queried_imprints))
-            max_len = max(6, max(len(q) * 2 for q in queried_imprints))
-            all_candidates = self.load_active_candidates(market=pill.market, min_len=min_len, max_len=max_len)
+            all_candidates = self.load_active_candidates(market=pill.market)
 
             matched: list[tuple[float, CandidateRecord]] = []
             for record in all_candidates:
                 best_similarity = max(
                     (
-                        weighted_edit_similarity(imprint, record.imprint_normalized)
+                        multi_aspect_imprint_similarity(
+                            imprint,
+                            record.imprint_normalized,
+                            imprint_raw=record.imprint_raw,
+                            imprint_side_a=record.imprint_side_a,
+                            imprint_side_b=record.imprint_side_b,
+                        )
                         for imprint in queried_imprints
                     ),
                     default=0.0,
@@ -71,15 +75,16 @@ class CandidateRetriever:
                 if best_similarity >= fuzzy_threshold:
                     matched.append((best_similarity, record))
 
-            matched.sort(key=lambda item: item[0], reverse=True)
-            candidates = self._dedupe([record for _, record in matched])[:limit]
-            diagnostics = RetrievalDiagnostics(
-                strategy="imprint_first",
-                queried_imprints=queried_imprints,
-                num_records_before_dedup=len(matched),
-                num_records_after_dedup=len(candidates),
-            )
-            return diagnostics, candidates
+            if matched:
+                matched.sort(key=lambda item: item[0], reverse=True)
+                candidates = self._dedupe([record for _, record in matched])[:limit]
+                diagnostics = RetrievalDiagnostics(
+                    strategy="imprint_first",
+                    queried_imprints=queried_imprints,
+                    num_records_before_dedup=len(matched),
+                    num_records_after_dedup=len(candidates),
+                )
+                return diagnostics, candidates
 
         all_candidates = self.load_active_candidates(market=pill.market)
         fallback = self._fallback_by_attributes(
@@ -90,7 +95,7 @@ class CandidateRetriever:
         )
         diagnostics = RetrievalDiagnostics(
             strategy="attribute_fallback",
-            queried_imprints=[],
+            queried_imprints=queried_imprints,
             num_records_before_dedup=len(fallback),
             num_records_after_dedup=len(fallback),
         )
@@ -156,5 +161,7 @@ class CandidateRetriever:
             market=normalize_color(product.market),
             source_name=appearance.source_name or product.source_name,
             source_reference=appearance.source_reference or product.source_reference,
+            imprint_raw=appearance.imprint_raw,
+            imprint_side_a=appearance.imprint_side_a,
+            imprint_side_b=appearance.imprint_side_b,
         )
-

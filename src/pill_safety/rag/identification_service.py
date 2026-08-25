@@ -148,10 +148,12 @@ class IdentificationService:
 
         accepted_product = None
         if decision.accepted is not None:
+            cand = decision.accepted.candidate
             accepted_product = {
-                "drug_id": decision.accepted.candidate.drug_id,
-                "product_code": decision.accepted.candidate.product_code,
-                "product_name": decision.accepted.candidate.product_name,
+                "product_id": f"drug_{cand.drug_id}" if cand.drug_id else (cand.product_code or ""),
+                "drug_id": cand.drug_id,
+                "product_code": cand.product_code,
+                "product_name": cand.product_name,
             }
 
         return {
@@ -180,9 +182,11 @@ class IdentificationService:
     @staticmethod
     def _serialize_candidate_score(score: CandidateScore, *, rank: int, top2_margin: float | None) -> dict[str, Any]:
         candidate = score.candidate
+        product_id = f"drug_{candidate.drug_id}" if candidate.drug_id else (candidate.product_code or "")
         return {
             "rank": rank,
             "appearance_id": candidate.appearance_id,
+            "product_id": product_id,
             "drug_id": candidate.drug_id,
             "product_code": candidate.product_code,
             "product_name": candidate.product_name,
@@ -195,6 +199,7 @@ class IdentificationService:
                 "dosage_form_score": _rounded_field_score(score.field_scores.get("dosage_form")),
                 "scoreline_score": _rounded_field_score(score.field_scores.get("scoreline")),
                 "logo_score": _rounded_field_score(score.field_scores.get("logo_or_symbol")),
+                "market_score": 1.0,
                 "top1_top2_margin": round(top2_margin, 4) if top2_margin is not None else None,
                 "hard_reject": score.hard_reject,
                 "hard_reject_reasons": score.hard_reject_reasons,

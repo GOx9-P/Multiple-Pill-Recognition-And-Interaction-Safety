@@ -25,21 +25,23 @@ class CVPipelineLoadResult:
 
 
 def _find_path(preferred_path: Path, patterns: list[str]) -> Path:
-    """Find file from preferred path or search in models/ and kaggle input dirs."""
+    """Find file from preferred path or search in models/ and experiments/."""
     if preferred_path.exists():
         return preferred_path
     search_dirs = [
         PROJECT_ROOT / "models",
+        PROJECT_ROOT / "experiments",
         Path("/kaggle/input"),
-        Path.cwd() / "models",
-        Path.cwd(),
     ]
     for s_dir in search_dirs:
         if s_dir.exists():
             for pat in patterns:
-                matches = list(s_dir.rglob(pat))
-                if matches:
-                    return matches[0]
+                try:
+                    for match in s_dir.rglob(pat):
+                        if match.is_file() and ".git" not in str(match):
+                            return match
+                except Exception:
+                    continue
     return preferred_path
 
 
@@ -77,7 +79,7 @@ def _build_cv_pipeline() -> Any:
     # Auto-resolve attribute weights & configs
     attr_weights = _find_path(
         attribute_config.weights_path,
-        ["*resnet*.pt", "*attribute*.pt", "best.pt"]
+        ["*attr*.pt", "attr_last_v1_best.pt", "*resnet*.pt", "*attribute*.pt"]
     )
     attr_labels = _find_path(
         attribute_config.label_mapping_path,

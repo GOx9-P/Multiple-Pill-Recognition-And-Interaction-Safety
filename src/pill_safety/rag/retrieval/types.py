@@ -98,6 +98,9 @@ class CandidateRecord:
     market: str | None
     source_name: str | None = None
     source_reference: str | None = None
+    imprint_raw: str | None = None
+    imprint_side_a: str | None = None
+    imprint_side_b: str | None = None
 
 
 @dataclass(frozen=True)
@@ -131,4 +134,3 @@ class CandidateScore:
     imprint_match_score: float
     hard_reject: bool
     hard_reject_reasons: list[str]
-

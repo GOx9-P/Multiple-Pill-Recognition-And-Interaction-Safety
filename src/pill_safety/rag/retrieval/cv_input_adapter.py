@@ -65,18 +65,36 @@ def _adapt_imprints(pill: dict[str, Any]) -> list[ImprintCandidate]:
                     evidence=[*_list(row.get("evidence")), *evidence],
                 )
 
+    # Bổ sung các observation OCR trực tiếp (nhiều góc quay/tiền xử lý) nếu có
+    for obs in _list(imprint.get("ocr_observations")):
+        if isinstance(obs, dict):
+            obs_text = str(obs.get("text") or "").strip()
+            obs_conf = _float(obs.get("confidence"), 0.5)
+            if obs_text and obs_conf > 0.25:
+                for text, multiplier, evidence in expand_imprint_variants(obs_text):
+                    score = obs_conf * multiplier * 0.95
+                    previous = candidates.get(text)
+                    if previous is None or score > previous.score:
+                        candidates[text] = ImprintCandidate(
+                            text=text,
+                            raw_text=obs_text,
+                            score=score,
+                            source="ocr_observation",
+                            evidence=["observation", *evidence],
+                        )
+
     raw = imprint.get("raw")
-    if raw and not candidates:
+    if raw:
         normalized = normalize_imprint(str(raw))
-        if normalized:
+        if normalized and normalized not in candidates:
             candidates[normalized] = ImprintCandidate(
                 text=normalized,
                 raw_text=str(raw),
-                score=_float(imprint.get("confidence"), 0.0),
+                score=_float(imprint.get("confidence"), 0.5),
                 source="raw_ocr",
                 evidence=["raw_ocr"],
             )
-    return sorted(candidates.values(), key=lambda item: item.score, reverse=True)[:5]
+    return sorted(candidates.values(), key=lambda item: item.score, reverse=True)[:8]
 
 
 def adapt_cv_pill_to_recognition_input(

@@ -17,7 +17,7 @@ from pill_safety.schemas import AttributeInferenceOutput, AttributeInferenceRequ
 
 from ..config import AttributeInferenceConfig
 from ..labels.label_mapping import load_color_threshold_values, load_label_mapping
-from ..models.resnet18_multitask import MultiTaskResNet18
+from ..models.resnet_multitask import MultiTaskResNet18
 from ..postprocessing import (
     build_attribute_output,
     format_attribute_predictions,
@@ -127,12 +127,22 @@ def _load_model_state_dict(
         for key, value in state_dict.items()
     }
 
-    shape_weight = state_dict.get("shape_head.weight")
-    color_weight = state_dict.get("color_head.weight")
+    shape_weight = None
+    for k in ("fc_shape.1.weight", "shape_head.weight", "fc_shape.weight"):
+        if k in state_dict:
+            shape_weight = state_dict[k]
+            break
+
+    color_weight = None
+    for k in ("fc_color.4.weight", "color_head.weight", "fc_color.weight"):
+        if k in state_dict:
+            color_weight = state_dict[k]
+            break
+
     if shape_weight is None or color_weight is None:
         raise RuntimeError(
             "Checkpoint does not match the trained multi-task model: "
-            "missing shape_head.weight or color_head.weight."
+            "missing shape_head or color_head weights."
         )
     if shape_weight.shape[0] != num_shape_classes:
         raise RuntimeError("Checkpoint shape class count differs from label_mapping.json.")
@@ -211,8 +221,12 @@ class AttributePredictor:
         tensor = self.transform(image).unsqueeze(0).to(self.device)
 
         with torch.inference_mode():
-            shape_logits = self.model(tensor, task_type="shape")
-            color_logits = self.model(tensor, task_type="color")
+            outputs = self.model(tensor)
+            if isinstance(outputs, tuple):
+                shape_logits, color_logits = outputs
+            else:
+                shape_logits = self.model(tensor, task_type="shape")
+                color_logits = self.model(tensor, task_type="color")
             shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
             color_probabilities = torch.sigmoid(color_logits)[0]
 
@@ -262,8 +276,10 @@ class AttributePredictor:
         color_tensor = self.transform(color_image).unsqueeze(0).to(self.device)
 
         with torch.inference_mode():
-            shape_logits = self.model(shape_tensor, task_type="shape")
-            color_logits = self.model(color_tensor, task_type="color")
+            shape_out = self.model(shape_tensor)
+            shape_logits = shape_out[0] if isinstance(shape_out, tuple) else shape_out
+            color_out = self.model(color_tensor)
+            color_logits = color_out[1] if isinstance(color_out, tuple) else color_out
             shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
             color_probabilities = torch.sigmoid(color_logits)[0]
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pill_safety.rag.retrieval.idf_statistics import IdfStatistics
 from pill_safety.rag.retrieval.normalization import normalize_color, normalize_dosage_form, normalize_shape
-from pill_safety.rag.retrieval.similarity import weighted_edit_similarity
+from pill_safety.rag.retrieval.similarity import multi_aspect_imprint_similarity, weighted_edit_similarity
 from pill_safety.rag.retrieval.types import CandidateRecord, CandidateScore, FieldScore, RecognitionInput
 
 
@@ -67,7 +67,13 @@ class EvidenceScorer:
             (
                 (
                     item,
-                    item.score * weighted_edit_similarity(item.text, candidate.imprint_normalized),
+                    item.score * multi_aspect_imprint_similarity(
+                        item.text,
+                        candidate.imprint_normalized,
+                        imprint_raw=candidate.imprint_raw,
+                        imprint_side_a=candidate.imprint_side_a,
+                        imprint_side_b=candidate.imprint_side_b,
+                    ),
                 )
                 for item in pill.imprint_candidates
             ),

@@ -50,11 +50,16 @@ def prepare_foreground_mask(
     mask = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
     if mask is None:
         return None
-    if mask.shape != (
+    target_shape = (
         prepared_image.original_height,
         prepared_image.original_width,
-    ):
-        raise ValueError("Segmentation mask must have the same size as OCR crop.")
+    )
+    if mask.shape != target_shape:
+        mask = cv2.resize(
+            mask,
+            (target_shape[1], target_shape[0]),
+            interpolation=cv2.INTER_NEAREST,
+        )
     binary = (mask > 0).astype(np.uint8)
     return cv2.copyMakeBorder(
         binary,

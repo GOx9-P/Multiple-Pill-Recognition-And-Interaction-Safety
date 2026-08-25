@@ -100,6 +100,16 @@ class PaddleOCREngine:
                 "Install the project requirements first."
             ) from exc
 
+        try:
+            import paddleocr._common_args as ca
+            if hasattr(ca, "PaddlePredictorOption"):
+                _orig_opt_init = ca.PaddlePredictorOption.__init__
+                def _patched_opt_init(self, *args, **kwargs):
+                    return _orig_opt_init(self, **kwargs)
+                ca.PaddlePredictorOption.__init__ = _patched_opt_init
+        except Exception:
+            pass
+
         if config.device == "auto":
             self.device = (
                 "gpu:0" if paddle.device.is_compiled_with_cuda() else "cpu"
@@ -121,7 +131,10 @@ class PaddleOCREngine:
     def predict(
         self, image_path: Path, output_json_dir: Path, step_id: str
     ) -> list[dict[str, Any]]:
-        (output_json_dir / step_id).mkdir(parents=True, exist_ok=True)
+        try:
+            (output_json_dir / step_id).mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         try:
             result = self._ocr.predict(input=str(image_path))
         except Exception as exc:

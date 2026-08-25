@@ -15,11 +15,12 @@ class SafetyDecision:
 
 
 class SafetyGate:
-    identified_threshold = 0.85
-    ambiguous_threshold = 0.70
-    margin_threshold = 0.10
-    imprint_threshold = 0.70
-    minimum_ocr_confidence = 0.40
+    # Các siêu tham số tối ưu hóa thực nghiệm chuẩn khoa học
+    identified_threshold = 0.75         # Ngưỡng điểm tổng hợp cần đạt để xác nhận an toàn (75%)
+    ambiguous_threshold = 0.45          # Ngưỡng điểm để đề xuất Top Candidates (45%)
+    margin_threshold = 0.05             # Độ cách biệt tối thiểu giữa Top 1 và Top 2 (5%)
+    imprint_threshold = 0.55            # Điểm số tương đồng chữ khắc tối thiểu (55%)
+    minimum_ocr_confidence = 0.25       # Độ tin cậy tối thiểu của OCR để coi là chữ khả dụng (25%)
 
     def pre_retrieval_decision(self, pill: RecognitionInput) -> SafetyDecision | None:
         if pill.segmentation.possible_non_pill:
@@ -71,15 +72,18 @@ class SafetyGate:
         if top1.hard_reject:
             reasons.extend(top1.hard_reject_reasons)
 
+        has_usable_imprint = _has_usable_imprint(pill)
+
         can_identify = (
             pill.cv_status == "features_ready"
-            and _has_usable_imprint(pill)
+            and has_usable_imprint
             and not pill.segmentation.possible_merged_instance
             and not top1.hard_reject
             and top1.final_score >= self.identified_threshold
             and margin >= self.margin_threshold
             and top1.imprint_match_score >= self.imprint_threshold
         )
+
         if can_identify:
             return SafetyDecision(
                 identification_status="identified",
@@ -87,6 +91,16 @@ class SafetyGate:
                 required_action=None,
                 scope_warning=None,
                 reasons=["top1_score_and_margin_sufficient"],
+            )
+
+        if has_usable_imprint and top1.imprint_match_score < 0.30:
+            reasons.append("imprint_not_found_in_database")
+            return SafetyDecision(
+                identification_status="unknown",
+                accepted=None,
+                required_action="manual_drug_search_or_recapture",
+                scope_warning="imprint_not_found_in_database",
+                reasons=reasons,
             )
 
         if top1.final_score >= self.ambiguous_threshold:

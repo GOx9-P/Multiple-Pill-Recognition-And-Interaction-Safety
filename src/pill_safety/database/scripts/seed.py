@@ -214,12 +214,15 @@ def seed_drug_interactions(db: Session) -> None:
         interaction.last_reviewed = row.get("last_reviewed")
 
 
-def seed_database() -> None:
+def seed_database(db: Session | None = None) -> None:
     from pill_safety.database.base import Base
     from pill_safety.database.session import engine
 
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    should_close = False
+    if db is None:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        should_close = True
 
     try:
         read_json("patient_profiles.json")
@@ -239,7 +242,8 @@ def seed_database() -> None:
         raise
 
     finally:
-        db.close()
+        if should_close:
+            db.close()
 
     print("Seed database thành công.")
 
