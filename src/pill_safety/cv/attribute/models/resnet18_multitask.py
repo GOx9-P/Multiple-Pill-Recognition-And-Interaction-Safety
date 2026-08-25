@@ -31,13 +31,15 @@ class MultiTaskResNet18(nn.Module):
         self.shape_head = nn.Linear(512, num_shape_classes)
         self.color_head = nn.Linear(512, num_color_classes)
 
-    def forward(self, x, task_type="shape"):
+    def forward(self, x, task_type=None):
         """Tra logits cua head duoc chi dinh; color dung BCEWithLogitsLoss."""
         features = self.backbone(x)
         if task_type == "shape":
             return self.shape_head(features)
         if task_type == "color":
             return self.color_head(features)
+        if task_type is None or task_type == "all":
+            return self.shape_head(features), self.color_head(features)
         raise ValueError(f"Unknown task_type: {task_type}")
 
     def load_state_dict(self, state_dict, strict=True, assign=False):

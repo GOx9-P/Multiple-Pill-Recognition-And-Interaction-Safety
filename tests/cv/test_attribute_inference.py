@@ -112,3 +112,27 @@ def test_schema_mapper_preserves_ids_and_marks_untrained_fields_unknown():
     assert output.shape.alternatives[0].label == "round"
     assert output.scoreline.visible is None
     assert output.scoreline.source == "not_predicted_by_attribute"
+
+
+def test_attribute_model_architectures_both_loadable(tmp_path: Path):
+    """Bảo đảm AttributePredictor nhận diện và tải thành công cả 2 cấu trúc checkpoint."""
+    import torch
+    from pill_safety.cv.attribute.models.resnet18_multitask import (
+        MultiTaskResNet18 as LinearMultiTaskResNet18,
+    )
+    from pill_safety.cv.attribute.models.resnet_multitask import (
+        MultiTaskResNet18 as SequentialMultiTaskResNet18,
+    )
+
+    # 1. Linear head model
+    linear_model = LinearMultiTaskResNet18(num_shape_classes=16, num_color_classes=12, pretrained=False)
+    linear_sd = linear_model.state_dict()
+    assert "shape_head.weight" in linear_sd
+    assert "color_head.weight" in linear_sd
+
+    # 2. Sequential head model
+    seq_model = SequentialMultiTaskResNet18(num_shape_classes=16, num_color_classes=12, pretrained=False)
+    seq_sd = seq_model.state_dict()
+    assert "fc_shape.1.weight" in seq_sd
+    assert "fc_color.4.weight" in seq_sd
+

@@ -17,7 +17,8 @@ from pill_safety.schemas import AttributeInferenceOutput, AttributeInferenceRequ
 
 from ..config import AttributeInferenceConfig
 from ..labels.label_mapping import load_color_threshold_values, load_label_mapping
-from ..models.resnet_multitask import MultiTaskResNet18
+from ..models.resnet_multitask import MultiTaskResNet18 as SequentialMultiTaskResNet18
+from ..models.resnet18_multitask import MultiTaskResNet18 as LinearMultiTaskResNet18
 from ..postprocessing import (
     build_attribute_output,
     format_attribute_predictions,
@@ -188,11 +189,6 @@ class AttributePredictor:
             self.label_mapping["color"],
         ).to(self.device)
 
-        self.model = MultiTaskResNet18(
-            num_shape_classes=num_shape_classes,
-            num_color_classes=num_color_classes,
-            pretrained=False,
-        ).to(self.device)
         state_dict = _load_model_state_dict(
             self.config.weights_path,
             self.device,
@@ -200,6 +196,21 @@ class AttributePredictor:
             num_color_classes,
             mapping_hash,
         )
+
+        is_linear_heads = "shape_head.weight" in state_dict or "shape_head.bias" in state_dict
+        if is_linear_heads:
+            self.model = LinearMultiTaskResNet18(
+                num_shape_classes=num_shape_classes,
+                num_color_classes=num_color_classes,
+                pretrained=False,
+            ).to(self.device)
+        else:
+            self.model = SequentialMultiTaskResNet18(
+                num_shape_classes=num_shape_classes,
+                num_color_classes=num_color_classes,
+                pretrained=False,
+            ).to(self.device)
+
         self.model.load_state_dict(state_dict, strict=True)
         self.model.eval()
         self.transform = transforms.Compose(
