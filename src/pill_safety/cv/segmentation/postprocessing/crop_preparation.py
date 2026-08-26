@@ -149,13 +149,21 @@ def _render_square_crop(
 
 def _render_square_rgb_crop(
     image: np.ndarray,
-    clean_mask: np.ndarray,
     config: SegmentationConfig,
 ) -> np.ndarray:
-    """Render the shape ROI while keeping only clean-mask foreground pixels."""
+    """Place an unmasked RGB shape ROI on a square canvas without distorting the pill."""
 
-    crop, _ = _render_square_crop(image, clean_mask, config)
-    return crop
+    background = (config.crop_background_value,) * 3
+    side = max(image.shape[:2])
+    square = np.full((side, side, 3), background, dtype=np.uint8)
+    offset_y = (side - image.shape[0]) // 2
+    offset_x = (side - image.shape[1]) // 2
+    square[
+        offset_y : offset_y + image.shape[0],
+        offset_x : offset_x + image.shape[1],
+    ] = image
+    interpolation = cv2.INTER_AREA if side > config.crop_size else cv2.INTER_CUBIC
+    return cv2.resize(square, (config.crop_size, config.crop_size), interpolation=interpolation)
 
 
 def prepare_task_crops(
@@ -220,11 +228,11 @@ def prepare_task_crops(
         shape_clean_mask,
         config.crop_mask_dilation_ratio,
     )
-    shape_source, shape_mask = _crop_around_region(
+    shape_source, _ = _crop_around_region(
         shape_image,
         shape_clean_mask,
         shape_region,
         config.bbox_padding_ratio,
     )
-    shape_crop = _render_square_rgb_crop(shape_source, shape_mask, config)
+    shape_crop = _render_square_rgb_crop(shape_source, config)
     return color_crop, shape_crop, ocr_crop, output_clean_mask
