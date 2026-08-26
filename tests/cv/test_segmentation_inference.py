@@ -251,7 +251,8 @@ def test_task_specific_masks_keep_color_interior_and_shape_rgb_roi():
     assert np.array_equal(with_dilation.mask, mask)
     assert not np.array_equal(with_dilation.ocr_crop, with_dilation.crop)
     assert not np.any(np.all(with_dilation.crop == (0, 0, 255), axis=2))
-    assert np.any(np.all(with_dilation.shape_crop == (0, 0, 255), axis=2))
+    # Dilation chỉ mở rộng ROI; nền ngoài foreground phải được chuẩn hóa về 127.
+    assert np.any(np.all(with_dilation.shape_crop == (127, 127, 127), axis=2))
     assert np.all(with_dilation.ocr_crop[with_dilation.crop_mask == 0] == 127)
 
 
