@@ -184,6 +184,10 @@ def prepare_task_crops(
 
     base_image = image_bgr[y1:y2, x1:x2].copy()
     base_clean_mask = clean_mask[y1:y2, x1:x2].astype(np.uint8)
+    # Shape keeps the original orientation. Its classifier only needs the pill
+    # silhouette, while rotating the rectangular ROI can create artificial corners.
+    shape_image = base_image.copy()
+    shape_clean_mask = base_clean_mask.copy()
     background = (config.crop_background_value,) * 3
     if config.align_long_axis:
         axis = _principal_axis_angle(base_clean_mask)
@@ -220,10 +224,13 @@ def prepare_task_crops(
 
     # Shape uses a dilated region only to define a safer ROI. It keeps original RGB
     # pixels inside that ROI instead of treating dilation as foreground mask.
-    shape_region = _dilate_region(base_clean_mask, config.crop_mask_dilation_ratio)
+    shape_region = _dilate_region(
+        shape_clean_mask,
+        config.crop_mask_dilation_ratio,
+    )
     shape_source, _ = _crop_around_region(
-        base_image,
-        base_clean_mask,
+        shape_image,
+        shape_clean_mask,
         shape_region,
         config.bbox_padding_ratio,
     )
