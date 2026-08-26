@@ -2,14 +2,28 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import streamlit as st
-
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIRECTORY = PROJECT_ROOT / "src"
+if str(SRC_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SRC_DIRECTORY))
+
+try:
+    import streamlit as st
+    cache_resource = st.cache_resource
+except ImportError:
+    st = None
+
+    def cache_resource(*args, **kwargs):
+        def decorator(f):
+            return f
+        if args and callable(args[0]):
+            return args[0]
+        return decorator
 
 
 @dataclass(frozen=True)
@@ -114,7 +128,7 @@ def _build_cv_pipeline() -> Any:
     )
 
 
-@st.cache_resource(show_spinner="Đang khởi tạo các mô hình AI (YOLOv11, ResNet-18, PaddleOCR)...")
+@cache_resource(show_spinner="Đang khởi tạo các mô hình AI (YOLOv11, ResNet-18, PaddleOCR)...")
 def load_cv_pipeline() -> CVPipelineLoadResult:
     """Try to build the real CV pipeline; return unavailable state on failure."""
 
@@ -125,7 +139,7 @@ def load_cv_pipeline() -> CVPipelineLoadResult:
         return CVPipelineLoadResult(pipeline=None, error=f"{exc}\n{traceback.format_exc()}")
 
 
-@st.cache_resource
+@cache_resource
 def load_interaction_checker():
     """Return the deterministic temporary interaction-checker entry point."""
 

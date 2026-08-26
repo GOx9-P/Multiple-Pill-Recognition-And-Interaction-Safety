@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pill_safety.rag.retrieval.normalization import (
@@ -94,6 +95,17 @@ def _adapt_imprints(pill: dict[str, Any]) -> list[ImprintCandidate]:
                 source="raw_ocr",
                 evidence=["raw_ocr"],
             )
+        # Bổ sung các token con nếu raw có ký tự phân cách (ví dụ "13;T", "13/T", "13 - T")
+        raw_tokens = [normalize_imprint(t) for t in re.split(r"[;\s/\\|,-]+", str(raw)) if t.strip()]
+        for tok in raw_tokens:
+            if tok and tok not in candidates and len(tok) >= 1:
+                candidates[tok] = ImprintCandidate(
+                    text=tok,
+                    raw_text=str(raw),
+                    score=_float(imprint.get("confidence"), 0.5) * 0.95,
+                    source="raw_token",
+                    evidence=["raw_token"],
+                )
     return sorted(candidates.values(), key=lambda item: item.score, reverse=True)[:8]
 
 

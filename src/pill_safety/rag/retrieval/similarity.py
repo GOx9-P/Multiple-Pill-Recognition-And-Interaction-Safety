@@ -72,34 +72,35 @@ def multi_aspect_imprint_similarity(
     if not q_norm:
         return 0.0
 
-    best_sim = weighted_edit_similarity(q_norm, imprint_normalized)
+    target = normalize_imprint(imprint_normalized)
+    best_sim = weighted_edit_similarity(q_norm, target)
     if best_sim >= 0.99:
         return 1.0
 
-    # Kiểm tra so khớp với từng mặt riêng biệt (Side A, Side B)
-    for side in (imprint_side_a, imprint_side_b):
-        side_norm = normalize_imprint(side)
-        if side_norm:
-            side_sim = weighted_edit_similarity(q_norm, side_norm)
-            # Nếu khớp hoàn hảo với 1 mặt riêng biệt, gán điểm cao cho trường hợp crop 1 mặt
-            if side_sim >= 0.99:
-                best_sim = max(best_sim, 0.93)
-            elif side_sim >= 0.70:
-                best_sim = max(best_sim, side_sim * 0.90)
+    # 1. Cơ chế so khớp 1 mặt: CHỈ áp dụng nếu thuốc trong DB có CẢ imprint_side_a và imprint_side_b khác null / không rỗng
+    side_a_clean = normalize_imprint(imprint_side_a)
+    side_b_clean = normalize_imprint(imprint_side_b)
+    if bool(imprint_side_a and imprint_side_b and side_a_clean and side_b_clean):
+        sim_a = weighted_edit_similarity(q_norm, side_a_clean)
+        sim_b = weighted_edit_similarity(q_norm, side_b_clean)
+        best_side_sim = max(sim_a, sim_b)
+        if best_side_sim >= 0.99:
+            best_sim = max(best_sim, 1.0)
+        elif best_side_sim >= 0.70:
+            best_sim = max(best_sim, best_side_sim * 0.95)
 
-    # Kiểm tra so khớp với các token phân tách trong imprint_raw (ví dụ "TV;5056", "44;438", "8335;BARR")
+    # 2. Kiểm tra so khớp với các token phân tách trong imprint_raw (ví dụ "TV;5056", "44;438", "8335;BARR", "13/T")
     if imprint_raw:
-        tokens = [normalize_imprint(t) for t in re.split(r"[;\s/|]+", str(imprint_raw)) if t.strip()]
+        tokens = [normalize_imprint(t) for t in re.split(r"[;\s/\\|,-]+", str(imprint_raw)) if t.strip()]
         for tok in tokens:
             if tok and len(tok) >= 2:
                 tok_sim = weighted_edit_similarity(q_norm, tok)
                 if tok_sim >= 0.99:
-                    best_sim = max(best_sim, 0.92)
+                    best_sim = max(best_sim, 0.95)
                 elif tok_sim >= 0.70:
                     best_sim = max(best_sim, tok_sim * 0.88)
 
-    # Kiểm tra khớp prefix/suffix khi chuỗi con đủ dài (tối thiểu 2 ký tự)
-    target = normalize_imprint(imprint_normalized)
+    # 3. Kiểm tra khớp prefix/suffix khi chuỗi con đủ dài (tối thiểu 2 ký tự)
     if target and len(q_norm) >= 2 and len(target) > len(q_norm):
         if target.startswith(q_norm) or target.endswith(q_norm):
             sub_score = 0.82 + 0.13 * (len(q_norm) / len(target))

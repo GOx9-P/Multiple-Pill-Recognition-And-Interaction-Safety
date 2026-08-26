@@ -9,7 +9,7 @@ from pill_safety.rag.retrieval.cv_input_adapter import adapt_cv_pill_to_recognit
 from pill_safety.rag.retrieval.idf_statistics import IdfStatisticsBuilder
 from pill_safety.rag.identification_service import IdentificationService
 from pill_safety.rag.retrieval.normalization import normalize_dosage_form, normalize_imprint
-from pill_safety.rag.retrieval.similarity import weighted_edit_similarity
+from pill_safety.rag.retrieval.similarity import multi_aspect_imprint_similarity, weighted_edit_similarity
 
 
 def make_session() -> Session:
@@ -576,5 +576,117 @@ def test_multiple_appearances_same_drug_not_ambiguous() -> None:
         assert pill_result["accepted_product"]["drug_id"] == 1
     finally:
         session.close()
+
+
+def test_two_sided_pill_single_side_match() -> None:
+    session = make_session()
+    # Add a two-sided pill: Product 5 (13 / T)
+    prod = DrugProduct(
+        drug_id=5,
+        product_code="85534-0096",
+        name="TEST TWO-SIDED DRUG 13T",
+        dosage_form="CAPSULE",
+        market="US",
+        active=True,
+    )
+    app = DrugAppearance(
+        appearance_id=5,
+        drug_id=5,
+        imprint="13T",
+        imprint_raw="13;T",
+        imprint_normalized="13T",
+        imprint_side_a="13",
+        imprint_side_b="T",
+        shape="CAPSULE",
+        color="PINK",
+        primary_color="PINK",
+        score_line=False,
+        logo_or_symbol=False,
+    )
+    session.add_all([prod, app])
+    session.commit()
+
+    try:
+        IdfStatisticsBuilder.invalidate_cache()
+        service = IdentificationService(session)
+
+        # 1. User photo only captured Side A ("13")
+        pill_a = base_pill(
+            shape={"label": "CAPSULE", "confidence": 0.95, "alternatives": []},
+            color={"primary": "PINK", "secondary": None, "confidence": 0.95, "lighting_warning": False, "distribution": {"PINK": 0.9}},
+            dosage_form={"label": "CAPSULE", "confidence": 0.95},
+            imprint_visibility={"visible": True, "confidence": 0.95},
+            imprint={
+                "visible": True,
+                "raw": "13",
+                "confidence": 0.95,
+                "normalized_candidates": [{"text": "13", "score": 0.95, "source": "test"}],
+            }
+        )
+        req_a = cv_request_for_pill(pill_a)
+        res_a = service.identify(req_a)
+        pill_res_a = res_a["pill_results"][0]
+        assert pill_res_a["identification_status"] == "identified"
+        assert pill_res_a["accepted_product"]["drug_id"] == 5
+
+        # 2. User photo only captured Side B ("T")
+        pill_b = base_pill(
+            shape={"label": "CAPSULE", "confidence": 0.95, "alternatives": []},
+            color={"primary": "PINK", "secondary": None, "confidence": 0.95, "lighting_warning": False, "distribution": {"PINK": 0.9}},
+            dosage_form={"label": "CAPSULE", "confidence": 0.95},
+            imprint_visibility={"visible": True, "confidence": 0.95},
+            imprint={
+                "visible": True,
+                "raw": "T",
+                "confidence": 0.95,
+                "normalized_candidates": [{"text": "T", "score": 0.95, "source": "test"}],
+            }
+        )
+        req_b = cv_request_for_pill(pill_b)
+        res_b = service.identify(req_b)
+        pill_res_b = res_b["pill_results"][0]
+        assert pill_res_b["identification_status"] == "identified"
+        assert pill_res_b["accepted_product"]["drug_id"] == 5
+    finally:
+        session.close()
+
+
+def test_single_sided_pill_does_not_trigger_two_sided_rule() -> None:
+    # Pill with side_b = None should not match single-side 1.0 rule if side_b is missing
+    sim = multi_aspect_imprint_similarity(
+        query="AUGMENTIN",
+        imprint_normalized="AUGMENTIN875",
+        imprint_raw="AUGMENTIN;875",
+        imprint_side_a="AUGMENTIN 875",
+        imprint_side_b=None,
+    )
+    # Prefix match or token match score should apply, but not the 1.0 two-sided perfect match
+    assert sim < 1.0
+
+
+def test_special_character_and_whitespace_sanitization() -> None:
+    # Query with slashes, hyphens, and spaces
+    sim1 = multi_aspect_imprint_similarity(
+        query="13 / T",
+        imprint_normalized="13T",
+        imprint_raw="13;T",
+        imprint_side_a="13",
+        imprint_side_b="T",
+    )
+    assert sim1 == 1.0
+
+    sim2 = multi_aspect_imprint_similarity(
+        query="13-T",
+        imprint_normalized="13T",
+    )
+    assert sim2 == 1.0
+
+    sim3 = multi_aspect_imprint_similarity(
+        query=" 13 ",
+        imprint_normalized="13T",
+        imprint_side_a="13",
+        imprint_side_b="T",
+    )
+    assert sim3 == 1.0
 
 

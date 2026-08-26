@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from pill_safety.rag.retrieval.normalization import normalize_imprint
+
 from .view_models import (
     CandidateViewModel,
     DuplicateIngredientViewModel,
@@ -159,14 +161,14 @@ def _find_drug_in_database(imprint_text: str, shape_label: str = "", color_prima
     if not db:
         return None
     try:
-        from sqlalchemy import func, select
+        from sqlalchemy import select
         from pill_safety.database.models import DrugAppearance, DrugProduct, Ingredient, ProductIngredient
 
-        clean_imprint = imprint_text.replace(" ", "").upper()
+        clean_imprint = normalize_imprint(imprint_text)
         if not clean_imprint or clean_imprint == "—" or clean_imprint == "?":
             return None
 
-        # 1. Exact or partial match on imprint_normalized
+        # 1. Exact match on imprint_normalized
         stmt = (
             select(DrugProduct, DrugAppearance)
             .join(DrugAppearance, DrugAppearance.drug_id == DrugProduct.drug_id)
@@ -179,7 +181,7 @@ def _find_drug_in_database(imprint_text: str, shape_label: str = "", color_prima
         )
         row = db.execute(stmt).first()
         if not row:
-            # Try fuzzy search if exact match not found
+            # Try two-sided matching and fuzzy search if exact match not found
             stmt_all = (
                 select(DrugProduct, DrugAppearance)
                 .join(DrugAppearance, DrugAppearance.drug_id == DrugProduct.drug_id)
@@ -187,6 +189,14 @@ def _find_drug_in_database(imprint_text: str, shape_label: str = "", color_prima
             )
             rows = db.execute(stmt_all).all()
             for prod, app in rows:
+                # Kiểm tra so khớp 1 mặt nếu thuốc có cả side_a và side_b
+                if app.imprint_side_a and app.imprint_side_b:
+                    side_a = normalize_imprint(app.imprint_side_a)
+                    side_b = normalize_imprint(app.imprint_side_b)
+                    if side_a and side_b and (clean_imprint == side_a or clean_imprint == side_b):
+                        row = (prod, app)
+                        break
+
                 if app.imprint_normalized and (clean_imprint in app.imprint_normalized or app.imprint_normalized in clean_imprint):
                     row = (prod, app)
                     break
@@ -257,7 +267,7 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
             if not candidates_list and raw_imprint:
                 candidates_list = [raw_imprint]
 
-            clean_imprint = raw_imprint.replace(" ", "").upper()
+            clean_imprint = normalize_imprint(raw_imprint)
             
             # 1. Query Real Database first
             matched_product = _find_drug_in_database(raw_imprint, shape_info.get("label", ""), color_info.get("primary", ""))
@@ -334,7 +344,7 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
         scoreline_obj = getattr(p, "scoreline", None)
 
         raw_imp = getattr(imprint_obj, "raw", "") or ""
-        clean_imp = raw_imp.replace(" ", "").upper()
+        clean_imp = normalize_imprint(raw_imp)
         
         # Real Database match
         matched = _find_drug_in_database(raw_imp, getattr(shape_obj, "label", ""), getattr(color_obj, "primary", ""))
@@ -360,8 +370,8 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
             brand_name=matched.get("brand_name") if matched else None,
             generic_name=matched.get("generic_name") if matched else None,
             strength=matched.get("strength") if matched else None,
-            rxcui=matched.get("rxcui") if matched else None,
-            ndc=matched.get("ndc") if matched else None,
+            rxcui=matched.get("rxcui") if matched.get("rxcui") else None,
+            ndc=matched.get("ndc") if matched.get("ndc") else None,
             active_ingredients=matched.get("active_ingredients", []) if matched else [],
             match_confidence=0.94 if matched else None,
         )

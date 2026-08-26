@@ -50,7 +50,7 @@ class CandidateRetriever:
         *,
         idf_statistics: Any = None,
         limit: int = 20,
-        fuzzy_threshold: float = 0.40,
+        fuzzy_threshold: float = 0.45,
     ) -> tuple[RetrievalDiagnostics, list[CandidateRecord]]:
         queried_imprints = [candidate.text for candidate in pill.imprint_candidates]
 

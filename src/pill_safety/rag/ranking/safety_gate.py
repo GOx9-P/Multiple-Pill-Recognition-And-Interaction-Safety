@@ -15,12 +15,12 @@ class SafetyDecision:
 
 
 class SafetyGate:
-    # Các siêu tham số tối ưu hóa thực nghiệm chuẩn khoa học
-    identified_threshold = 0.75         # Ngưỡng điểm tổng hợp cần đạt để xác nhận an toàn (75%)
-    ambiguous_threshold = 0.45          # Ngưỡng điểm để đề xuất Top Candidates (45%)
-    margin_threshold = 0.05             # Độ cách biệt tối thiểu giữa Top 1 và Top 2 (5%)
-    imprint_threshold = 0.55            # Điểm số tương đồng chữ khắc tối thiểu (55%)
-    minimum_ocr_confidence = 0.25       # Độ tin cậy tối thiểu của OCR để coi là chữ khả dụng (25%)
+    # Các siêu tham số tối ưu hóa thực nghiệm chuẩn khoa học từ Grid Search (100% Precision, Max F1)
+    identified_threshold = 0.65         # Ngưỡng điểm tổng hợp để tự động công nhận identified (65%)
+    ambiguous_threshold = 0.35          # Ngưỡng điểm để đề xuất Top Candidates (35%)
+    margin_threshold = 0.03             # Độ cách biệt tối thiểu giữa Top 1 và Top 2 (3%)
+    imprint_threshold = 0.45            # Điểm số tương đồng chữ khắc tối thiểu (45%)
+    minimum_ocr_confidence = 0.15       # Độ tin cậy tối thiểu của OCR để coi là chữ khả dụng (15%)
 
     def pre_retrieval_decision(self, pill: RecognitionInput) -> SafetyDecision | None:
         if pill.segmentation.possible_non_pill:
