@@ -411,12 +411,16 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark pill recognition on verified images.")
     parser.add_argument(
         "--dataset-dir",
+        "--verified-dir",
+        dest="dataset_dir",
         type=Path,
         default=PROJECT_ROOT / "pill_images_verified",
         help="Thư mục chứa pill_images_verified",
     )
     parser.add_argument(
         "--output",
+        "--output-json",
+        dest="output",
         type=Path,
         default=PROJECT_ROOT / "outputs" / "benchmark_verified_results.json",
         help="Đường dẫn file JSON lưu kết quả.",

@@ -1,9 +1,15 @@
-from __future__ import annotations
-
 import json
-import re
 from pathlib import Path
+import re
+import sys
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
