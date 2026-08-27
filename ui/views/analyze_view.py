@@ -11,6 +11,7 @@ from ..adapters.pipeline_adapter import evaluate_safety_and_report, parse_cv_out
 from ..adapters.view_models import ImageQualityViewModel, PillViewModel, SafetyReportViewModel
 from ..components import (
     render_clinical_report,
+    render_evidence_details,
     render_interaction_cards,
     render_pill_cards,
     render_safety_banner,
@@ -145,13 +146,13 @@ def render_analyze_view(cv_load_result: Any) -> None:
             st.divider()
             render_clinical_report(report)
 
-        # Priority 5: Advanced Developer / XAI Trace Expander
-        with st.expander("Advanced evidence details", expanded=False):
-            st.markdown("**Raw structured analysis output:**")
-            if isinstance(st.session_state.raw_cv_data, dict):
-                st.json(st.session_state.raw_cv_data)
-            else:
-                st.write(str(st.session_state.raw_cv_data))
+        # Keep implementation diagnostics available without making the user-facing result look like raw logs.
+        with st.expander("Evidence details", expanded=False):
+            render_evidence_details(
+                pills=pills,
+                quality=quality,
+                raw_cv_data=st.session_state.raw_cv_data,
+            )
     else:
         # Clean Empty State
         st.markdown(
