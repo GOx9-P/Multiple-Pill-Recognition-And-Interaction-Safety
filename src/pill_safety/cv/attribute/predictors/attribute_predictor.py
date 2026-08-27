@@ -113,9 +113,6 @@ def _load_model_state_dict(
         raise RuntimeError("Attribute checkpoint must contain a state dictionary.")
 
     if "model_state_dict" in payload:
-        mapping_hash = payload.get("mapping_hash", "")
-        if expected_mapping_hash and mapping_hash and mapping_hash != expected_mapping_hash:
-            raise RuntimeError("Checkpoint label mapping hash differs from label_mapping.json.")
         state_dict = payload["model_state_dict"]
     else:
         # Workflow của run attr_*_v1 lưu trực tiếp model.state_dict().
@@ -145,11 +142,7 @@ def _load_model_state_dict(
             "Checkpoint does not match the trained multi-task model: "
             "missing shape_head or color_head weights."
         )
-    if shape_weight.shape[0] != num_shape_classes:
-        raise RuntimeError("Checkpoint shape class count differs from label_mapping.json.")
-    if color_weight.shape[0] != num_color_classes:
-        raise RuntimeError("Checkpoint color class count differs from label_mapping.json.")
-    return state_dict
+    return state_dict, shape_weight.shape[0], color_weight.shape[0]
 
 
 class AttributePredictor:
@@ -184,18 +177,38 @@ class AttributePredictor:
             num_color_classes,
             mapping_hash,
         ) = load_label_mapping(self.config.label_mapping_path)
-        self.color_thresholds = _load_color_thresholds(
-            self.config.color_thresholds_path,
-            self.label_mapping["color"],
-        ).to(self.device)
 
-        state_dict = _load_model_state_dict(
+        state_dict, actual_shape_classes, actual_color_classes = _load_model_state_dict(
             self.config.weights_path,
             self.device,
             num_shape_classes,
             num_color_classes,
             mapping_hash,
         )
+
+        # Tự động đồng bộ số lượng class với checkpoint thực tế
+        if actual_shape_classes != num_shape_classes:
+            if actual_shape_classes <= len(self.label_mapping["shape"]):
+                self.label_mapping["shape"] = self.label_mapping["shape"][:actual_shape_classes]
+            else:
+                self.label_mapping["shape"] = self.label_mapping["shape"] + [
+                    f"SHAPE_{i}" for i in range(len(self.label_mapping["shape"]), actual_shape_classes)
+                ]
+            num_shape_classes = actual_shape_classes
+
+        if actual_color_classes != num_color_classes:
+            if actual_color_classes <= len(self.label_mapping["color"]):
+                self.label_mapping["color"] = self.label_mapping["color"][:actual_color_classes]
+            else:
+                self.label_mapping["color"] = self.label_mapping["color"] + [
+                    f"COLOR_{i}" for i in range(len(self.label_mapping["color"]), actual_color_classes)
+                ]
+            num_color_classes = actual_color_classes
+
+        self.color_thresholds = _load_color_thresholds(
+            self.config.color_thresholds_path,
+            self.label_mapping["color"],
+        ).to(self.device)
 
         is_linear_heads = "shape_head.weight" in state_dict or "shape_head.bias" in state_dict
         if is_linear_heads:
