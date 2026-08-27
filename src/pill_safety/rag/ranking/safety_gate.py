@@ -15,11 +15,11 @@ class SafetyDecision:
 
 
 class SafetyGate:
-    # Các siêu tham số tối ưu hóa thực nghiệm chuẩn khoa học từ Grid Search (100% Precision, Max F1)
+    # Các siêu tham số tối ưu hóa thực nghiệm chuẩn khoa học từ Colab Grid Search (Precision 87.5%, Max F1, User Friction 1.98%)
     identified_threshold = 0.65         # Ngưỡng điểm tổng hợp để tự động công nhận identified (65%)
     ambiguous_threshold = 0.35          # Ngưỡng điểm để đề xuất Top Candidates (35%)
-    margin_threshold = 0.03             # Độ cách biệt tối thiểu giữa Top 1 và Top 2 (3%)
-    imprint_threshold = 0.45            # Điểm số tương đồng chữ khắc tối thiểu (45%)
+    margin_threshold = 0.05             # Độ cách biệt tối thiểu giữa Top 1 và Top 2 (5%)
+    imprint_threshold = 0.50            # Điểm số tương đồng chữ khắc tối thiểu (50%)
     minimum_ocr_confidence = 0.15       # Độ tin cậy tối thiểu của OCR để coi là chữ khả dụng (15%)
 
     def pre_retrieval_decision(self, pill: RecognitionInput) -> SafetyDecision | None:
