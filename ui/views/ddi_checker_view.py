@@ -25,11 +25,10 @@ def render_ddi_checker_view() -> None:
         """
         <div class="clinical-card">
             <div class="card-header-row">
-                <h3 class="card-title">⚡ Tra cứu trực tiếp tương tác cặp thuốc (DDI Checker)</h3>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">NLM / FDA DDI Standard Matrix</span>
+                <h3 class="card-title">Interaction checker</h3>
             </div>
             <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0;">
-                Chọn hai hoạt chất hoặc thuốc để kiểm tra cơ chế tương tác dược lý, nguy cơ lâm sàng và hướng dẫn xử trí từ chuyên gia.
+                Select two ingredients to review known interaction warnings and recommended next steps.
             </p>
         </div>
         """,
@@ -38,18 +37,18 @@ def render_ddi_checker_view() -> None:
 
     c1, c2 = st.columns(2)
     with c1:
-        drug_a = st.selectbox("💊 Hoạt chất hoặc Thuốc thứ nhất (Drug A):", AVAILABLE_INGREDIENTS, index=0)
+        drug_a = st.selectbox("First ingredient", AVAILABLE_INGREDIENTS, index=0)
     with c2:
-        drug_b = st.selectbox("💊 Hoạt chất hoặc Thuốc thứ hai (Drug B):", AVAILABLE_INGREDIENTS, index=1)
+        drug_b = st.selectbox("Second ingredient", AVAILABLE_INGREDIENTS, index=1)
 
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-    if st.button("🔍 Kiểm Tra Tương Tác Cặp Này", type="primary", key="btn_check_pairwise_ddi"):
+    if st.button("Check interaction", type="primary", key="btn_check_pairwise_ddi"):
         pair_a = drug_a.strip().lower()
         pair_b = drug_b.strip().lower()
 
         if pair_a == pair_b:
-            st.warning(f"⚠️ Bạn đang chọn cùng một hoạt chất ({drug_a}). Đây là tình huống có nguy cơ quá liều tích lũy!")
+            st.warning(f"You selected {drug_a} twice. Review the total dose to avoid accidental duplication.")
             return
 
         rule = KNOWN_DDI_MATRIX.get((pair_a, pair_b)) or KNOWN_DDI_MATRIX.get((pair_b, pair_a))
@@ -67,4 +66,4 @@ def render_ddi_checker_view() -> None:
             )
             render_interaction_cards([inter_vm], [])
         else:
-            st.success(f"✅ Không ghi nhận tương tác bất lợi nào giữa {drug_a} và {drug_b} trong cơ sở dữ liệu hiện hành.")
+            st.success(f"No known interaction warning was found for {drug_a} and {drug_b} in the current database.")

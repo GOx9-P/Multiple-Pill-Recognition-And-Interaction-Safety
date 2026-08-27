@@ -51,7 +51,7 @@ def main() -> None:
     view_index = view_options.index(current_view_state) if current_view_state in view_options else 0
 
     selected_view = st.radio(
-        "Chế độ hiển thị",
+        "Display mode",
         options=view_options,
         index=view_index,
         horizontal=True,
@@ -65,15 +65,15 @@ def main() -> None:
     # VIEW MODE A: DESKTOP CLINICAL WORKSPACE
     # =========================================================================
     if selected_view == "🖥️ Desktop View":
-        # Header with live Database & CV Health checks
+        # Patient-facing desktop header.
         render_header(cv_load_result)
 
         # Desktop Navigation Tabs
         tabs = st.tabs([
-            "🔬 Phân Tích & Đối Soát Đơn Thuốc (Analyze)",
-            "📚 Tra Cứu Dược Thư (Drug Database)",
-            "⚡ Kiểm Tra Tương Tác Cặp (DDI Checker)",
-            "📖 Phương Pháp & Kiến Trúc (Methodology)",
+            "Analyze Medications",
+            "Drug Database",
+            "Interaction Checker",
+            "How It Works",
         ])
 
         with tabs[0]:

@@ -56,17 +56,17 @@ def render_analyze_view(cv_load_result: Any) -> None:
                     image_id=temp_file.stem,
                     image_path=str(temp_file),
                 )
-                with st.spinner("🤖 Đang chạy mô hình AI nhận diện (YOLOv11-Seg + ResNet18 + PaddleOCR)..."):
+                with st.spinner("Analyzing the medication image..."):
                     artifacts = cv_load_result.pipeline.predict_with_artifacts(req)
                     st.session_state.raw_cv_data = artifacts.output
                     st.session_state.cv_error = None
             except Exception as err:
                 import traceback
                 st.session_state.raw_cv_data = None
-                st.session_state.cv_error = f"Lỗi trong quá trình chạy Inference: {err}\n{traceback.format_exc()}"
+                st.session_state.cv_error = f"Analysis could not be completed: {err}\n{traceback.format_exc()}"
         else:
             st.session_state.raw_cv_data = None
-            st.session_state.cv_error = cv_load_result.error if cv_load_result else "Mô hình Computer Vision chưa được khởi tạo thành công."
+            st.session_state.cv_error = cv_load_result.error if cv_load_result else "The medication analysis service could not be started."
 
     # 2. Render Upload Panel (Upload / Camera)
     with st.container():
@@ -76,16 +76,16 @@ def render_analyze_view(cv_load_result: Any) -> None:
 
     # 3. Handle Errors or Empty State
     if st.session_state.cv_error:
-        st.error(f"❌ **Lỗi phân tích Computer Vision:**\n\n```\n{st.session_state.cv_error}\n```\n\n*Gợi ý: Kiểm tra file weights YOLOv11 (.pt) và ResNet-18 (.pt, .json) trên môi trường chạy.*")
+        st.error(f"**Analysis error:**\n\n```\n{st.session_state.cv_error}\n```\n\nPlease try another image or contact the application administrator.")
 
     if st.session_state.current_image is None:
         st.markdown(
             """
             <div style="text-align: center; padding: 40px 20px; background: white; border: 1.5px dashed var(--border-medium); border-radius: 12px; margin-top: 16px;">
                 <div style="font-size: 2.5rem; margin-bottom: 8px;">💊</div>
-                <h4 style="margin: 0 0 6px 0; color: var(--text-primary);">Chưa có ảnh nào được chọn</h4>
+                <h4 style="margin: 0 0 6px 0; color: var(--text-primary);">No image selected</h4>
                 <p style="margin: 0; font-size: 0.875rem; color: var(--text-muted); max-width: 500px; margin: 0 auto;">
-                    Vui lòng tải tệp ảnh chụp hoặc dùng Camera ở khung phía trên để hệ thống bắt đầu quét viên thuốc, định danh RxNorm và phát hiện tương tác đối kháng DDI.
+                    Upload a medication photo or use the camera above to identify visible medications and screen for known interactions.
                 </p>
             </div>
             """,
@@ -95,11 +95,11 @@ def render_analyze_view(cv_load_result: Any) -> None:
 
     # 4. Main Analysis Section if real image and CV data are ready
     if st.session_state.current_image is not None and st.session_state.raw_cv_data is not None:
-        st.success("✅ **AI Pipeline Thành Công:** Ảnh đã được nhận diện trực tiếp bằng YOLOv11 Segmentation + ResNet-18 Multi-Head + PaddleOCR!")
+        st.success("Analysis complete. Review the identified medications and safety findings below.")
         pills, quality = parse_cv_output(st.session_state.raw_cv_data)
 
         if not pills:
-            st.warning("⚠️ Mô hình YOLOv11 không phát hiện viên thuốc nào trong bức ảnh này. Vui lòng chụp rõ nét hơn hoặc đặt thuốc trên nền tương phản sáng.")
+            st.warning("No medications were detected. Try a sharper photo with the medications separated from the background.")
             return
 
         # Apply manual overrides and evaluate DDI & Report
@@ -111,49 +111,43 @@ def render_analyze_view(cv_load_result: Any) -> None:
         # Priority 1: Overall Clinical Safety Banner
         render_safety_banner(report)
 
-        # Priority 2: Split-View Workspace (Left: Evidence Viewer; Right: Detected Pills)
+        # Keep image evidence and medication results in parallel, independently readable panels.
         col_left, col_right = st.columns([1.1, 1.0], gap="large")
 
         with col_left:
-            st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-            render_visual_viewer(
-                image=st.session_state.current_image,
-                pills=pills,
-                quality=quality,
-                selected_pill_id=st.session_state.selected_pill_id,
-                on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(height=680, border=True):
+                render_visual_viewer(
+                    image=st.session_state.current_image,
+                    pills=pills,
+                    quality=quality,
+                    selected_pill_id=st.session_state.selected_pill_id,
+                    on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
+                )
 
         with col_right:
-            st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
             def handle_manual_override(inst_id: str, val: str) -> None:
                 st.session_state.manual_overrides[inst_id] = val
 
-            render_pill_cards(
-                pills=pills,
-                selected_pill_id=st.session_state.selected_pill_id,
-                on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
-                on_manual_override=handle_manual_override,
+            with st.container(height=680, border=True):
+                render_pill_cards(
+                    pills=pills,
+                    selected_pill_id=st.session_state.selected_pill_id,
+                    on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
+                    on_manual_override=handle_manual_override,
+                )
+
+        # Group the safety findings into one focused workspace below the two primary panels.
+        with st.container(border=True):
+            render_interaction_cards(
+                interactions=report.interactions,
+                duplicates=report.duplicate_warnings,
             )
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Priority 3: Drug Interaction & Duplicate Ingredient Cards
-        st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-        render_interaction_cards(
-            interactions=report.interactions,
-            duplicates=report.duplicate_warnings,
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Priority 4: Full Clinical Report
-        st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-        render_clinical_report(report)
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.divider()
+            render_clinical_report(report)
 
         # Priority 5: Advanced Developer / XAI Trace Expander
-        with st.expander("🛠️ Advanced Developer & XAI Pipeline Trace", expanded=False):
-            st.markdown("**Raw Structured CV Output JSON:**")
+        with st.expander("Advanced evidence details", expanded=False):
+            st.markdown("**Raw structured analysis output:**")
             if isinstance(st.session_state.raw_cv_data, dict):
                 st.json(st.session_state.raw_cv_data)
             else:
@@ -164,10 +158,9 @@ def render_analyze_view(cv_load_result: Any) -> None:
             """
             <div class="clinical-card" style="text-align: center; padding: 2.5rem 1.5rem;">
                 <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔬</div>
-                <h3 style="color: var(--text-primary); margin-bottom: 0.35rem; font-size: 1.25rem;">Sẵn sàng phân tích đơn thuốc</h3>
+                <h3 style="color: var(--text-primary); margin-bottom: 0.35rem; font-size: 1.25rem;">Ready to analyze medications</h3>
                 <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 1.25rem auto; font-size: 0.875rem;">
-                    Hãy tải lên ảnh chụp từ máy tính / camera, hoặc bấm chọn nhanh một trong các 
-                    <strong>Kịch bản mẫu</strong> ở trên để trải nghiệm quy trình nhận diện và đối soát an toàn.
+                    Upload a photo from your computer or camera to identify medications and review potential safety findings.
                 </p>
             </div>
             """,

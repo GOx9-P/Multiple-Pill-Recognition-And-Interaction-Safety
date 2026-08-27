@@ -15,8 +15,8 @@ def render_interaction_cards(
     st.markdown(
         """
         <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.75rem;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">⚠️ 2. Phân tích tương tác thuốc & Trùng lặp hoạt chất</h3>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">NLM / NIH DDI Standard Engine</span>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">Medication safety findings</h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Review identified medications before use</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -24,20 +24,20 @@ def render_interaction_cards(
 
     # 1. Render Duplicate Ingredient Overdose Warnings only if present
     if duplicates:
-        st.markdown("**🔄 Cảnh Báo Trùng Lặp Hoạt Chất (Nguy cơ quá liều tích lũy):**")
+        st.markdown("**Duplicate ingredient warnings:**")
         for dup in duplicates:
             st.markdown(
                 f"""
                 <div class="ddi-card" style="border-left-color: var(--sev-duplicate);">
                     <div class="ddi-card-header">
-                        <span class="ddi-pair-title">🔄 Trùng hoạt chất: {dup.ingredient_name}</span>
-                        <span class="pill-badge" style="background: var(--sev-duplicate-bg); color: var(--sev-duplicate-text); border: 1px solid var(--sev-duplicate-border);">QUÁ LIỀU TÍCH LŨY</span>
+                        <span class="ddi-pair-title">Duplicate ingredient: {dup.ingredient_name}</span>
+                        <span class="pill-badge" style="background: var(--sev-duplicate-bg); color: var(--sev-duplicate-text); border: 1px solid var(--sev-duplicate-border);">DUPLICATE</span>
                     </div>
                     <div class="ddi-section">
-                        <strong>Cảnh báo:</strong> {dup.warning}
+                        <strong>Finding:</strong> {dup.warning}
                     </div>
                     <div class="ddi-section">
-                        <strong>Các viên phát hiện:</strong> <code>{', '.join(dup.source_instances)}</code>
+                        <strong>Related medications:</strong> <code>{', '.join(dup.source_instances)}</code>
                     </div>
                 </div>
                 """,
@@ -46,7 +46,7 @@ def render_interaction_cards(
 
     # 2. Render Pairwise Interactions
     if interactions:
-        st.markdown(f"**⚡ Các Cặp Tương Tác Được Ghi Nhận ({len(interactions)} cặp):**")
+        st.markdown(f"**Potential medication interactions ({len(interactions)}):**")
         for inter in interactions:
             severity_class = inter.severity.lower()
             badge_color = "var(--sev-critical-text)" if severity_class == "critical" else "var(--sev-moderate-text)"
@@ -61,17 +61,17 @@ def render_interaction_cards(
                         <span class="pill-badge" style="background: {badge_bg}; color: {badge_color}; border: 1px solid {badge_border};">{inter.severity.upper()}</span>
                     </div>
                     <div class="ddi-section">
-                        <strong>Mô tả tương tác:</strong> {inter.message}
+                        <strong>Finding:</strong> {inter.message}
                     </div>
-                    {f'<div class="ddi-section"><strong>Cơ chế dược lý:</strong> {inter.mechanism}</div>' if inter.mechanism else ''}
-                    {f'<div class="ddi-section"><strong>Nguy cơ lâm sàng:</strong> {inter.clinical_risk}</div>' if inter.clinical_risk else ''}
-                    {f'<div class="ddi-section"><strong>Khuyến cáo xử trí:</strong> {inter.management}</div>' if inter.management else ''}
+                    {f'<div class="ddi-section"><strong>Mechanism:</strong> {inter.mechanism}</div>' if inter.mechanism else ''}
+                    {f'<div class="ddi-section"><strong>Clinical risk:</strong> {inter.clinical_risk}</div>' if inter.clinical_risk else ''}
+                    {f'<div class="ddi-section"><strong>Recommended action:</strong> {inter.management}</div>' if inter.management else ''}
                     <div class="ddi-section" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
-                        <em>Nguồn thẩm định: {inter.source}</em>
+                        <em>Reference: {inter.source}</em>
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
     elif not duplicates:
-        st.info("✅ Không phát hiện cặp tương tác đối kháng bất lợi nào giữa các thuốc được nhận diện trong cơ sở dữ liệu.")
+        st.info("No harmful interaction pair was found among the identified medications in the current database.")
