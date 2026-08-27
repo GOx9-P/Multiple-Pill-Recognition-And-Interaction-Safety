@@ -183,14 +183,22 @@ def evaluate_scene_images(
     cv_pipeline = cv_loader.pipeline
     id_service = IdentificationService(db)
 
-    scene_files = [
-        ("test_1", scene_dir / "test_1.png"),
-        ("test_2", scene_dir / "test_2.png"),
-    ]
-
+    scene_names = ["test_1", "test_2"]
     scene_results = []
-    for scene_name, img_path in scene_files:
-        if not img_path.exists():
+    for scene_name in scene_names:
+        # Tìm file ảnh linh hoạt
+        img_path = None
+        for cand in [
+            scene_dir / f"{scene_name}.png",
+            scene_dir / f"{scene_name}.jpg",
+            scene_dir / "pill_images_verified" / f"{scene_name}.png",
+            scene_dir / "pill_images_verified" / f"{scene_name}.jpg",
+        ] + list(scene_dir.rglob(f"{scene_name}.*")):
+            if cand.exists() and cand.is_file():
+                img_path = cand
+                break
+
+        if not img_path or not img_path.exists():
             continue
 
         print(f"\n---> Chạy Scene Test trên: {scene_name} ({img_path.name})...")

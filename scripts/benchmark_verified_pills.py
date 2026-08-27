@@ -66,15 +66,115 @@ def run_benchmark(
     cv_pipeline = cv_loader.pipeline
     print("✓ Khởi tạo toàn bộ mô hình thành công!\n")
 
-    # 3. Đọc manifest
-    manifest_path = verified_dir / "pill_images_verified" / "manifest.json"
-    if not manifest_path.exists():
-        manifest_path = verified_dir / "manifest.json"
-    
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"Không tìm thấy manifest.json tại: {manifest_path}")
+def _resolve_manifest(verified_dir: Path) -> list[dict[str, Any]]:
+    # 1. Tìm file manifest.json nếu có sẵn
+    candidates = [
+        verified_dir / "pill_images_verified" / "manifest.json",
+        verified_dir / "manifest.json",
+    ] + list(verified_dir.rglob("manifest.json"))
+    for cand in candidates:
+        if cand.exists():
+            try:
+                data = json.loads(cand.read_text(encoding="utf-8"))
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+            except Exception:
+                pass
 
-    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    # 2. Tự động sinh manifest từ database_seed và quét thư mục
+    db_appearances = {}
+    app_file = PROJECT_ROOT / "database_seed" / "drug_appearances.json"
+    if app_file.exists():
+        try:
+            for item in json.loads(app_file.read_text(encoding="utf-8")):
+                db_appearances[item.get("product_code")] = item
+        except Exception:
+            pass
+
+    db_products = {}
+    prod_file = PROJECT_ROOT / "database_seed" / "drug_products.json"
+    if prod_file.exists():
+        try:
+            for item in json.loads(prod_file.read_text(encoding="utf-8")):
+                db_products[item.get("product_code")] = item
+        except Exception:
+            pass
+
+    # Quét tất cả các thư mục con trong verified_dir
+    all_subdirs = [
+        d for d in verified_dir.rglob("*")
+        if d.is_dir() and d.name != "pill_images_verified" and not d.name.startswith(".")
+    ]
+    
+    manifest_entries = []
+    seen_codes = set()
+
+    for sdir in sorted(all_subdirs, key=lambda x: x.name):
+        parts = sdir.name.split("_")
+        product_code = None
+        for p in parts:
+            if "-" in p and any(c.isdigit() for c in p):
+                product_code = p
+                break
+        
+        if not product_code:
+            continue
+
+        if product_code in seen_codes:
+            continue
+
+        imgs = list(sdir.glob("*.jpg")) + list(sdir.glob("*.png"))
+        if not imgs:
+            continue
+
+        app_info = db_appearances.get(product_code, {})
+        prod_info = db_products.get(product_code, {})
+
+        drug_name = prod_info.get("product_name") or sdir.name
+
+        manifest_entries.append({
+            "product_code": product_code,
+            "drug": drug_name,
+            "folder": sdir.name,
+            "folder_path": str(sdir),
+            "expected_imprint": app_info.get("imprint", ""),
+            "expected_shape": app_info.get("shape", "ROUND"),
+            "expected_color": app_info.get("color", "WHITE"),
+            "score_line": app_info.get("score_line", False),
+        })
+        seen_codes.add(product_code)
+
+    if manifest_entries:
+        print(f"✓ Đã tự động tạo manifest cho {len(manifest_entries)} danh mục thuốc từ ảnh!")
+        return manifest_entries
+
+    raise FileNotFoundError(f"Không tìm thấy manifest.json hoặc thư mục ảnh thuốc trong: {verified_dir}")
+
+
+def run_benchmark(
+    verified_dir: Path = PROJECT_ROOT / "pill_images_verified",
+    output_json: Path | None = PROJECT_ROOT / "outputs" / "benchmark_verified_results.json",
+    max_drugs: int | None = None,
+) -> dict[str, Any]:
+    print("=" * 80)
+    print("KHỞI CHẠY BENCHMARK HỆ THỐNG NHẬN DIỆN THUỐC TRÊN PILL_IMAGES_VERIFIED")
+    print("=" * 80)
+
+    # 1. Khởi tạo Database & RAG
+    print("[1/4] Khởi tạo Cơ sở dữ liệu và RAG Identification Service...")
+    db_session = setup_in_memory_db()
+    id_service = IdentificationService(db_session)
+
+    # 2. Khởi tạo CV Pipeline (YOLOv11-seg, ResNet-18, PaddleOCR)
+    print("[2/4] Đang nạp các mô hình AI (YOLOv11, ResNet-18, PaddleOCR)...")
+    cv_loader = load_cv_pipeline()
+    if not cv_loader.available or cv_loader.pipeline is None:
+        raise RuntimeError(f"Không thể khởi tạo CV Pipeline: {cv_loader.error}")
+    cv_pipeline = cv_loader.pipeline
+    print("✓ Khởi tạo toàn bộ mô hình thành công!\n")
+
+    # 3. Đọc manifest
+    manifest_data = _resolve_manifest(verified_dir)
     if max_drugs:
         manifest_data = manifest_data[:max_drugs]
 
@@ -107,9 +207,11 @@ def run_benchmark(
         expected_color = normalize_color(drug_entry.get("expected_color"))
         expected_score_line = bool(drug_entry.get("score_line"))
 
-        folder_path = verified_dir / "pill_images_verified" / folder_name
-        if not folder_path.exists():
-            folder_path = verified_dir / folder_name
+        folder_path = Path(drug_entry.get("folder_path", "")) if drug_entry.get("folder_path") else None
+        if not folder_path or not folder_path.exists():
+            folder_path = verified_dir / "pill_images_verified" / folder_name
+            if not folder_path.exists():
+                folder_path = verified_dir / folder_name
 
         image_tasks = [
             ("both_sides", folder_path / "01_both_sides_original.jpg"),
