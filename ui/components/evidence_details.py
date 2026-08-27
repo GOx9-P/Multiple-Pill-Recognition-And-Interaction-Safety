@@ -85,7 +85,9 @@ def render_evidence_details(
     else:
         st.info("No database candidates are available for this medication yet.")
 
-    with st.expander("Image quality checks", expanded=False):
+    quality_tab, raw_data_tab = st.tabs(["Image quality", "Raw technical data"])
+
+    with quality_tab:
         quality_col, blur_col, glare_col, lighting_col = st.columns(4)
         quality_col.metric("Overall quality", quality.status.replace("_", " ").title())
         blur_col.metric("Blur score", f"{quality.blur_score:.2f}")
@@ -94,7 +96,7 @@ def render_evidence_details(
         if quality.notes:
             st.caption(" · ".join(quality.notes))
 
-    with st.expander("Raw technical data", expanded=False):
+    with raw_data_tab:
         st.caption("For troubleshooting only. This data is not required to interpret the medication result.")
         if isinstance(raw_cv_data, dict):
             st.json(raw_cv_data)
