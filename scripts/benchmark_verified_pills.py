@@ -207,29 +207,41 @@ def run_benchmark(
         expected_color = normalize_color(drug_entry.get("expected_color"))
         expected_score_line = bool(drug_entry.get("score_line"))
 
-        folder_path = Path(drug_entry.get("folder_path", "")) if drug_entry.get("folder_path") else None
+        # Tìm thư mục của thuốc ở mọi cấp
+        folder_path = None
+        for cand in [
+            Path(drug_entry.get("folder_path", "")),
+            verified_dir / "pill_images_verified" / folder_name,
+            verified_dir / folder_name,
+        ] + list(verified_dir.rglob(f"*{product_code}*")):
+            if cand.exists() and cand.is_dir():
+                cand_imgs = list(cand.glob("*.jpg")) + list(cand.glob("*.png")) + list(cand.glob("*.jpeg"))
+                if cand_imgs:
+                    folder_path = cand
+                    break
+
         if not folder_path or not folder_path.exists():
-            folder_path = verified_dir / "pill_images_verified" / folder_name
-            if not folder_path.exists():
-                folder_path = verified_dir / folder_name
+            print(f"[{idx}/{len(manifest_data)}] ⚠️ Bỏ qua {drug_name} ({product_code}): Không tìm thấy ảnh.")
+            continue
 
-        image_tasks = [
-            ("both_sides", folder_path / "01_both_sides_original.jpg"),
-            ("face_1", folder_path / "02_face_1_crop.png"),
-            ("face_2", folder_path / "03_face_2_crop.png"),
-        ]
+        # Tự động tìm tất cả ảnh trong folder của thuốc này
+        all_folder_imgs = sorted(list(folder_path.glob("*.jpg")) + list(folder_path.glob("*.png")) + list(folder_path.glob("*.jpeg")))
+        image_tasks = []
+        for img in all_folder_imgs:
+            stem = img.stem.lower()
+            if "both" in stem or "original" in stem or "01" in stem:
+                img_type = "both_sides"
+            elif "face_2" in stem or "face2" in stem or "03" in stem:
+                img_type = "face_2"
+            elif "face_1" in stem or "face1" in stem or "02" in stem:
+                img_type = "face_1"
+            else:
+                img_type = "face_1"
+            image_tasks.append((img_type, img))
 
-        print(f"[{idx}/{len(manifest_data)}] Đang xử lý: {drug_name} ({product_code})...")
+        print(f"[{idx}/{len(manifest_data)}] Đang xử lý: {drug_name} ({product_code}) - {len(image_tasks)} ảnh...")
 
         for img_type, img_path in image_tasks:
-            if not img_path.exists():
-                # Thử tìm đuôi mở rộng khác (png/jpg)
-                alts = list(folder_path.glob(f"{img_path.stem}.*"))
-                if alts:
-                    img_path = alts[0]
-                else:
-                    continue
-
             category_counts[img_type]["total"] += 1
             img_start = time.time()
             print(f"   -> Đang xử lý {img_type}: {img_path.name}...", flush=True)
