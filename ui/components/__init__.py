@@ -2,6 +2,7 @@
 
 from .clinical_report import render_clinical_report
 from .disclaimer import render_disclaimer
+from .evidence_details import render_evidence_details
 from .header import render_header
 from .interaction_cards import render_interaction_cards
 from .pill_cards import render_pill_cards
@@ -12,6 +13,7 @@ from .visual_viewer import render_visual_viewer
 __all__ = [
     "render_clinical_report",
     "render_disclaimer",
+    "render_evidence_details",
     "render_header",
     "render_interaction_cards",
     "render_pill_cards",

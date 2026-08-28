@@ -107,7 +107,7 @@ def inject_healthcare_css() -> None:
             font-family: 'Outfit', sans-serif !important;
             color: var(--text-primary) !important;
             font-weight: 700 !important;
-            letter-spacing: -0.015em !important;
+            letter-spacing: 0 !important;
         }
 
         p, span, label, li {
@@ -874,6 +874,52 @@ def inject_healthcare_css() -> None:
         .pill-card-item.active {
             border: 2px solid var(--accent-brand);
             box-shadow: 0 0 0 3px var(--accent-brand-light);
+        }
+
+        /* Compact desktop medication cards prevent long medication names from creating a long page. */
+        .pill-card-top {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .pill-instance-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .pill-drug-name {
+            margin: 0.15rem 0 0.7rem !important;
+            font-size: 1.08rem !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere;
+        }
+
+        .pill-meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.8rem;
+            padding: 0.32rem 0;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        .pill-meta-row span:first-child {
+            color: var(--text-muted);
+            flex: 0 0 auto;
+        }
+
+        .pill-meta-row span:last-child {
+            color: var(--text-primary);
+            font-weight: 600;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            text-align: right;
         }
 
         .pill-badge {

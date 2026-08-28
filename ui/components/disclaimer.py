@@ -12,10 +12,10 @@ def render_disclaimer() -> None:
         <div class="clinical-disclaimer">
             <span style="font-size: 1.25rem;">ℹ️</span>
             <div>
-                <strong>Miễn trừ trách nhiệm y tế (Medical Disclaimer):</strong>
-                Hệ thống AI này được thiết kế với mục đích hỗ trợ ra quyết định lâm sàng và tham khảo thông tin nhận diện dược phẩm. 
-                Kết quả phân tích <em>không thay thế</em> chẩn đoán, chỉ định hay tư vấn trực tiếp từ bác sĩ hoặc dược sĩ chuyên môn. 
-                Tuyệt đối không tự ý ngưng, thay đổi liều lượng hoặc phối hợp thuốc khi chưa có ý kiến của nhân viên y tế.
+                <strong>Medical disclaimer:</strong>
+                This application supports medication identification and safety review. It does <em>not replace</em> diagnosis,
+                prescribing advice, or guidance from a qualified doctor or pharmacist. Do not start, stop, change, or combine
+                medications based only on this result.
             </div>
         </div>
         """,
