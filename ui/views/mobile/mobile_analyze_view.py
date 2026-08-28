@@ -17,6 +17,7 @@ from ui.drawing_utils import draw_cv_overlay
 from ui.mobile_ui_logic import (
     get_mobile_severity_content,
     get_recognition_progress,
+    should_show_image_quality_warning,
     sort_interactions_by_severity,
 )
 
@@ -227,7 +228,7 @@ def render_mobile_analyze_view(cv_load_result: Any) -> None:
     progress = get_recognition_progress(pills)
     severity = get_mobile_severity_content(report.overall_severity, progress.has_unresolved)
 
-    if quality.status not in ("good", "ok") or quality.glare_detected or quality.lighting_warning:
+    if should_show_image_quality_warning(quality):
         st.markdown(
             '<div class="mobile-image-warning"><strong>Ảnh có thể chưa đủ rõ</strong>'
             '<span>Hãy kiểm tra kỹ các viên được đánh dấu cần xác nhận.</span></div>',

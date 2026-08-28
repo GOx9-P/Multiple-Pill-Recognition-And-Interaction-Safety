@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
 
 from ui.adapters.view_models import InteractionPairViewModel, PillViewModel
 
@@ -118,6 +118,17 @@ def get_recognition_progress(pills: Iterable[PillViewModel]) -> RecognitionProgr
         total=total,
         has_unresolved=resolved != total,
         label=f"Đã nhận diện {resolved}/{total} viên",
+    )
+
+
+def should_show_image_quality_warning(quality: Any) -> bool:
+    """Return whether the mobile scan should ask the user to review photo clarity."""
+    clear_statuses = {"good", "ok", "usable"}
+    status = str(getattr(quality, "status", "good")).lower()
+    return (
+        status not in clear_statuses
+        or bool(getattr(quality, "glare_detected", False))
+        or bool(getattr(quality, "lighting_warning", False))
     )
 
 

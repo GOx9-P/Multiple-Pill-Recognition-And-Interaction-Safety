@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from ui.adapters.pipeline_adapter import evaluate_safety_and_report
-from ui.adapters.view_models import InteractionPairViewModel, PillViewModel
+from ui.adapters.view_models import ImageQualityViewModel, InteractionPairViewModel, PillViewModel
 from ui.mobile_ui_logic import (
     get_consumer_interaction_action,
     get_mobile_severity_content,
     get_pill_status_content,
     get_recognition_progress,
+    should_show_image_quality_warning,
     sort_interactions_by_severity,
 )
 
@@ -57,6 +58,28 @@ def test_recognition_progress_counts_only_resolved_pills() -> None:
     assert progress.total == 3
     assert progress.has_unresolved is True
     assert progress.label == "Đã nhận diện 1/3 viên"
+
+
+def test_usable_backend_quality_status_does_not_show_unclear_photo_warning() -> None:
+    quality = ImageQualityViewModel(
+        status="usable",
+        blur_score=0.0,
+        glare_detected=False,
+        lighting_warning=False,
+    )
+
+    assert should_show_image_quality_warning(quality) is False
+
+
+def test_warning_quality_status_still_shows_unclear_photo_warning() -> None:
+    quality = ImageQualityViewModel(
+        status="usable_with_warning",
+        blur_score=0.5,
+        glare_detected=False,
+        lighting_warning=False,
+    )
+
+    assert should_show_image_quality_warning(quality) is True
 
 
 def test_interactions_are_sorted_from_highest_to_lowest_risk() -> None:
