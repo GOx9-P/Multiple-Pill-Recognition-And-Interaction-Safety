@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import streamlit as st
+from streamlit.components import v1 as components
 from PIL import Image
 
 from ..adapters.pipeline_adapter import evaluate_safety_and_report, parse_cv_output
@@ -14,6 +16,7 @@ from ..components import (
     render_evidence_details,
     render_interaction_cards,
     render_pill_cards,
+    render_recapture_panel,
     render_safety_banner,
     render_upload_panel,
     render_visual_viewer,
@@ -29,14 +32,24 @@ def render_analyze_view(cv_load_result: Any) -> None:
     st.session_state.setdefault("cv_error", None)
     st.session_state.setdefault("selected_pill_id", None)
     st.session_state.setdefault("manual_overrides", {})
+    st.session_state.setdefault("recapture_results", {})
+    st.session_state.setdefault("recapture_errors", {})
     st.session_state.setdefault("pipeline_running", False)
+    st.session_state.setdefault("highlighted_pill_ids", [])
+    st.session_state.setdefault("active_interaction_index", None)
+    st.session_state.setdefault("scroll_to_medication_photo", False)
 
     # 1. Callback when user uploads an image or captures from camera
     def on_image_selected(image: Image.Image, image_name: str) -> None:
         st.session_state.current_image = image
         st.session_state.current_image_name = image_name
         st.session_state.manual_overrides = {}
+        st.session_state.recapture_results = {}
+        st.session_state.recapture_errors = {}
         st.session_state.selected_pill_id = None
+        st.session_state.highlighted_pill_ids = []
+        st.session_state.active_interaction_index = None
+        st.session_state.scroll_to_medication_photo = False
         st.session_state.cv_error = None
 
         if cv_load_result and cv_load_result.available:
@@ -69,6 +82,49 @@ def render_analyze_view(cv_load_result: Any) -> None:
             st.session_state.raw_cv_data = None
             st.session_state.cv_error = cv_load_result.error if cv_load_result else "The medication analysis service could not be started."
 
+    def on_pill_recaptured(instance_id: str, image: Image.Image) -> None:
+        """Run the full pipeline for one close-up and retain its original medication ID."""
+        if not cv_load_result or not cv_load_result.available:
+            st.session_state.recapture_errors[instance_id] = (
+                "The medication analysis service is not available for this retake."
+            )
+            return
+
+        try:
+            import tempfile
+            from pathlib import Path
+            from uuid import uuid4
+
+            from pill_safety.schemas import SegmentationInferenceRequest
+
+            temp_dir = Path(tempfile.gettempdir()) / "pill_safety_retakes"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_file = temp_dir / f"retake_{instance_id}_{uuid4().hex[:8]}.png"
+            image.save(temp_file)
+
+            request = SegmentationInferenceRequest(
+                request_id=str(uuid4()),
+                session_id=str(uuid4()),
+                image_id=temp_file.stem,
+                image_path=str(temp_file),
+            )
+            with st.spinner(f"Rechecking {instance_id}..."):
+                artifacts = cv_load_result.pipeline.predict_with_artifacts(request)
+                retake_pills, _ = parse_cv_output(artifacts.output)
+
+            if len(retake_pills) != 1:
+                st.session_state.recapture_errors[instance_id] = (
+                    "The retake must show exactly one medication. Please capture only this medication."
+                )
+                return
+
+            st.session_state.recapture_results[instance_id] = retake_pills[0]
+            st.session_state.recapture_errors.pop(instance_id, None)
+        except Exception:
+            st.session_state.recapture_errors[instance_id] = (
+                "This retake could not be analyzed. Please try a sharper close-up."
+            )
+
     # 2. Render Upload Panel (Upload / Camera)
     with st.container():
         st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
@@ -99,6 +155,18 @@ def render_analyze_view(cv_load_result: Any) -> None:
         st.success("Analysis complete. Review the identified medications and safety findings below.")
         pills, quality = parse_cv_output(st.session_state.raw_cv_data)
 
+        # A successful close-up updates only the matching original instance, never its ID or position.
+        for index, pill in enumerate(pills):
+            retake_result = st.session_state.recapture_results.get(pill.instance_id)
+            if retake_result is not None:
+                pills[index] = replace(
+                    retake_result,
+                    instance_id=pill.instance_id,
+                    bbox_xyxy=pill.bbox_xyxy,
+                    mask_path=pill.mask_path,
+                    crop_path=pill.crop_path,
+                )
+
         if not pills:
             st.warning("No medications were detected. Try a sharper photo with the medications separated from the background.")
             return
@@ -111,6 +179,42 @@ def render_analyze_view(cv_load_result: Any) -> None:
 
         # Priority 1: Overall Clinical Safety Banner
         render_safety_banner(report)
+        if report.interactions or report.duplicate_warnings:
+            st.link_button("View safety findings", "#interaction-review")
+
+        def handle_manual_override(inst_id: str, val: str) -> None:
+            """Store a user-confirmed value and keep the original medication ID."""
+            st.session_state.manual_overrides[inst_id] = val
+
+        def focus_interaction(interaction_index: int) -> None:
+            """Highlight exactly the detected pills that produced one DDI finding."""
+            interaction = report.interactions[interaction_index]
+            source_instances = interaction.source_instances
+            st.session_state.highlighted_pill_ids = source_instances
+            st.session_state.active_interaction_index = interaction_index
+            st.session_state.selected_pill_id = source_instances[0] if source_instances else None
+            st.session_state.scroll_to_medication_photo = bool(source_instances)
+
+        def clear_interaction_focus() -> None:
+            """Remove the temporary interaction highlight without changing analysis results."""
+            st.session_state.highlighted_pill_ids = []
+            st.session_state.active_interaction_index = None
+
+        # A normal anchor supports the top-level shortcut to the safety review.
+        st.markdown('<div id="medication-photo"></div>', unsafe_allow_html=True)
+        if st.session_state.scroll_to_medication_photo:
+            components.html(
+                """
+                <script>
+                window.setTimeout(() => {
+                    const target = window.parent.document.getElementById("medication-photo");
+                    if (target) target.scrollIntoView({behavior: "smooth", block: "start"});
+                }, 150);
+                </script>
+                """,
+                height=0,
+            )
+            st.session_state.scroll_to_medication_photo = False
 
         # Keep image evidence and medication results in parallel, independently readable panels.
         col_left, col_right = st.columns([1.1, 1.0], gap="large")
@@ -123,25 +227,33 @@ def render_analyze_view(cv_load_result: Any) -> None:
                     quality=quality,
                     selected_pill_id=st.session_state.selected_pill_id,
                     on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
+                    highlighted_pill_ids=st.session_state.highlighted_pill_ids,
+                    on_clear_interaction_highlight=clear_interaction_focus,
                 )
 
         with col_right:
-            def handle_manual_override(inst_id: str, val: str) -> None:
-                st.session_state.manual_overrides[inst_id] = val
-
             with st.container(height=680, border=True):
                 render_pill_cards(
                     pills=pills,
                     selected_pill_id=st.session_state.selected_pill_id,
                     on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
-                    on_manual_override=handle_manual_override,
                 )
 
+        render_recapture_panel(
+            pills=pills,
+            on_recapture=on_pill_recaptured,
+            on_manual_override=handle_manual_override,
+            errors=st.session_state.recapture_errors,
+        )
+
         # Group the safety findings into one focused workspace below the two primary panels.
+        st.markdown('<div id="interaction-review"></div>', unsafe_allow_html=True)
         with st.container(border=True):
             render_interaction_cards(
                 interactions=report.interactions,
                 duplicates=report.duplicate_warnings,
+                on_interaction_selected=focus_interaction,
+                active_interaction_index=st.session_state.active_interaction_index,
             )
             st.divider()
             render_clinical_report(report)

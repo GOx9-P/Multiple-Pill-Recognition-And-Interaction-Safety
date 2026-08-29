@@ -17,6 +17,8 @@ def render_visual_viewer(
     quality: ImageQualityViewModel,
     selected_pill_id: str | None,
     on_pill_selected: Callable[[str], None],
+    highlighted_pill_ids: list[str] | None = None,
+    on_clear_interaction_highlight: Callable[[], None] | None = None,
 ) -> None:
     """Render the interactive annotated image and image quality assessment."""
     st.markdown(
@@ -29,8 +31,32 @@ def render_visual_viewer(
         unsafe_allow_html=True,
     )
 
+    highlighted_pill_ids = highlighted_pill_ids or []
+    if highlighted_pill_ids:
+        medication_numbers = [
+            str(index)
+            for index, pill in enumerate(pills, start=1)
+            if pill.instance_id in highlighted_pill_ids
+        ]
+        st.info(
+            "Safety finding highlighted for medication "
+            + ", ".join(f"#{number}" for number in medication_numbers)
+            + "."
+        )
+        if on_clear_interaction_highlight is not None:
+            st.button(
+                "Clear safety highlight",
+                key="clear_interaction_highlight",
+                on_click=on_clear_interaction_highlight,
+            )
+
     # 1. Draw image with overlay
-    annotated_image = draw_cv_overlay(image, pills, selected_pill_id)
+    annotated_image = draw_cv_overlay(
+        image,
+        pills,
+        selected_pill_id,
+        highlighted_pill_ids=set(highlighted_pill_ids),
+    )
     st.image(annotated_image, use_container_width=True)
 
     # 2. Pill Index Selector (for interactive focus)

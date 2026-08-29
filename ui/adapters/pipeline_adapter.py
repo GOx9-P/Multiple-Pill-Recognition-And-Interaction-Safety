@@ -488,6 +488,12 @@ def evaluate_safety_and_report(
                         clinical_risk=rule.get("clinical_risk", ""),
                         management=rule.get("management", ""),
                         source=rule.get("source", "NLM DDI Standard"),
+                        source_instances=sorted(
+                            set(
+                                active_ingredient_map.get(pair_a, [])
+                                + active_ingredient_map.get(pair_b, [])
+                            )
+                        ),
                     )
                 )
 
