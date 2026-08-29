@@ -370,8 +370,8 @@ def parse_cv_output(raw_cv_data: Any) -> tuple[list[PillViewModel], ImageQuality
             brand_name=matched.get("brand_name") if matched else None,
             generic_name=matched.get("generic_name") if matched else None,
             strength=matched.get("strength") if matched else None,
-            rxcui=matched.get("rxcui") if matched.get("rxcui") else None,
-            ndc=matched.get("ndc") if matched.get("ndc") else None,
+            rxcui=matched.get("rxcui") if matched else None,
+            ndc=matched.get("ndc") if matched else None,
             active_ingredients=matched.get("active_ingredients", []) if matched else [],
             match_confidence=0.94 if matched else None,
         )
