@@ -1,9 +1,11 @@
-# BẢN ĐẶC TẢ THIẾT KẾ KIẾN TRÚC & PIPELINE MODULE LLM & RAG SAFETY
+# BẢN ĐẶC TẢ RETRIEVAL, DDI VÀ DETERMINISTIC SAFETY REPORTING
 
 
 > **Dự án:** Multiple-Pill Recognition and Interaction Safety  
-> **Module:** RAG Drug Identification, DDI Clinical Risk Engine & LLM Medical Safety Reporting  
-> **Ranh giới:** Nhận đầu vào có cấu trúc `CvOutput` $\rightarrow$ Chuẩn hóa $\rightarrow$ Truy xuất ứng viên $\rightarrow$ Chấm điểm IDF $\rightarrow$ Safety Gate $\rightarrow$ Ánh xạ Hoạt chất $\rightarrow$ Kiểm tra DDI & Trùng lặp $\rightarrow$ Grounded Context $\rightarrow$ Báo cáo LLM  
+> **Module:** RAG Drug Identification, DDI Clinical Risk Engine & Deterministic Safety Reporting
+> **Ranh giới:** Nhận đầu vào có cấu trúc `CvOutput` $\rightarrow$ Chuẩn hóa $\rightarrow$ Truy xuất ứng viên $\rightarrow$ Chấm điểm IDF $\rightarrow$ Safety Gate $\rightarrow$ Ánh xạ Hoạt chất $\rightarrow$ Kiểm tra DDI & Trùng lặp $\rightarrow$ Grounded Context $\rightarrow$ Báo cáo theo rule
+
+> **Trạng thái runtime hiện tại:** chỉ chạy formatter deterministic với `LLM_PROVIDER=fallback`. Không gọi Gemini hay bất kỳ LLM/API bên ngoài nào. Tên file, class, schema `llm_*` là legacy compatibility trong source hiện có.
 
 
 ---
@@ -20,7 +22,7 @@ Module bắt đầu hoạt động ngay sau khi nhận được dữ liệu JSON
   6. Ánh xạ sản phẩm thuốc sang danh mục hoạt chất chuẩn hóa (`ddi_lookup_service.py`).
   7. Kiểm tra trùng lặp hoạt chất (Therapeutic Duplication) và tra cứu tương tác thuốc DDI từ cơ sở dữ liệu (`interaction_service.py`).
   8. Tổng hợp bối cảnh y khoa chuẩn xác (`context_builder.py`).
-  9. Sinh báo cáo an toàn y tế Tiếng Việt định dạng 3 phần với Banner 4 cấp độ cảnh báo (`llm_report_generator.py`).
+  9. Format báo cáo an toàn y tế Tiếng Việt định dạng 3 phần với Banner 4 cấp độ cảnh báo theo rule cố định (`llm_report_generator.py`).
   10. Hỗ trợ luồng can thiệp thủ công từ người dùng đối với các viên thuốc chưa nhận diện được (`manual_identify`).
 
 ---
@@ -59,8 +61,8 @@ flowchart TD
     I --> L
     C1 --> L
     
-    L --> M["9. LLM Report Generator<br/>(llm_report_generator.py)"]
-    M --> M1["Gemini REST API / Fallback Formatter"]
+    L --> M["9. Deterministic Report Formatter<br/>(llm_report_generator.py)"]
+    M --> M1["Rule-based formatter (fallback-deterministic-v0)"]
     M1 --> N["RagReportResponse<br/>(Báo cáo lâm sàng 3 phần chuẩn y khoa)"]
 ```
 
@@ -121,9 +123,9 @@ Phân loại kết quả vào 4 trạng thái rõ ràng:
 ### 3.7. Đóng gói Bối cảnh Y khoa (`src/pill_safety/rag/reporting/context_builder.py`)
 - Tổng hợp `identified_drugs`, `unresolved_pills` (kèm lý do và hành động yêu cầu), `interactions`, `duplicate_ingredient_warnings`, `scope_warnings` (`only_identified_drugs_checked`, `no_interaction_found_does_not_mean_safe`) và bảng danh mục nguồn trích dẫn y khoa đã khử trùng lặp (`sources`).
 
-### 3.8. Sinh Báo cáo Y khoa & Cơ chế Dự phòng (`src/pill_safety/rag/reporting/llm_report_generator.py`)
-- **Provider chính (`GeminiLlmProvider`):** Gọi trực tiếp REST API của Google Gemini với System Prompt nghiêm ngặt (Zero Hallucination for Pairs, cấm tự tạo tương tác ngoài context).
-- **Provider dự phòng (`FallbackLlmProvider`):** Bộ tạo báo cáo tất định dựa trên mã nguồn Python thuần túy, hoạt động hoàn hảo khi không có internet hoặc thiếu API key.
+### 3.8. Format Báo cáo Y khoa theo Rule (`src/pill_safety/rag/reporting/llm_report_generator.py`)
+- **Runtime đang dùng (`FallbackLlmProvider`):** Bộ formatter tất định bằng Python thuần túy. Nó map DDI severity, duplicate-ingredient warning, identified/unresolved pills và source records thành banner, chi tiết tương tác, khuyến nghị, disclaimer theo format cố định.
+- **Không dùng LLM:** Không cấu hình `GeminiLlmProvider`, không cần API key, không gửi context ra dịch vụ bên ngoài. `LLM_PROVIDER=fallback` chỉ là tên cấu hình legacy để chọn formatter này.
 - **Cấu trúc Báo cáo 3 phần chuẩn y khoa:**
   - **Banner mức độ cảnh báo:**
     - `[🔴 MỨC ĐỘ BÁO ĐỘNG: CỰC KỲ NGUY HIỂM]`

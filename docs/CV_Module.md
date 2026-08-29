@@ -5,10 +5,10 @@
 MVP xây dựng một hệ thống hỗ trợ nhận diện nhiều viên thuốc trong một ảnh và cảnh báo tương tác thuốc dựa trên dữ liệu có nguồn. Hệ thống được chia thành hai module lớn:
 
 1. **Computer Vision Module (CV)**  
-   Nhận ảnh đầu vào, phát hiện từng viên thuốc, tách mask/crop và trích xuất metadata thị giác: `shape`, `color`, `dosage_form`, `scoreline`, `imprint`, confidence và quality flags.
+   Nhận ảnh đầu vào, phát hiện từng viên thuốc, tách mask/crop và trích xuất metadata thị giác: `shape`, `color`, `imprint`, `scoreline`, confidence và quality flags. `dosage_form` hiện chỉ là placeholder chưa được model Attribute dự đoán.
 
-2. **Retrieval/RAG Module**  
-   Nhận metadata từ CV, truy xuất ứng viên thuốc trong database có cấu trúc, xếp hạng candidate, chuẩn hóa hoạt chất, tra cứu tương tác thuốc và dùng LLM để trình bày báo cáo có căn cứ.
+2. **Retrieval, DDI and Reporting Module**
+   Nhận metadata từ CV, truy xuất ứng viên thuốc trong database có cấu trúc, xếp hạng candidate, chuẩn hóa hoạt chất, tra cứu tương tác thuốc và format báo cáo theo rule có sẵn.
 
 Ranh giới trách nhiệm:
 
@@ -16,15 +16,15 @@ Ranh giới trách nhiệm:
 CV Module
     → Chỉ mô tả viên thuốc nhìn thấy như thế nào.
 
-Retrieval/RAG Module
+Retrieval/DDI/Reporting Module
     → Dùng metadata thị giác để truy xuất thuốc có thể tương ứng,
-      kiểm chứng candidate, lấy dữ liệu dược học và tạo báo cáo.
+      kiểm chứng candidate, lấy dữ liệu dược học và tạo báo cáo deterministic.
 ```
 
 Nguyên tắc an toàn:
 
 - CV không tự kết luận tên thuốc.
-- LLM không tự đoán tên thuốc từ kiến thức nền.
+- Report formatter không được tự thêm tên thuốc, hoạt chất, DDI hoặc khuyến nghị ngoài context đã kiểm chứng.
 - Việc định danh thuốc phải qua structured retrieval, không qua suy luận tự do.
 - Hệ thống không buộc phải nhận diện mọi viên thuốc.
 - Khi bằng chứng không đủ, trả `ambiguous`, `unknown`, `insufficient_visual_evidence` hoặc yêu cầu ảnh bổ sung.
@@ -378,7 +378,7 @@ CV: segmentation từng instance
     ↓
 CV: crop + alignment + mask
     ↓
-CV: shape + color + dosage form + imprint candidates + confidence
+CV: shape + color + imprint candidates + scoreline + confidence
     ↓
 Structured visual metadata JSON
     ↓
@@ -390,7 +390,7 @@ Drug metadata + ingredient normalization
     ↓
 DDI structured lookup
     ↓
-LLM trình bày báo cáo từ context đã truy xuất
+Deterministic formatter trình bày báo cáo từ context đã kiểm chứng
 ```
 
 ---
@@ -434,7 +434,7 @@ Mục tiêu:
 - Đếm số instance viên thuốc.
 - Tạo bounding box.
 - Tạo binary mask riêng cho từng instance.
-- Tách các viên tiếp xúc hoặc chồng lấp một phần.
+- Phát hiện các viên tiếp xúc hoặc chồng lấp một phần do model instance segmentation tách được.
 - Tạo crop đã tách nền để phục vụ attribute recognition và OCR.
 
 Model đề xuất:
@@ -461,8 +461,10 @@ Segmentation quality gate cần kiểm tra:
 - Mask quá nhỏ hoặc quá lớn bất thường.
 - Mask bị phân mảnh thành nhiều component.
 - Mask có khả năng gộp hai viên vào một instance.
-- Contour có lõm mạnh, area/bbox ratio bất thường hoặc shape không nhất quán với crop.
-- Object có khả năng không phải thuốc hoặc viên nang.
+- Mask chạm biên ảnh nguồn.
+- Object có khả năng không phải thuốc theo confidence/diện tích của instance.
+
+YOLO là thành phần chịu trách nhiệm tách instance. Post-processing hiện tại chỉ giữ component hợp lệ, gắn cờ `possible_merged_instance` bằng số component/solidity và không thực hiện thuật toán tách một mask đã gộp thành nhiều viên.
 
 Output instance segmentation:
 
@@ -476,27 +478,28 @@ Output instance segmentation:
     "possible_merged_instance": false,
     "possible_non_pill": false
   },
-  "mask_path": "outputs/pill_001_clean_mask.png",
-  "color_crop_path": "outputs/pill_001_color_crop.png",
-  "shape_crop_path": "outputs/pill_001_shape_crop.png",
-  "ocr_crop_path": "outputs/pill_001_ocr_crop.png",
-  "crop_path": "outputs/pill_001_color_crop.png",
+  "mask_path": "outputs/masks/req_001/img_001/pill_001_clean_mask.png",
+  "color_crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
+  "shape_crop_path": "outputs/crops/req_001/img_001/pill_001_shape_crop.png",
+  "ocr_crop_path": "outputs/crops/req_001/img_001/pill_001_ocr_crop.png",
+  "crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
   "quality_flags": ["minor_glare"]
 }
 ```
 
-Crop preparation:
+Crop preparation hiện tại:
 
-- `mask_path` là clean mask, không dilation.
-- `color_crop_path` dùng clean mask trên nền xám cố định.
-- `shape_crop_path` dùng mask dilation làm foreground và vùng bbox mở rộng để bù phần viền YOLO cắt thiếu.
-- `ocr_crop_path` dùng clean mask có margin, không dilation foreground.
+- `mask_path` là clean mask, đồng bộ với crop cho color/OCR; không dùng dilation làm foreground mask.
+- Crop nguồn bắt đầu từ bbox đã nới bằng `bbox_padding_ratio`.
+- `color_crop_path` có thể được xoay theo PCA khi `align_long_axis=true`. Mask được erosion chỉ để xác định ROI ổn định; ảnh render cuối vẫn dùng clean mask trên nền xám cố định, nên pixel nền không đi vào color classifier.
+- `ocr_crop_path` dùng clean mask với margin trên cùng base crop đã căn chỉnh. OCR tự thêm padding median 5% trước khi chạy các biến thể `original`, `clahe`, `blackhat`, `blackhat_bold`.
+- `shape_crop_path` giữ nguyên orientation từ ảnh nguồn. Dilation chỉ mở rộng vùng lấy RGB để bù viền mask bị cắt; ảnh shape là ROI RGB không mask trên canvas vuông nền xám, không dùng dilation làm foreground và không xoay.
 - `crop_path` giữ tương thích ngược và trỏ tới `color_crop_path`.
-- Resize về kích thước chuẩn.
-- Căn chỉnh theo trục chính của contour bằng PCA hoặc minimum-area rectangle.
-- Tạo các biến thể ảnh: `crop_rgb`, `crop_masked_rgb`, `crop_gray`, `crop_clahe`, `crop_gamma_corrected`, `crop_adaptive_threshold`, `crop_sharpened`.
+- Mọi task crop được đặt vào canvas vuông rồi resize, giữ aspect ratio của viên thuốc.
 
-Lưu ý: alignment theo trục dài không có nghĩa là chữ imprint đã đúng hướng. Nhánh OCR vẫn phải thử nhiều góc xoay.
+Các tham số runtime được đọc từ `configs/inference/segmentation.yaml`; cấu hình hiện tại dùng `bbox_padding_ratio: 0.20`, `crop_mask_dilation_ratio: 0.02`, `color_mask_erosion_ratio: 0.4`, `crop_size: 640`, `crop_background_value: 127`. Các biến thể OCR và debug artifacts được tạo trong Module 3, không phải các output crop công khai của Module 1.
+
+Lưu ý: alignment cho color/OCR không có nghĩa là chữ imprint đã đúng hướng. Nhánh OCR vẫn phải thử nhiều góc xoay.
 
 Nếu `possible_merged_instance = true`, backend không được dùng crop đó để `identified` trừ khi có bằng chứng bổ sung rất mạnh. Trạng thái ưu tiên là `partial_features` hoặc `insufficient_visual_evidence`.
 
@@ -546,39 +549,37 @@ Loss của model hiện tại:
 ```text
 loss =
   λ_shape * CE(shape)
-+ λ_color * CE_or_BCE(color)
++ λ_color * BCEWithLogits(color)
 ```
 
-Shape labels MVP:
+Shape labels của artifact Attribute hiện tại:
 
 ```text
-round
-oval
-oblong
 capsule
-rectangle
-triangle
-diamond
-other
+irregular
+oval
+polygon
+round
 ```
 
-Color labels MVP:
+Color labels của artifact Attribute hiện tại:
 
 ```text
-white
-red
+black
 blue
-green
-yellow
-orange
-pink
 brown
 gray
-black
+green
+orange
+pink
 purple
-multi_color
-unknown
+red
+turquoise
+white
+yellow
 ```
+
+Shape là softmax: pipeline trả top-1 và tối đa hai alternatives. Color là multi-label sigmoid với calibrated per-class thresholds. `unknown` không phải class train; nó được xuất ra khi không có color nào vượt threshold.
 
 Color constancy:
 
@@ -597,7 +598,7 @@ Output attribute:
     "label": "oval",
     "confidence": 0.91,
     "alternatives": [
-      {"label": "oblong", "confidence": 0.07}
+      {"label": "round", "confidence": 0.07}
     ]
   },
   "color": {
@@ -989,8 +990,8 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
       "side_hint": "unknown",
       "cv_status": "features_ready",
       "bbox_xyxy": [142, 93, 326, 248],
-      "mask_path": "outputs/pill_001_mask.png",
-      "crop_path": "outputs/pill_001_crop.png",
+      "mask_path": "outputs/masks/req_2026_001/img_001/pill_001_clean_mask.png",
+      "crop_path": "outputs/crops/req_2026_001/img_001/pill_001_color_crop.png",
       "segmentation": {
         "confidence": 0.96,
         "occlusion_estimate": 0.18,
@@ -1001,7 +1002,7 @@ API contract giữa CV và Retrieval/RAG chỉ chứa bằng chứng thị giác
         "label": "oval",
         "confidence": 0.91,
         "alternatives": [
-          {"label": "oblong", "confidence": 0.07}
+          {"label": "round", "confidence": 0.07}
         ]
       },
       "color": {
@@ -1128,7 +1129,7 @@ unknown_object
 
 ---
 
-## 4. Retrieval/RAG Module
+## 4. Retrieval, DDI and Reporting Module
 
 Retrieval/RAG Module nhận metadata thị giác từ CV và thực hiện:
 
@@ -1137,21 +1138,21 @@ Retrieval/RAG Module nhận metadata thị giác từ CV và thực hiện:
 3. Drug metadata retrieval.
 4. Drug normalization.
 5. DDI structured lookup.
-6. Grounded LLM report generation.
+6. Deterministic safety report formatting.
 
-Tên Retrieval/RAG không có nghĩa LLM đoán tên thuốc. Bên trong module phải có structured retrieval layer rõ ràng:
+Package source vẫn dùng tên `rag`, nhưng runtime hiện tại không dùng LLM. Bên trong module có structured retrieval và report formatter rõ ràng:
 
 ```text
 Structured Retrieval Layer
     → matching, lookup, ranking, validation
 
-LLM Layer
-    → chỉ diễn giải kết quả retrieval đã có nguồn
+Deterministic Reporting Layer
+    → format context đã kiểm chứng bằng severity mapping và rule cố định
 ```
 
 ### 4.1. Imprint Candidate Retrieval
 
-Retrieval không để LLM tự quyết định search theo gì. Structured retrieval code phải có quy trình cố định. Điểm quan trọng nhất:
+Structured retrieval có quy trình cố định, không có thành phần nào tự quyết định search theo suy luận tự do. Điểm quan trọng nhất:
 
 ```text
 Imprint dùng để tạo shortlist.
@@ -1479,7 +1480,7 @@ Schema mẫu:
 
 Quy tắc:
 
-- Không dùng LLM suy đoán hoạt chất từ tên gần giống.
+- Không suy đoán hoạt chất từ tên gần giống.
 - Không gộp các sản phẩm khác hàm lượng.
 - Nếu không xác định được strength, trả `strength_unknown`.
 - Mọi metadata cần giữ `source_id`, `source_version` và `last_updated`.
@@ -1510,7 +1511,7 @@ Duplicate ingredient:
 - Hai sản phẩm khác tên thương mại nhưng cùng hoạt chất cần tạo cảnh báo `duplicate_ingredient`.
 - Không chỉ dựa vào DDI pair thông thường.
 
-DDI lookup phải dùng dữ liệu có cấu trúc như relational database, graph database hoặc API đã xác minh. Không dùng vector search hoặc LLM làm nguồn kết luận DDI chính.
+DDI lookup phải dùng dữ liệu có cấu trúc như relational database, graph database hoặc API đã xác minh. Không dùng vector search hay report formatter làm nguồn kết luận DDI.
 
 DDI schema:
 
@@ -1533,9 +1534,9 @@ Quy tắc an toàn:
 - MVP nên trả `no_interaction_found_in_current_database`, không trả `interaction_absent`.
 - `probable_match`, `ambiguous`, `unknown` và `insufficient_visual_evidence` không được dùng cho kết luận DDI chắc chắn.
 
-### 4.5. Grounded LLM Report
+### 4.5. Deterministic Safety Report
 
-LLM chỉ nhận context đã được retrieval và validation.
+Formatter chỉ nhận context đã được retrieval và validation; không gọi LLM/API bên ngoài.
 
 Context gồm:
 
@@ -1547,15 +1548,14 @@ Context gồm:
 - Nguồn dữ liệu và thời điểm cập nhật.
 - Các giới hạn và cảnh báo.
 
-Strict prompt:
+Deterministic rules:
 
 ```text
-Bạn là module trình bày dữ liệu y tế.
-Chỉ sử dụng dữ liệu trong CONTEXT.
-Không bổ sung tên thuốc, hoạt chất, mức độ tương tác hoặc khuyến nghị ngoài CONTEXT.
-Nếu dữ liệu thiếu, hãy nói rõ hệ thống chưa đủ bằng chứng.
-Không khuyên người dùng tự ngừng hoặc thay đổi liều thuốc.
-Luôn khuyến nghị xác nhận với bác sĩ hoặc dược sĩ khi có cảnh báo nghiêm trọng hoặc nhận diện chưa chắc chắn.
+Tính severity cao nhất từ DDI records; duplicate ingredient có thể nâng mức cảnh báo theo rule.
+Chỉ hiển thị thuốc đã identified và các unresolved pills có required action.
+Lấy clinical risk, management, alternative và source từ DDI record đã truy xuất.
+Map severity sang banner và action list đã định nghĩa trước.
+Luôn thêm disclaimer; không tự thêm tên thuốc, hoạt chất, DDI hoặc lời khuyên ngoài context.
 ```
 
 Cấu trúc báo cáo:
@@ -1767,12 +1767,11 @@ Trong MVP, so sánh YOLOv11-Seg với YOLOv8-Seg là đủ để chứng minh l�
 
 Attribute metrics:
 
-- Shape: macro F1, per-class recall, confusion giữa `oval`, `oblong`, `capsule`.
-- Color: macro F1, primary/secondary accuracy, performance theo lighting condition.
-- Dosage form: accuracy và macro F1 cho `tablet`, `capsule`, `softgel`, `unknown`.
-- Scoreline head: chỉ benchmark như attribute evidence phụ nếu model vẫn giữ head này; không dùng để thay quyết định Hough nội bộ của OCR baseline.
-- Imprint visibility: precision/recall/F1.
-- Quality flags: precision/recall cho blur, glare, occlusion, possible merged instance và possible non-pill.
+- Shape: macro F1, per-class recall và confusion matrix cho `capsule`, `irregular`, `oval`, `polygon`, `round`.
+- Color: macro F1 theo 12 class đã train và per-class precision/recall; đánh giá thêm theo lighting condition nếu benchmark có nhãn điều kiện sáng.
+- Không báo cáo dosage form hoặc scoreline như metric của Attribute hiện tại: hai head này không tồn tại trong checkpoint. Scoreline thuộc OCR/Hough consensus.
+- Imprint visibility: precision/recall/F1 của OCR.
+- Quality flags: precision/recall cho các cờ thực sự được sinh bởi pipeline, gồm blur/glare/lighting và possible merged/non-pill khi có ground truth tương ứng.
 
 OCR metrics:
 
@@ -1888,7 +1887,7 @@ ambiguous_rate
 unknown_rate
 ddi_pair_recall_on_identified_set
 duplicate_ingredient_detection_accuracy
-report_groundedness
+report_rule_coverage
 ```
 
 End-to-end benchmark phải báo cáo riêng:

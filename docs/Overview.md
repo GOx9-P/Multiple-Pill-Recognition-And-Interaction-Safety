@@ -1,15 +1,15 @@
 # Project Report
 
 
-**EN:** Recognizing Multiple Pills and Drug Interactions Using YOLOv8-Seg and LLM-RAG on Python for Medication Safety  
-**VN:** Nhận diện Đa dược và Cảnh báo Tương tác thuốc sử dụng YOLOv8-Seg và LLM-RAG trên Python cho An toàn Dược lâm sàng
+**EN:** Recognizing Multiple Pills and Drug Interactions Using YOLOv11-Seg, Structured Retrieval, and Rule-Based Reporting
+**VN:** Nhận diện Đa dược và Cảnh báo Tương tác thuốc sử dụng YOLOv11-Seg, Truy xuất có cấu trúc và Báo cáo theo luật
 
 ---
 
 ## 1. Abstract
-Polypharmacy là nguyên nhân hàng đầu dẫn đến các sự cố y khoa liên quan đến Drug-Drug Interactions (DDI), đặc biệt ở người cao tuổi. Dự án này đề xuất một Hybrid AI Architecture kết hợp sức mạnh của Computer Vision và Natural Language Processing.
+Polypharmacy là nguyên nhân hàng đầu dẫn đến các sự cố y khoa liên quan đến Drug-Drug Interactions (DDI), đặc biệt ở người cao tuổi. Dự án này kết hợp Computer Vision, truy xuất dữ liệu có cấu trúc và báo cáo theo luật xác định.
 
-Để giải quyết đồng thời thách thức về môi trường chồng lấp phức tạp (Occlusion) và độ đa dạng chủng loại thuốc (>100 nhãn), khối Thị giác được thiết kế theo kiến trúc **Decoupled Vision Pipeline**: kết hợp mô hình Class-Agnostic Instance Segmentation (**YOLO11-Seg**) để định vị và bóc tách viền thực thể (`Foreground Mask`), tiếp nối bởi mạng **Fine-grained Pill Classifier** để phân loại chính xác mã định danh thuốc. Sau đó, dữ liệu đầu ra được chuẩn hóa thành cấu trúc văn bản và đưa vào **LLM** kết hợp kỹ thuật **RAG** để truy xuất cơ sở dữ liệu y khoa chuẩn, nhằm sinh ra các khuyến cáo lâm sàng chính xác bằng ngôn ngữ tự nhiên. Phương pháp này giải quyết triệt để rủi ro Hallucination của LLM trong y khoa, đồng thời đảm bảo yêu cầu Real-time Inference.
+Để giải quyết đồng thời thách thức về môi trường chồng lấp phức tạp (Occlusion) và độ đa dạng chủng loại thuốc (>100 nhãn), khối Thị giác được thiết kế theo kiến trúc **Decoupled Vision Pipeline**: kết hợp mô hình Class-Agnostic Instance Segmentation (**YOLOv11-Seg**) để định vị và bóc tách viền thực thể (`Foreground Mask`), mạng ResNet-18 đa nhiệm để nhận diện thuộc tính quan sát được (`shape`, `color`), và PaddleOCR để lấy bằng chứng imprint/scoreline. Tầng retrieval kết hợp các bằng chứng này với database để xếp hạng và xác nhận định danh thuốc. Báo cáo an toàn sau cùng được formatter deterministic tạo từ context đã kiểm chứng, theo format và rule có sẵn; không gọi mô hình ngôn ngữ và không tự sinh thêm dữ kiện. Quy trình giữ kết quả chưa chắc chắn ở trạng thái review thay vì coi là một định danh thuốc.
 
 ---
 
@@ -19,7 +19,7 @@ Polypharmacy là nguyên nhân hàng đầu dẫn đến các sự cố y khoa l
 **Limitations of Existing Approaches:**
 1. Các mô hình Traditional Bounding Box Object Detection gặp sai số lớn (False Positives/False Negatives) khi các viên thuốc có hiện tượng chồng lấp (Occlusion / Overlap).
 2. Việc sử dụng một mô hình Single-stage duy nhất vừa bóc tách vừa phân loại hàng trăm loại thuốc trong môi trường thực tế dễ bị suy giảm độ chính xác và khó mở rộng nhãn mới.
-3. Các LLM (như GPT-4, Llama) có năng lực lý luận tốt nhưng thiếu căn cứ y khoa chuẩn xác, dễ phát sinh Hallucination nếu hoạt động độc lập.
+3. Báo cáo an toàn phải bị ràng buộc bởi dữ liệu retrieval/DDI đã kiểm chứng, không được bổ sung dữ kiện hoặc suy luận tự do ngoài context.
 
 **Project Objectives:** Thiết kế kiến trúc **Decoupled Vision-Reasoning** cho phép người dùng chỉ cần chụp một bức ảnh RGB đơn lẻ các viên thuốc, hệ thống sẽ tự động định danh chính xác từng viên và đưa ra khuyến cáo y khoa an toàn.
 
@@ -32,7 +32,7 @@ Phiên bản hiện tại gồm các phần đã có code chạy được:
 | Phần | Tài liệu chi tiết | Ghi chú |
 |---|---|---|
 | Computer Vision pipeline | `docs/CV_Module.md`, `docs/schema.md` | YOLOv11 segmentation, ResNet-18 shape/color, PaddleOCR imprint/scoreline evidence. |
-| Retrieval/RAG identification | `docs/retrieval.md`, `docs/LLM_Module_Architecture_Blueprint.md` | Imprint-first retrieval, IDF-weighted evidence scoring, Safety Gate với tuned thresholds hiện tại. |
+| Retrieval, DDI, and reporting | `docs/retrieval.md`, `docs/schema.md` | Imprint-first retrieval, IDF-weighted evidence scoring, Safety Gate và formatter deterministic theo rule hiện tại. |
 | Clinical UI workspace | `docs/UI_Workspace.md` | Streamlit workspace cho upload/camera, image overlay, medication cards, retake/manual confirm, DDI highlight và report download. |
 | Demo deployment notebook | `docs/Deployment_Notebook.md` | Colab/Kaggle notebook clone nhánh `tune_rag`, cài Paddle GPU có retry/smoke test, tải Kaggle artifacts, seed SQLite và mở Cloudflare tunnel. |
 

@@ -4,19 +4,16 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
 
 ---
 
-## 1. System Input
+## 1. Single-image CV Request
+
+Entrypoint CV hiện tại chạy một ảnh cho mỗi request. Với nhiều ảnh, client tạo một request độc lập cho từng ảnh; `side_hint` không nằm trong input contract của runner.
 
 ```json
 {
   "request_id": "req_001",
   "session_id": "sess_001",
-  "images": [
-    {
-      "image_id": "img_001",
-      "image_path": "data/benchmark/real_world/sample_001.jpg",
-      "side_hint": "unknown"
-    }
-  ]
+  "image_id": "img_001",
+  "image_path": "data/benchmark/real_world/sample_001.jpg"
 }
 ```
 
@@ -53,11 +50,11 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
       "instance_id": "pill_001",
       "instance_token": "pill_token_001",
       "bbox_xyxy": [142, 93, 326, 248],
-      "mask_path": "outputs/masks/pill_001_clean_mask.png",
-      "color_crop_path": "outputs/crops/pill_001_color_crop.png",
-      "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
-      "ocr_crop_path": "outputs/crops/pill_001_ocr_crop.png",
-      "crop_path": "outputs/crops/pill_001_color_crop.png",
+      "mask_path": "outputs/masks/req_001/img_001/pill_001_clean_mask.png",
+      "color_crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
+      "shape_crop_path": "outputs/crops/req_001/img_001/pill_001_shape_crop.png",
+      "ocr_crop_path": "outputs/crops/req_001/img_001/pill_001_ocr_crop.png",
+      "crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
       "segmentation": {
         "confidence": 0.96,
         "occlusion_estimate": 0.12,
@@ -69,6 +66,8 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
   ]
 }
 ```
+
+`mask_path` là clean mask được căn cùng color/OCR crop. Shape dùng RGB ROI riêng; dilation chỉ mở rộng vùng lấy ROI, không tạo foreground mask mới cho shape classifier.
 
 ---
 
@@ -83,10 +82,10 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
   "image_id": "img_001",
   "instance_id": "pill_001",
   "instance_token": "pill_token_001",
-  "crop_path": "outputs/crops/pill_001_color_crop.png",
-  "color_crop_path": "outputs/crops/pill_001_color_crop.png",
-  "shape_crop_path": "outputs/crops/pill_001_shape_crop.png",
-  "mask_path": "outputs/masks/pill_001_clean_mask.png"
+  "crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
+  "color_crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
+  "shape_crop_path": "outputs/crops/req_001/img_001/pill_001_shape_crop.png",
+  "mask_path": "outputs/masks/req_001/img_001/pill_001_clean_mask.png"
 }
 ```
 
@@ -103,7 +102,7 @@ Tài liệu này chỉ định nghĩa input và output giữa các module.
     "label": "oval",
     "confidence": 0.91,
     "alternatives": [
-      {"label": "oblong", "confidence": 0.07}
+      {"label": "round", "confidence": 0.07}
     ]
   },
   "color": {
@@ -156,8 +155,8 @@ Model Attribute hiện tại chỉ có hai head đã train là `shape` và `colo
   "image_id": "img_001",
   "instance_id": "pill_001",
   "instance_token": "pill_token_001",
-  "crop_path": "outputs/crops/pill_001_ocr_crop.png",
-  "mask_path": "outputs/masks/pill_001_clean_mask.png"
+  "crop_path": "outputs/crops/req_001/img_001/pill_001_ocr_crop.png",
+  "mask_path": "outputs/masks/req_001/img_001/pill_001_clean_mask.png"
 }
 ```
 
@@ -207,17 +206,17 @@ Model Attribute hiện tại chỉ có hai head đã train là `shape` và `colo
       {
         "region_id": "region_01",
         "rotation_degrees": 180,
-        "preprocessing": "top_hat",
-        "text": "A 01",
+        "preprocessing": "blackhat_bold",
+        "text": "A O1",
         "confidence": 0.68
       }
     ],
     "normalized_candidates": [
       {
-        "text": "A 01",
+        "text": "A O1",
         "score": 0.91,
         "source": "multi_angle_consensus",
-        "evidence": ["O->0"]
+        "evidence": ["mode=full_crop", "rot=0", "rot=180", "preprocessing=clahe", "preprocessing=blackhat_bold"]
       },
       {
         "text": "A O1",
@@ -269,8 +268,8 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
       "side_hint": "unknown",
       "cv_status": "features_ready",
       "bbox_xyxy": [142, 93, 326, 248],
-      "mask_path": "outputs/masks/pill_001_mask.png",
-      "crop_path": "outputs/crops/pill_001_crop.png",
+      "mask_path": "outputs/masks/req_001/img_001/pill_001_clean_mask.png",
+      "crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
       "segmentation": {
         "confidence": 0.96,
         "occlusion_estimate": 0.12,
@@ -281,7 +280,7 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
         "label": "oval",
         "confidence": 0.91,
         "alternatives": [
-          {"label": "oblong", "confidence": 0.07}
+          {"label": "round", "confidence": 0.07}
         ]
       },
       "color": {
@@ -331,10 +330,10 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
         "confidence": 0.72,
         "normalized_candidates": [
           {
-            "text": "A 01",
+            "text": "A O1",
             "score": 0.91,
             "source": "multi_angle_consensus",
-            "evidence": ["O->0"]
+            "evidence": ["mode=full_crop", "rot=0", "rot=180", "preprocessing=clahe", "preprocessing=blackhat_bold"]
           },
           {
             "text": "A O1",
@@ -390,7 +389,7 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
         "side_hint": "unknown",
         "cv_status": "features_ready",
         "bbox_xyxy": [142, 93, 326, 248],
-        "crop_path": "outputs/crops/pill_001_crop.png",
+        "crop_path": "outputs/crops/req_001/img_001/pill_001_color_crop.png",
         "segmentation": {
           "confidence": 0.96,
           "possible_merged_instance": false,
@@ -446,10 +445,10 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
           "confidence": 0.72,
           "normalized_candidates": [
             {
-              "text": "A 01",
+              "text": "A O1",
               "score": 0.91,
               "source": "multi_angle_consensus",
-              "evidence": ["O->0"]
+              "evidence": ["mode=full_crop", "rot=0", "rot=180", "preprocessing=clahe", "preprocessing=blackhat_bold"]
             },
             {
               "text": "A O1",
@@ -608,7 +607,7 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
 
 ---
 
-## 8. Module 7 — Context Builder
+## 8. Module 7 — Report Context Builder
 
 ### Input
 
@@ -652,7 +651,7 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
 
 ---
 
-## 9. Module 8 — LLM Report
+## 9. Module 8 — Deterministic Safety Report Formatter
 
 ### Input
 
@@ -679,14 +678,10 @@ Khi fusion theo cùng `instance_token`, Module 4 phải lấy toàn bộ object 
   "request_id": "req_001",
   "session_id": "sess_001",
   "overall_severity": "major",
-  "summary": "Hệ thống phát hiện một cảnh báo tương tác mức major trong các thuốc đã nhận diện.",
-  "identified_drugs": [],
-  "unresolved_pills": [],
-  "warnings": [],
-  "recommended_actions": [
-    "Xác nhận lại kết quả với bác sĩ hoặc dược sĩ trước khi sử dụng thuốc."
-  ],
-  "disclaimer": "Kết quả chỉ có tính hỗ trợ và không thay thế tư vấn y tế chuyên môn.",
-  "sources": []
+  "provider_used": "fallback-deterministic-v0",
+  "formatted_report_text": "... báo cáo theo severity, interaction records, unresolved pills và rule có sẵn ...",
+  "structured_context": {}
 }
 ```
+
+Tên schema `llm_context_v0` và `llm_report_v0`, cùng biến môi trường `LLM_PROVIDER`, được giữ để tương thích code hiện có. Runtime hiện tại phải dùng `LLM_PROVIDER=fallback`: formatter không gọi LLM/API ngoài, chỉ ánh xạ context đã kiểm chứng thành banner, danh sách thuốc, chi tiết DDI, khuyến nghị và disclaimer theo rule cố định.

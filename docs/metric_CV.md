@@ -21,7 +21,7 @@ FN = false negative = bỏ sót
 |---|---|---|
 | Segmentation | Instance Recall | Đo có bỏ sót viên thuốc không. |
 | Segmentation | Merge Error Rate | Đo có gộp nhiều viên thành một instance không. |
-| Attribute Recognition | Macro F1 | Đo chất lượng nhận diện shape, color, dosage form, score line. |
+| Attribute Recognition | Shape Macro F1, Color Macro F1 | Đo chất lượng của đúng hai head đã train: shape và color. |
 | Imprint OCR | Candidate Recall@5 | Đo imprint đúng có còn nằm trong top 5 candidate không. |
 | Imprint OCR | Character Error Rate | Đo OCR sai bao nhiêu ký tự. |
 | CV Output | Valid JSON Rate | Đo output CV có đúng schema để module sau đọc không. |
@@ -93,9 +93,9 @@ Dùng cho module attribute recognition.
 ```text
 shape_macro_f1
 color_macro_f1
-dosage_form_macro_f1
-score_line_macro_f1
 ```
+
+`dosage_form` và `scoreline` không có head Attribute trong artifact hiện tại. `scoreline` được đánh giá trong OCR; các placeholder còn lại không được đưa vào Macro F1.
 
 Với mỗi class:
 
@@ -258,8 +258,6 @@ Metric này không đo model thông minh hay không, nhưng đo khả năng tíc
 | Segmentation | Merge Error Rate | <= 5% |
 | Attribute - Shape | Macro F1 | >= 85% |
 | Attribute - Color | Macro F1 | >= 80% |
-| Attribute - Dosage Form | Macro F1 | >= 90% |
-| Attribute - Score Line | Macro F1 | >= 75% |
 | OCR | Candidate Recall@5 | >= 85% |
 | OCR | Character Error Rate | <= 15% |
 | CV Output | Valid JSON Rate | >= 99% |
@@ -281,7 +279,7 @@ Các metric dưới đây không cần đưa vào bộ chính, chỉ dùng khi c
 Bộ metric chính nên giữ gọn:
 
 1. Segmentation: `Instance Recall`, `Merge Error Rate`
-2. Attribute Recognition: `Macro F1`
+2. Attribute Recognition: `Shape Macro F1`, `Color Macro F1`
 3. Imprint OCR: `Candidate Recall@5`, `Character Error Rate`
 4. CV Output: `Valid JSON Rate`
 

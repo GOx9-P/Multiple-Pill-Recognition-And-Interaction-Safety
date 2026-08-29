@@ -160,7 +160,7 @@ Nếu module có nhiều loss, thêm cột riêng.
 Ví dụ attribute multi-head:
 
 ```csv
-epoch,train_loss,val_loss,shape_loss,color_loss,dosage_form_loss,scoreline_loss,learning_rate,best_metric,is_best
+epoch,train_loss,val_loss,shape_loss,color_loss,learning_rate,best_metric,is_best
 ```
 
 Nếu một head chưa train, cột loss của head đó có thể bỏ hoặc để `null`.
@@ -428,7 +428,6 @@ ResNet18 pretrained ImageNet
   "frozen_backbone": true,
   "trainable_layers": ["classification_heads"],
   "tasks": ["shape", "color"],
-  "optional_tasks": ["dosage_form", "scoreline"],
   "label_mapping_file": "data/processed/nih_attribute/label_mapping.json",
   "augmentation": {
     "enabled": true,
@@ -445,8 +444,6 @@ ResNet18 pretrained ImageNet
   "metrics": {
     "shape_macro_f1": 0.86,
     "color_macro_f1": 0.81,
-    "dosage_form_macro_f1": null,
-    "scoreline_macro_f1": null,
     "overall_macro_f1": 0.835
   },
   "per_class_metrics": {
@@ -486,7 +483,7 @@ Mỗi sample nên lưu:
     "color": ["white"]
   },
   "prediction": {
-    "shape": {"label": "oblong", "confidence": 0.62},
+    "shape": {"label": "polygon", "confidence": 0.62},
     "color": {"labels": ["white", "gray"], "confidence": 0.71}
   }
 }
@@ -571,8 +568,6 @@ Dùng cùng metric với head-tune:
   "metrics": {
     "shape_macro_f1": 0.88,
     "color_macro_f1": 0.84,
-    "dosage_form_macro_f1": null,
-    "scoreline_macro_f1": null,
     "overall_macro_f1": 0.855
   },
   "comparison_to_head_tune": {

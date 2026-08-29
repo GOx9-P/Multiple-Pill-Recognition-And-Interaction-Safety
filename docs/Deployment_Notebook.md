@@ -134,9 +134,49 @@ DATABASE_URL=sqlite:///./medication.db
 LLM_PROVIDER=fallback
 ```
 
+`LLM_PROVIDER` là tên biến môi trường legacy. Giá trị bắt buộc cho demo hiện tại là `fallback`, tương ứng formatter deterministic tại chỗ; không cần API key và không gọi dịch vụ LLM bên ngoài.
+
 ---
 
-## 6. Seed database
+## 6. Chạy CV pipeline độc lập
+
+Ngoài notebook demo, pipeline CV có entrypoint một ảnh tại `inference/cv_pipeline/run_full_cv_pipeline.py`. Request phải đúng single-image contract trong `docs/schema.md`:
+
+```json
+{
+  "request_id": "req_001",
+  "session_id": "sess_001",
+  "image_id": "img_001",
+  "image_path": "data/benchmark/real_world/sample_001.jpg"
+}
+```
+
+Chạy từ repository root:
+
+```bash
+python inference/cv_pipeline/run_full_cv_pipeline.py \
+  --request requests/req_001.json \
+  --output-dir outputs
+```
+
+Tùy chọn `--segmentation-config`, `--attribute-config`, `--ocr-config`, `--pipeline-config` và `--weights` cho phép override từng config/weight mà không sửa source. Lệnh in `cv_output_v1` ra stdout và lưu artifact theo request/image:
+
+```text
+outputs/
+├── masks/<request_id>/<image_id>/<instance_id>_clean_mask.png
+├── crops/<request_id>/<image_id>/<instance_id>_{color,shape,ocr}_crop.png
+├── predictions/segmentation/<request_id>/<image_id>/segmentation_output.json
+├── predictions/attribute/<request_id>/<image_id>/<instance_id>/attribute_output.json
+├── predictions/ocr/<request_id>/<image_id>/<instance_id>/
+│   ├── <instance_id>_ocr_schema.json
+│   ├── <instance_id>_final_result.json
+│   └── <instance_id>_final_overlay.jpg
+└── predictions/cv_pipeline/<request_id>/<image_id>/cv_output.json
+```
+
+---
+
+## 7. Seed database
 
 Notebook thêm `src/` và repo root vào `sys.path`, set `PYTHONPATH`, rồi chạy:
 
@@ -155,7 +195,7 @@ Hai số này là sanity check để biết database đã có sản phẩm thu�
 
 ---
 
-## 7. Chạy Web & Mobile UI
+## 8. Chạy Web & Mobile UI
 
 Notebook dọn port cũ:
 
@@ -189,7 +229,7 @@ https://*.trycloudflare.com
 
 ---
 
-## 8. Những điểm cần giữ khi cập nhật notebook
+## 9. Những điểm cần giữ khi cập nhật notebook
 
 - Không đổi branch clone khỏi `tune_rag` nếu mục tiêu là giữ tuned RAG parameters.
 - Không cài PaddleOCR trực tiếp từ `requirements.txt` trước Paddle GPU; notebook cố ý loại `paddleocr/paddlex` khỏi requirements tạm để tránh xung đột.
