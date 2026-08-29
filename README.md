@@ -1,300 +1,366 @@
-# Multiple-Pill Recognition and Interaction Safety
+<div align="center">
 
-Project xây dựng hệ thống nhận diện nhiều viên thuốc trong một ảnh và cảnh báo tương tác thuốc dựa trên dữ liệu có kiểm chứng.
+# 💊 Pill Safety AI
 
-## Tổ Chức Folder
+### Multiple Pill Recognition & Interaction Safety Platform
 
-```text
-src/          -> code lõi có thể import lại
-training/     -> script để train/evaluate, gọi code trong src/
-inference/    -> script để chạy dự đoán ảnh mới, gọi code trong src/
-experiments/  -> kết quả từng lần train/evaluate: logs, metrics, checkpoints
-models/       -> weight chính thức được chọn để chạy inference
-outputs/      -> kết quả sinh ra khi chạy inference/demo
-docs/         -> tài liệu đồ án: report, slide, paper summary, specification
+Identify multi-pill medications, evaluate Drug-Drug Interactions (DDI), and generate grounded clinical safety reports using **Computer Vision (YOLO11-Seg + ResNet-18 + PaddleOCR)**, **IDF-weighted RAG**, and **Google Gemini**.
+
+<p>
+
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688?logo=fastapi&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.40--1.42-FF4B4B?logo=streamlit&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.2--2.6-EE4C2C?logo=pytorch&logoColor=white)
+![YOLO11-Seg](https://img.shields.io/badge/YOLO11--Seg-8.3.253-111F68)
+![ResNet-18](https://img.shields.io/badge/ResNet--18-Computer%20Vision-8B0000)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-LLM-4285F4?logo=google&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+
+</p>
+
+</div>
+
+---
+
+# 📖 Overview
+
+Polypharmacy presents significant clinical risks when multiple medications are combined in daily organizers. Visual identification of mixed or dropped pills is error-prone, and unintended co-administration of interacting drugs can cause severe adverse drug events (ADEs).
+
+**Pill Safety AI** is an AI-powered clinical decision support platform designed to identify loose medications from a single image and detect adverse drug-drug interactions:
+
+- **Decoupled Vision Pipeline**: Combines class-agnostic instance segmentation with multi-attribute classification and imprint OCR to scale seamlessly across large pharmaceutical catalogs.
+- **IDF-Weighted RAG Matching**: Ranks candidate formulations against a structured drug database using statistical rarity weighting.
+- **Grounded Clinical Reports**: Resolves active ingredients, evaluates pairwise DDI severity, and generates zero-hallucination medical advisories via Google Gemini.
+
+> **Medical Disclaimer:**  
+> This platform supports medication identification and safety review. It does **not replace** professional medical advice, diagnosis, or prescribing decisions from a qualified healthcare provider.
+
+---
+
+# ⭐ Highlights
+
+- **Decoupled Vision Architecture**: Class-agnostic YOLO11-Seg segmentation paired with ResNet-18 attribute recognition and PaddleOCR text extraction.
+- **IDF-Weighted Evidence Scoring**: Statistically balances imprint, shape, and color traits to reliably identify formulations.
+- **Clinical Safety Gate**: Enforces confidence thresholds and hard reject rules with a manual clinician override fallback.
+- **Deterministic DDI Engine**: Cross-checks active molecules pairwise across 5 severity tiers with duplicate ingredient alerts.
+- **Hallucination-Free Reporting**: Synthesizes verified clinical context into clear natural language reports using Google Gemini.
+- **Dual UI Workspace**: Features a full desktop clinical review suite and an iPhone 17 Pro Max mobile simulator in Streamlit.
+
+---
+
+# ✨ Features
+
+## 💊 Computer Vision Pipeline
+- **Instance Segmentation**: Class-agnostic YOLO11-Seg extracts pill masks and checks image quality (blur and glare).
+- **Attribute Classification**: Multi-head ResNet-18 identifies shape, color, dosage form, scoreline, and logo markers.
+- **Imprint OCR**: PaddleOCR reads and normalizes alphanumeric imprints across pill faces.
+
+---
+
+## 🧠 IDF-Weighted RAG Identification
+- **Statistical Retrieval**: Uses Inverse Document Frequency (IDF) to weight rare visual features over common ones.
+- **Safety Decisioning**: Flags detections as `identified`, `unresolved`, or `out_of_scope` to prevent false positives.
+- **Clinician Override**: Enables manual binding for damaged or ambiguous pills via API.
+
+---
+
+## ⚡ Drug-Drug Interaction (DDI) Engine
+- **Ingredient Mapping**: Translates identified medications into active chemical entities.
+- **Severity Classification**: Evaluates pairwise interactions (`contraindicated`, `major`, `moderate`, `minor`, `none`).
+- **Duplicate Alerts**: Warns against co-administering multiple pills sharing the same active molecule.
+
+---
+
+## 📋 Grounded LLM Reporting
+- **Bounded Context**: Restricts LLM generation strictly to database-verified drug and interaction facts.
+- **Actionable Summaries**: Formats medical advisories with clear severity alert banners in Vietnamese.
+
+---
+
+# 🏗️ Architecture
+
+```mermaid
+%%{init: {
+  "theme": "dark",
+  "flowchart": {
+    "curve": "basis"
+  },
+  "themeVariables": {
+    "lineColor": "#FFFFFF"
+  }
+}}%%
+
+flowchart TD
+
+    A["📷 RGB Pill Image"]
+
+    B["🔍 YOLO11-Seg<br/>Instance Segmentation<br/>+ Quality Check"]
+
+    C["🧠 ResNet-18<br/>Attribute Classification"]
+
+    D["🔤 PaddleOCR<br/>Imprint Extraction"]
+
+    E["🔗 CVPipelineAssembler<br/>Feature Fusion"]
+
+    F["📚 CandidateRetriever<br/>Database Query"]
+
+    G["📊 EvidenceScorer<br/>IDF-Weighted Scoring"]
+
+    H{"🛡️ Safety Gate<br/>Identification Decision"}
+
+    I["💊 DDI Engine<br/>Active Ingredient<br/>+ DDI Check"]
+
+    M["👨‍⚕️ Clinician<br/>Manual Override"]
+
+    J["📦 ContextBuilderService<br/>Grounded JSON Context"]
+
+    K["✨ Google Gemini<br/>Grounded LLM"]
+
+    L["📋 Clinical Safety Report<br/>Severity · Drug Summary · DDI Guidance"]
+
+
+    %% ===== FLOW =====
+
+    A --> B
+    B --> C
+    B --> D
+    C --> E
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+
+    H -->|identified| I
+    H -->|unresolved| M
+    M --> I
+
+    I --> J
+    J --> K
+    K --> L
+
+
+    %% ===== COLORS =====
+
+    classDef input fill:#00BCD4,stroke:#006064,stroke-width:5px,color:#FFFFFF;
+    classDef output fill:#00C853,stroke:#1B5E20,stroke-width:5px,color:#FFFFFF;
+
+    classDef vision fill:#E8F5E9,stroke:#43A047,stroke-width:2px,color:#1B5E20;
+
+    classDef rag fill:#FFF3E0,stroke:#FB8C00,stroke-width:2px,color:#E65100;
+
+    classDef safety fill:#E53935,stroke:#B71C1C,stroke-width:4px,color:#FFFFFF;
+
+    classDef ddi fill:#9C27B0,stroke:#4A148C,stroke-width:2px,color:#FFFFFF;
+
+    classDef llm fill:#673AB7,stroke:#311B92,stroke-width:2px,color:#FFFFFF;
+
+    classDef human fill:#FFD600,stroke:#F57F17,stroke-width:2px,color:#000000;
+
+
+    %% ===== APPLY COLORS =====
+
+    class A input;
+    class B,C,D,E vision;
+    class F,G rag;
+    class H safety;
+    class I ddi;
+    class J,K llm;
+    class M human;
+    class L output;
+
+
+    %% ===== ARROWS =====
+
+    linkStyle default stroke:#FFFFFF,stroke-width:6px;
 ```
+---
 
-Phân biệt nhanh các folder dễ nhầm:
+# ⚙️ Technology Stack
 
-| Cặp folder | Khác nhau thế nào? |
-|---|---|
-| `src/` vs `training/` | `src/` chứa logic/model/pipeline dùng lại được; `training/` chỉ chứa script chạy train/evaluate. |
-| `src/` vs `inference/` | `src/` là code lõi; `inference/` là entrypoint để load model và chạy ảnh mới. |
-| `src/.../trainers/` vs `training/` | `trainers/` là code train import được; `training/` là script chạy experiment cụ thể. |
-| `src/.../predictors/` vs `inference/` | `predictors/` là logic dự đoán import được; `inference/` là script chạy predict cho ảnh mới/demo. |
-| `training/.../evaluation/` vs `experiments/.../metrics/` | `evaluation/` là code tính metric; `metrics/` là kết quả metric đã sinh ra. |
-| `experiments/.../checkpoints/` vs `models/` | `checkpoints/` là checkpoint thô của từng lần train; `models/` chỉ chứa weight tốt nhất dùng chính thức. |
-| `experiments/` vs `outputs/` | `experiments/` lưu kết quả train/test; `outputs/` lưu kết quả khi chạy inference/demo. |
-| `data/processed/` vs `data/augmented/` | `processed/` là dữ liệu đã chuẩn hóa; `augmented/` là dữ liệu sinh thêm từ train split. |
-| `docs/` vs `src/` | `docs/` chứa tài liệu đồ án; `src/` chứa code hệ thống. |
+| Component | Technology | Purpose |
+|---|---|---|
+| **Runtime** | Python 3.11+ | Core platform runtime |
+| **Web UI** | Streamlit 1.40–1.42 | Desktop clinical suite & mobile simulator |
+| **Backend API** | FastAPI 0.115.6 / Uvicorn | High-performance REST API services |
+| **Computer Vision** | PyTorch 2.2–2.6 / Ultralytics YOLO11-Seg | Neural network segmentation & instance detection |
+| **Attribute Classification** | ResNet-18 | Pill shape, color, dosage form, scoreline & logo classification |
+| **OCR & Vision Utils** | PaddleOCR 3.0.3 / OpenCV 4.10.0 | Imprint text extraction & image quality checks |
+| **Database & ORM** | PostgreSQL 16 / SQLAlchemy 2.0 / Alembic | Relational medication database & migrations |
+| **LLM Reasoning** | Google Gemini API / Pydantic 2.9.2 | Grounded clinical report synthesis & schema validation |
+| **Infrastructure** | Docker Compose | Containerized PostgreSQL database management |
+---
 
-Frontend/Demo UI chưa được tạo ở giai đoạn này.
+# 📸 Application Preview
 
-## Môi Trường
+> Screenshots will be added in a future revision.
 
-Phiên bản Python chốt cho project:
+---
 
-```text
-Python 3.11.9
-```
+# 🚀 Getting Started
 
-Khi chạy local, ưu tiên đúng `Python 3.11.9` để đồng nhất với `.python-version`. Khi chạy trên Colab/Kaggle, chấp nhận runtime `Python 3.11.x` hoặc `Python 3.12.x`, nhưng cần kiểm tra lại version trước khi train.
+### 1. Prerequisites
+- Python `3.11+`
+- Docker and Docker Compose
+- Google Gemini API Key *(optional, for LLM report generation)*
+
+---
+
+### 2. Installation & Configuration
 
 ```bash
+# Clone the repository
+git clone <repository_url>
+cd Multiple-Pill-Recognition-And-Interaction-Safety
+
+# Create and activate virtual environment
 python -m venv .venv
-.venv\Scripts\activate
-python -m pip install --upgrade pip
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies and configure environment
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Các thư viện đã được pin trong `requirements.txt`. Nếu máy dùng GPU NVIDIA, có thể cần cài PyTorch theo CUDA tương ứng từ hướng dẫn chính thức của PyTorch, sau đó cài các thư viện còn lại trong `requirements.txt`.
+---
 
-### Colab/Kaggle
+### 3. Database Setup
 
-Trước khi chạy notebook trên Colab hoặc Kaggle, kiểm tra runtime:
+```bash
+# Start PostgreSQL via Docker Compose
+docker compose up -d postgres
 
-```python
-import sys
-import torch
-
-print(sys.version)
-print(torch.__version__)
-print(torch.cuda.is_available())
-print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
+# Apply migrations and seed standard drug datasets
+alembic upgrade head
+python -m pill_safety.database.scripts.seed
 ```
 
-Khuyến nghị:
+> **Note:** Set `DATABASE_URL=sqlite:///pill_safety.db` in `.env` to run with a local SQLite database without Docker.
 
-| Nền tảng | Cách dùng |
-|---|---|
-| Local | Dùng `Python 3.11.9` và `pip install -r requirements.txt`. |
-| Colab | Có thể dùng runtime mới, nhưng nếu cần khớp project thì cài lại package theo `requirements.txt`. |
-| Kaggle | Ưu tiên GPU T4/P100-compatible runtime; nếu PyTorch mới không nhận P100 thì cài lại PyTorch pinned trong `requirements.txt` hoặc đổi accelerator. |
+---
 
-Nếu Colab/Kaggle đã có sẵn PyTorch mới hơn và gây xung đột, cài lại PyTorch trước rồi mới cài các thư viện còn lại.
+### 4. Running the Application
 
-## Cây Thư Mục
+```bash
+# Launch Streamlit Clinical Workspace (Port 8501)
+streamlit run app.py
+
+# Launch FastAPI Backend Service (Port 8000)
+uvicorn pill_safety.api.main:app --reload
+```
+
+---
+
+# 📂 Project Structure
 
 ```text
-Multiple-Pill-Recognition-And-Interaction-Safety/
-├── configs/                                      # Cấu hình chạy hệ thống, KHÔNG chứa code model
-│   ├── training/                                 # Config cho train: epoch, batch size, lr, augmentation, split path
-│   └── inference/                                # Config cho chạy thật: weight path, threshold, OCR/RAG setting
-│
-├── data/                                         # Dữ liệu của project, thường KHÔNG commit toàn bộ lên Git
-│   ├── raw/                                      # Dữ liệu gốc tải về, giữ nguyên để có thể tái xử lý
-│   │   ├── mediseg/                              # MEDISEG gốc cho Module 1 segmentation
-│   │   └── nih_rximage/                          # NIH/RxImage gốc cho Module 2 attribute recognition
-│   ├── processed/                                # Dữ liệu đã làm sạch/convert/crop/normalize label
-│   │   ├── mediseg_yolo_segmentation/            # MEDISEG đã convert sang YOLO segmentation format
-│   │   └── nih_attribute/                        # NIH/RxImage đã crop và chuẩn hóa label attribute
-│   ├── splits/                                   # File train/val/test split, dùng để tái lập thí nghiệm
-│   │   ├── mediseg/                              # Split cho segmentation
-│   │   └── nih_attribute/                        # Split chống leakage cho attribute theo rxcui/ndc11
-│   ├── augmented/                                # Dữ liệu sinh thêm, chỉ nên sinh từ train split
-│   │   ├── mediseg/                              # Augmentation/copy-paste cho YOLOv11-Seg
-│   │   └── nih_attribute/                        # Augmentation/sim2real cho ResNet18 attribute
-│   └── benchmark/                                # Dữ liệu đánh giá ngoài dataset chính
-│       └── real_world/                           # Ảnh tự chụp để kiểm tra domain gap thực tế
-│
-├── database/                                     # Tài nguyên database cho thuốc, appearance và DDI
-│   ├── migrations/                               # SQL/migration tạo hoặc cập nhật schema
-│   └── seeds/                                    # Dữ liệu/script seed cho drug, appearance, ingredient, DDI
-│
-├── docs/                                         # Tài liệu đồ án và contract giữa các module
-│   ├── Overview.md                               # Tổng quan đề tài, mục tiêu và ứng dụng
-│   ├── CV_Module.md                              # Đặc tả kiến trúc Computer Vision module
-│   ├── RAG_Module.md                             # Đặc tả Retrieval/RAG, database, DDI và report
-│   ├── metric_CV.md                              # Metric đánh giá các module CV
-│   ├── metric_LLM.md                             # Metric đánh giá retrieval/ranking/safety
-│   ├── train_request.md                          # Yêu cầu log và artifact khi train model
-│   └── schema.md                                 # Input/output contract giữa các module
-│
-├── experiments/                                  # Kết quả của các lần train/evaluate, có thể rất lớn
-│   ├── segmentation_yolov11_full_finetune/       # Experiment cho Module 1: YOLOv11-Seg full fine-tune
-│   │   ├── checkpoints/                          # Checkpoint từng lần train: best.pt, last.pt, epoch_x.pt
-│   │   ├── logs/                                 # Log train/evaluate: loss, warning, runtime
-│   │   ├── metrics/                              # Kết quả metric đã tính: Instance Recall, Merge Error Rate
-│   │   ├── plots/                                # Biểu đồ loss/metric/threshold để đưa vào báo cáo
-│   │   └── predictions/                          # Ảnh/mask dự đoán mẫu để phân tích lỗi
-│   ├── attribute_resnet18_head_tune/             # Experiment cho Module 2a: train head ResNet18
-│   │   ├── checkpoints/                          # Checkpoint trong giai đoạn freeze backbone, train head
-│   │   ├── logs/                                 # Log train/evaluate head-tune
-│   │   ├── metrics/                              # Macro F1, loss curve, confusion matrix nếu cần
-│   │   ├── plots/                                # Biểu đồ loss, Macro F1, confusion matrix
-│   │   └── predictions/                          # Sample dự đoán shape/color/form/score_line
-│   ├── attribute_resnet18_last_blocks_finetune/  # Experiment cho Module 2b: fine-tune last blocks ResNet18
-│   │   ├── checkpoints/                          # Checkpoint sau khi unfreeze last blocks
-│   │   ├── logs/                                 # Log fine-tune với learning rate nhỏ
-│   │   ├── metrics/                              # So sánh metric với bản head-tune
-│   │   ├── plots/                                # Biểu đồ so sánh head-tune và last-blocks
-│   │   └── predictions/                          # Sample dự đoán sau fine-tune
-│   └── ocr_paddleocr_baseline/                   # Experiment cho Module 3: PaddleOCR baseline
-│       ├── logs/                                 # Log chạy OCR/evaluate OCR
-│       ├── metrics/                              # Candidate Recall@5, Character Error Rate
-│       ├── predictions/                          # OCR raw text và normalized imprint candidates
-│       └── error_cases/                          # Các case OCR sai để xem lỗi 0/O, 1/I, 5/S...
-│
-├── inference/                                    # Script chạy dự đoán thật, KHÔNG chứa training logic
-│   ├── cv_segmentation/                          # Entrypoint load YOLOv11-Seg và xuất bbox/mask/crop
-│   ├── cv_attribute/                             # Entrypoint load ResNet18 và dự đoán attribute
-│   ├── cv_ocr/                                   # Entrypoint chạy PaddleOCR và OCR normalization
-│   ├── cv_pipeline/                              # Entrypoint ghép segmentation + attribute + OCR thành CV JSON
-│   └── rag_retrieval/                            # Entrypoint retrieval, ranking, safety gate và DDI lookup
-│
-├── models/                                       # Weight chính thức dùng cho inference, copy từ checkpoint tốt nhất
-│   ├── segmentation_yolov11_full_finetune/       # Weight YOLOv11-Seg được chọn để chạy inference
-│   ├── attribute_resnet18_head_tune/             # Weight ResNet18 head-tune nếu dùng baseline
-│   ├── attribute_resnet18_last_blocks_finetune/  # Weight ResNet18 fine-tune cuối cùng nếu tốt hơn baseline
-│   └── ocr_paddleocr/                            # OCR model/config nếu có custom hoặc fine-tune
-│
-├── outputs/                                      # Kết quả sinh ra khi chạy inference/demo, có thể xóa và tạo lại
-│   ├── crops/                                    # Crop từng viên thuốc từ ảnh người dùng
-│   ├── masks/                                    # Mask segmentation dự đoán
-│   ├── predictions/                              # JSON/ảnh minh họa prediction cuối
-│   └── reports/                                  # Báo cáo nhận diện thuốc và cảnh báo tương tác thuốc
-│
-├── src/                                          # Source code chính, nơi nên viết logic thật của hệ thống
-│   └── pill_safety/                              # Python package chính của project
-│       ├── cv/                                   # Logic thị giác máy tính
-│       │   ├── segmentation/                     # Module 1: YOLOv11-Seg segmentation
-│       │   │   ├── datasets/                     # Dataset loader/format adapter cho MEDISEG
-│       │   │   ├── transforms/                   # Augmentation/resize/normalize dùng khi train/val
-│       │   │   ├── models/                       # Wrapper load YOLOv11-Seg pretrained/fine-tuned
-│       │   │   ├── trainers/                     # Logic train/full fine-tune, optimizer, scheduler
-│       │   │   ├── evaluators/                   # Logic tính metric segmentation trên val/test
-│       │   │   ├── predictors/                   # Logic predict mask/bbox cho ảnh mới
-│       │   │   ├── postprocessing/               # Lọc mask, tách instance, crop từng viên thuốc
-│       │   │   └── utils/                        # Helper riêng cho segmentation
-│       │   ├── attribute/                        # Module 2: ResNet18 attribute recognition
-│       │   │   ├── datasets/                     # Dataset loader cho NIH/RxImage crop
-│       │   │   ├── transforms/                   # Augmentation/sim2real và normalize input
-│       │   │   ├── models/                       # ResNet18 multi-head cho shape/color/form/score_line
-│       │   │   ├── trainers/                     # Logic head-tune và last-blocks fine-tune
-│       │   │   ├── evaluators/                   # Logic tính Macro F1/accuracy theo từng attribute
-│       │   │   ├── predictors/                   # Logic predict attribute cho một crop thuốc
-│       │   │   ├── postprocessing/               # Chuẩn hóa top-k attribute output sang JSON
-│       │   │   ├── labels/                       # Label mapping và label normalization
-│       │   │   └── utils/                        # Helper riêng cho attribute
-│       │   ├── ocr/                              # Module 3: imprint OCR
-│       │   │   ├── preprocessing/                # CLAHE, threshold, deglare, rotate/multi-angle crop
-│       │   │   ├── engines/                      # PaddleOCR/LLM OCR wrapper nếu thử nghiệm
-│       │   │   ├── correction/                   # OCR candidate correction: O->0, I->1, fuzzy rules
-│       │   │   ├── evaluators/                   # Logic tính CER và Candidate Recall@K
-│       │   │   ├── predictors/                   # Logic OCR một crop hoặc nhiều rotation
-│       │   │   ├── postprocessing/               # Gộp OCR observations thành candidate list
-│       │   │   └── utils/                        # Helper riêng cho OCR
-│       │   └── pipeline/                         # CV pipeline xuất structured visual metadata JSON
-│       │       ├── orchestration/                 # Điều phối segmentation -> attribute -> OCR
-│       │       ├── fusion/                        # Gộp evidence từ mask, attribute, OCR
-│       │       ├── calibration/                   # Calibrate score/confidence trước khi đưa sang RAG
-│       │       └── quality/                       # Blur/glare/occlusion quality flags
-│       ├── rag/                                  # Logic retrieval, ranking, DDI và report
-│       │   ├── retrieval/                        # Imprint-first search, fuzzy matching, candidate query
-│       │   ├── ranking/                          # Feature scoring và final candidate ranking
-│       │   ├── safety/                           # Safety gate: identified/ambiguous/unknown
-│       │   ├── ddi/                              # Ingredient mapping, DDI lookup, duplicate ingredient check
-│       │   └── reporting/                        # Context builder và grounded report formatter
-│       ├── database/                             # DB connection, repository/query layer
-│       ├── schemas/                              # Pydantic schemas cho CV output, RAG input/output, report
-│       └── utils/                                # Logging, path utils, image utils, common helpers
-│
-├── tests/                                        # Unit test và integration test
-│   ├── cv/                                       # Test segmentation/attribute/OCR/CV schema
-│   ├── rag/                                      # Test retrieval, ranking, safety gate, DDI
-│   └── integration/                              # Test end-to-end từ ảnh đầu vào đến report
-│
-├── training/                                     # Script train/evaluate, gọi lại logic trong src/
-│   ├── segmentation_yolov11_full_finetune/       # Module 1: full fine-tune YOLOv11-Seg trên MEDISEG
-│   │   ├── data_preparation/                     # Script convert/check/split data, KHÔNG train model
-│   │   ├── augmentation/                         # Script sinh augmentation, chỉ áp dụng train split
-│   │   ├── train/                                # Script chạy full fine-tune YOLOv11-Seg
-│   │   └── evaluation/                           # Code tính metric segmentation, output lưu ở experiments/.../metrics/
-│   ├── attribute_resnet18_head_tune/             # Module 2a: freeze backbone, train head ResNet18
-│   │   ├── data_preparation/                     # Script normalize label, crop, anti-leakage split NIH/RxImage
-│   │   ├── augmentation/                         # Script augmentation nhẹ cho attribute
-│   │   ├── train/                                # Script train classification heads
-│   │   └── evaluation/                           # Code tính Macro F1, output lưu ở experiments/.../metrics/
-│   ├── attribute_resnet18_last_blocks_finetune/  # Module 2b: unfreeze last blocks ResNet18
-│   │   ├── train/                                # Script fine-tune last blocks với learning rate nhỏ
-│   │   └── evaluation/                           # Code so sánh head-tune vs last-blocks fine-tune
-│   └── ocr_paddleocr_baseline/                   # Module 3: OCR baseline bằng PaddleOCR
-│       ├── preprocessing/                        # Script thử CLAHE, gamma, threshold, multi-angle OCR
-│       └── evaluation/                           # Code tính Recall@5/CER, output lưu ở experiments/.../metrics/
-│
-├── .gitignore                                    # Rule ignore data lớn, model weight, log và output runtime
-├── README.md                                     # Tài liệu cấu trúc project
-└── requirements.txt                              # Python dependencies
+.
+├── app.py                      # Streamlit application entrypoint (Desktop & Mobile)
+├── compose.yaml                # Docker Compose definition for PostgreSQL 16
+├── requirements.txt            # Pinned project dependencies
+├── .env.example                # Environment variables template
+├── configs/                    # Training and inference configurations
+├── data/                       # Datasets, splits, and benchmark test sets
+├── database_seed/              # Standard drug, appearance, and DDI seed JSONs
+├── docs/                       # Architectural specifications and evaluation protocols
+├── experiments/                # Training run checkpoints, metrics, and plots
+├── models/                     # Trained model weights (YOLO11-seg, ResNet-18, PaddleOCR)
+├── scripts/                    # Benchmark, smoke test, and tuning utilities
+├── src/
+│   └── pill_safety/            # Core application package
+│       ├── api/                # FastAPI application routes (`main.py`)
+│       ├── core/               # Configuration settings and environment loader
+│       ├── cv/                 # Computer vision subsystem (seg, attr, ocr, pipeline)
+│       ├── database/           # SQLAlchemy models, session factory, repositories
+│       ├── rag/                # RAG retrieval, ranking, DDI lookup, and reporting
+│       └── schemas/            # Pydantic data validation contracts
+├── tests/                      # Automated test suite (cv, database, rag, ui)
+└── ui/                         # Streamlit UI views, components, and styles
 ```
 
-## Tài Liệu Chính
+---
 
-| File | Nội dung |
-|---|---|
-| `docs/Overview.md` | Tổng quan bài toán, mục tiêu, phạm vi và giá trị ứng dụng của đề tài. |
-| `docs/CV_Module.md` | Thiết kế CV pipeline: segmentation, attribute recognition, imprint OCR và CV output. |
-| `docs/RAG_Module.md` | Thiết kế retrieval/ranking, database thuốc, mapping hoạt chất, DDI lookup và report. |
-| `docs/metric_CV.md` | Metric cho segmentation, attribute recognition, OCR và CV output. |
-| `docs/metric_LLM.md` | Metric cho identification, unknown rejection, ranking và safety gate. |
-| `docs/train_request.md` | Quy định log, metric, checkpoint và evidence cần lưu cho 3 training job hiện tại. |
-| `docs/schema.md` | Contract input/output giữa các module để các team làm song song không conflict. |
+# 🔥 Production Engineering Features
 
-## Quy Ước Làm Việc
+- [x] **Decoupled Vision-Reasoning Architecture** — Prevents combinatorial retraining explosion when expanding the drug catalog.
+- [x] **Strict Pydantic Contract Validation** — End-to-end type validation across all CV, RAG, and API boundaries.
+- [x] **IDF Statistical Evidence Scoring** — Dynamically balances feature weights to eliminate bias toward common shapes and colors.
+- [x] **Pre- & Post-Retrieval Safety Gates** — Intercepts low-confidence or conflicting pill predictions before reporting.
+- [x] **Zero-Hallucination Guardrails** — Constrains LLM synthesis strictly to database-verified active ingredients and DDI pairs.
+- [x] **Graceful Fallback Handling** — Dual SQLite/PostgreSQL support and offline deterministic rule-based report fallbacks.
 
-| Thành phần | Quy ước |
-|---|---|
-| `src/` | Viết logic chính ở đây để training, inference và tests import chung. |
-| `training/` | Chỉ viết script chạy một task cụ thể: prepare data, augment, train, evaluate. |
-| `inference/` | Chỉ viết script chạy dự đoán ảnh mới; không viết lại logic đã có trong `src/`. |
-| `evaluation/` | Là code tính điểm, không phải nơi lưu điểm. |
-| `experiments/.../metrics/` | Là nơi lưu điểm đã tính ra từ evaluation. |
-| `experiments/.../checkpoints/` | Lưu checkpoint theo từng lần train, có thể có nhiều file. |
-| `models/` | Chỉ lưu model/weight tốt nhất đã được chọn để dùng inference. |
-| `outputs/` | Lưu kết quả runtime khi chạy inference/demo. |
-| `docs/` | Lưu tài liệu thiết kế, paper summary, metric, report, slide và tài liệu nộp đồ án. |
+---
 
-## Luồng Làm Việc Dự Kiến
+# 🗺️ Roadmap
+chưa có
+> Future improvements will be documented here.
 
-```text
-training/
-  -> gọi logic trong src/
-  -> chuẩn bị dữ liệu
-  -> train/evaluate model
-  -> lưu logs/checkpoints/metrics vào experiments/
-  -> copy weight tốt nhất sang models/
+---
 
-inference/
-  -> gọi logic trong src/
-  -> load weight từ models/
-  -> xử lý ảnh mới
-  -> xuất crops/masks/predictions/reports vào outputs/
+# 🎯 Learning Objectives
 
-tests/
-  -> gọi logic trong src/
-  -> kiểm tra từng module và end-to-end pipeline
-```
+- **Decoupled AI System Design**: Architecting hybrid systems combining computer vision models with statistical RAG and LLMs.
+- **Multi-Task Deep Learning**: Training and deploying multi-head classification networks (ResNet-18) alongside instance segmenters (YOLO11-Seg).
+- **Statistical Evidence Retrieval**: Implementing inverse document frequency (IDF) weighting for robust entity matching.
+- **Clinical AI Safety Engineering**: Enforcing hard rejection gates and zero-hallucination prompt strategies in healthcare.
+- **Production API & Database Lifecycle**: Developing modular FastAPI services with Pydantic v2 validation, SQLAlchemy ORM, and Alembic migrations.
 
-## Ghi Chú Về Checkpoint
+---
 
-Không tạo folder `checkpoint/` ở root. Checkpoint phải nằm trong đúng experiment tương ứng:
+# 🤝 Contributing
 
-```text
-experiments/<module_name>/checkpoints/
-```
+Contributions, bug reports, and suggestions are welcome.
 
-Ví dụ:
+Before submitting a pull request:
 
-```text
-experiments/segmentation_yolov11_full_finetune/checkpoints/best.pt
-experiments/attribute_resnet18_head_tune/checkpoints/best.pt
-```
+- Follow the existing project structure and coding conventions.
+- Add or update tests when changing functionality.
+- Ensure all tests pass successfully.
 
-Sau khi chọn được weight tốt nhất, copy weight đó sang `models/` để inference dùng.
+---
 
-## Ghi Chú Về Dữ Liệu Và Model
+# 📄 License
 
-Các thư mục `data/`, `models/`, `experiments/` và `outputs/` có thể rất lớn. Khi dùng Git, nên chỉ commit cấu trúc, config mẫu hoặc sample nhỏ; dữ liệu, checkpoint và weight lớn nên được quản lý riêng.
+Chưa có
 
-`.gitkeep` được dùng để giữ các folder rỗng trên Git. Không xóa `.gitkeep` cho đến khi folder đó đã có file thật cần commit.
+---
 
-`.gitignore` ở root project đang ignore dữ liệu lớn, checkpoint, model weight, log và output runtime; code, config, schema, docs và test vẫn nên commit bình thường.
+# 👨‍💻 Author
+
+**Hehehee Team**
+
+Developed as a final project for *HCMUT EE Machine Learning & IoT Lab — Summer Courses 2026*
+
+<p align="center">
+  <a href="https://github.com/GOx9-P">
+    <img src="https://avatars.githubusercontent.com/GOx9-P" width="80" alt="GOx9-P">
+    <br>
+    <sub><b>GOx9-P</b></sub>
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/TNTruong196">
+    <img src="https://avatars.githubusercontent.com/TNTruong196" width="80" alt="TNTruong196">
+    <br>
+    <sub><b>TNTruong196</b></sub>
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/giabaots12">
+    <img src="https://avatars.githubusercontent.com/giabaots12" width="80" alt="giabaots12">
+    <br>
+    <sub><b>giabaots12</b></sub>
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/nguyenbaoquoc">
+    <img src="https://avatars.githubusercontent.com/nguyenbaoquoc" width="80" alt="nguyenbaoquoc">
+    <br>
+    <sub><b>nguyenbaoquoc</b></sub>
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/qnhi206">
+    <img src="https://avatars.githubusercontent.com/qnhi206" width="80" alt="qnhi206">
+    <br>
+    <sub><b>qnhi206</b></sub>
+  </a>
+</p>
+
