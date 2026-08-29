@@ -326,41 +326,32 @@ Chưa có
 
 ---
 
-# 👨‍💻 Author
+## 👨‍💻 Author
 
 **Hehehee Team**
 
-Developed as a final project for *HCMUT EE Machine Learning & IoT Lab — Summer Courses 2026*
+Developed as a final project for *HCMUT EE Machine Learning & IoT Lab — Summer Courses 2026.*
 
 <p align="center">
   <a href="https://github.com/GOx9-P">
-    <img src="https://avatars.githubusercontent.com/GOx9-P" width="80" alt="GOx9-P">
-    <br>
-    <sub><b>GOx9-P</b></sub>
+    <img src="https://avatars.githubusercontent.com/GOx9-P" width="80" alt="GOx9-P" style="border-radius: 50%;">
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/TNTruong196">
-    <img src="https://avatars.githubusercontent.com/TNTruong196" width="80" alt="TNTruong196">
-    <br>
-    <sub><b>TNTruong196</b></sub>
+    <img src="https://avatars.githubusercontent.com/TNTruong196" width="80" alt="TNTruong196" style="border-radius: 50%;">
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/giabaots12">
-    <img src="https://avatars.githubusercontent.com/giabaots12" width="80" alt="giabaots12">
-    <br>
-    <sub><b>giabaots12</b></sub>
+    <img src="https://avatars.githubusercontent.com/giabaots12" width="80" alt="giabaots12" style="border-radius: 50%;">
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/nguyenbaoquoc">
-    <img src="https://avatars.githubusercontent.com/nguyenbaoquoc" width="80" alt="nguyenbaoquoc">
-    <br>
-    <sub><b>nguyenbaoquoc</b></sub>
+    <img src="https://avatars.githubusercontent.com/nguyenbaoquoc" width="80" alt="nguyenbaoquoc" style="border-radius: 50%;">
   </a>
   &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/qnhi206">
-    <img src="https://avatars.githubusercontent.com/qnhi206" width="80" alt="qnhi206">
-    <br>
-    <sub><b>qnhi206</b></sub>
+    <img src="https://avatars.githubusercontent.com/qnhi206" width="80" alt="qnhi206" style="border-radius: 50%;">
   </a>
 </p>
+
 
