@@ -25,6 +25,21 @@ Polypharmacy là nguyên nhân hàng đầu dẫn đến các sự cố y khoa l
 
 ---
 
+## 3. Current Implementation Snapshot
+
+Phiên bản hiện tại gồm các phần đã có code chạy được:
+
+| Phần | Tài liệu chi tiết | Ghi chú |
+|---|---|---|
+| Computer Vision pipeline | `docs/CV_Module.md`, `docs/schema.md` | YOLOv11 segmentation, ResNet-18 shape/color, PaddleOCR imprint/scoreline evidence. |
+| Retrieval/RAG identification | `docs/retrieval.md`, `docs/LLM_Module_Architecture_Blueprint.md` | Imprint-first retrieval, IDF-weighted evidence scoring, Safety Gate với tuned thresholds hiện tại. |
+| Clinical UI workspace | `docs/UI_Workspace.md` | Streamlit workspace cho upload/camera, image overlay, medication cards, retake/manual confirm, DDI highlight và report download. |
+| Demo deployment notebook | `docs/Deployment_Notebook.md` | Colab/Kaggle notebook clone nhánh `tune_rag`, cài Paddle GPU có retry/smoke test, tải Kaggle artifacts, seed SQLite và mở Cloudflare tunnel. |
+
+Ranh giới an toàn quan trọng: chỉ thuốc có trạng thái `identified` hoặc đã được người dùng xác nhận thủ công mới được đưa vào kiểm tra DDI chắc chắn. Các trạng thái `ambiguous`, `unknown` và `insufficient_visual_evidence` phải được trình bày như cần review/chụp lại/xác nhận, không được dùng để kết luận không có tương tác.
+
+---
+
 ## 6. Practical & Commercial Applications
 
 Hệ thống **Smart Pill Identifier** mang lại giá trị ứng dụng thực tiễn sâu sắc và tiềm năng thương mại hóa lớn trong 4 lĩnh vực trọng tâm của hệ sinh thái **HealthTech**:

@@ -12,8 +12,9 @@ def draw_cv_overlay(
     image: Image.Image,
     pills: Any,
     selected_pill_id: str | None = None,
+    highlighted_pill_ids: set[str] | None = None,
 ) -> Image.Image:
-    """Return an annotated RGB image with bounding boxes, pill numbers, and selected highlight.
+    """Return an annotated image with boxes for the selected or interaction-related pills.
     
     Accepts either a list of pills or an object with a .pills attribute.
     """
@@ -24,6 +25,7 @@ def draw_cv_overlay(
     pill_list = getattr(pills, "pills", pills)
     if not isinstance(pill_list, (list, tuple)):
         pill_list = []
+    highlighted_pill_ids = highlighted_pill_ids or set()
 
     for idx, pill in enumerate(pill_list, start=1):
         # Extract bbox coordinates
@@ -45,11 +47,16 @@ def draw_cv_overlay(
 
         left, top, right, bottom = (int(val) for val in coords)
         is_selected = selected_pill_id is not None and inst_id == selected_pill_id
+        is_interaction_related = inst_id in highlighted_pill_ids
 
-        # Colors: Selected -> Bright Cyan/Teal; Normal -> Coral Red / Amber
+        # Selected pills take priority; interaction-related pills use a distinct green outline.
         if is_selected:
             box_color = (6, 182, 212, 255)  # Cyan
             fill_color = (6, 182, 212, 45)
+            line_width = 4
+        elif is_interaction_related:
+            box_color = (22, 163, 74, 255)  # Green
+            fill_color = (22, 163, 74, 65)
             line_width = 4
         else:
             box_color = (239, 68, 68, 230)  # Red / Coral

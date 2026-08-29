@@ -10,7 +10,7 @@ graph TD
     D -->|Hợp lệ| F["Bước 3: Lọc ứng viên thô<br>(Candidate Retriever)"]
     
     F --> G{"Có Imprint?"}
-    G -->|Có| H["Tìm kiếm Imprint-First<br>(Lọc độ dài SQL & Edit Distance RAM)"]
+    G -->|Có| H["Tìm kiếm Imprint-First<br>(Active DB + fuzzy RAM)"]
     G -->|Không| I["Tìm kiếm Fallback theo thuộc tính<br>(Ưu tiên bằng tổng điểm IDF)"]
     
     H --> J["Bước 4: Chấm điểm bằng chứng<br>(Evidence Scorer)"]
@@ -20,9 +20,9 @@ graph TD
     K --> L["Bước 5: Kiểm duyệt an toàn sau xếp hạng<br>(Safety Gate)"]
     
     L --> M{"Độ tin cậy & Margin?"}
-    M -->|Top-1 >= 0.85 & Margin >= 0.10| N["Trạng thái: IDENTIFIED"]
-    M -->|Top-1 >= 0.70 & Margin < 0.10| O["Trạng thái: AMBIGUOUS"]
-    M -->|Top-1 < 0.70| P["Trạng thái: UNKNOWN"]
+    M -->|Top-1 >= 0.65 & Margin >= 0.05 & Imprint >= 0.50| N["Trạng thái: IDENTIFIED"]
+    M -->|Top-1 >= 0.35 nhưng chưa đủ điều kiện identified| O["Trạng thái: AMBIGUOUS"]
+    M -->|Top-1 < 0.35 hoặc imprint không khớp DB| P["Trạng thái: UNKNOWN"]
 ```
 
 ## Mô tả chi tiết Pipeline RAG Retrieval
@@ -30,7 +30,7 @@ graph TD
 Kiến trúc xử lý của Pipeline RAG Drug Retrieval hoạt động qua các tầng lọc nâng cấp đảm bảo hiệu năng và tính an toàn cao:
 1. **Tầng Adapter (Dữ liệu đầu vào)**: Nhận kết quả JSON thô từ mô hình Computer Vision, chuẩn hóa định dạng văn bản imprint và sinh biến thể chữ khắc OCR có confusable characters để mở rộng khả năng khớp.
 2. **Tầng Gating Trước truy vấn**: Ngăn chặn chạy tốn tài nguyên hệ thống nếu ảnh quá kém hoặc vật thể chụp được không phải là thuốc.
-3. **Tầng Candidate Retrieval (SQL & RAM Hybrid)**: Tận dụng cơ sở dữ liệu để lọc nhanh theo độ dài của chữ khắc bằng hàm SQL `func.length` để tránh tải thừa dữ liệu lên RAM, kết hợp thuật toán so khớp khoảng cách chỉnh sửa OCR có phạt lỗi confusable ký tự. Trong trường hợp không có imprint, tầng này tự động chuyển đổi sang chấm điểm ưu tiên ứng viên fallback theo tổng điểm IDF thuộc tính thay thế cho thang điểm tĩnh.
+3. **Tầng Candidate Retrieval (SQL & RAM Hybrid)**: Pipeline hiện tại truy vấn các appearance đang active theo `market`, sau đó tính tương đồng imprint đa mặt trong RAM bằng `multi_aspect_imprint_similarity` với ngưỡng mặc định `0.45`. Hàm `load_active_candidates()` đã hỗ trợ lọc độ dài imprint bằng SQL `func.length`, nhưng nhánh `retrieve()` hiện chưa bật lọc độ dài này. Trong trường hợp không có imprint phù hợp, tầng này chuyển sang fallback theo `dosage_form`, `shape`, `primary_color` và sắp xếp bằng tổng điểm IDF thuộc tính.
 4. **Tầng Evidence Scorer (Chấm điểm IDF-Weighted)**: Tính toán điểm thành phần của các thuộc tính (Màu, Hình dạng, Vạch chia, Dạng bào chế...) bằng cách kết hợp: Trọng số độ hiếm IDF, Độ tự tin của mô hình CV, Độ trùng khớp đặc trưng, và Bộ nhân suy giảm do yếu tố nhiễu môi trường chụp (lóa sáng, bóng mờ).
 5. **Tầng Safety Gate (Định danh an toàn)**: Phân tích chênh lệch điểm số margin để phân loại trạng thái định danh, ngăn ngừa tuyệt đối việc nhận diện nhầm khi có hai thuốc ngoại hình gần như giống hệt nhau.
 
@@ -43,15 +43,15 @@ Bước 1: Chuẩn hóa dữ liệu đầu vào (Adapter)
 Dữ liệu thô từ mô hình Computer Vision (CV) được chuẩn hóa về định dạng nội bộ RecognitionInput:
 
 Chuẩn hóa viết hoa, loại bỏ khoảng trắng thừa và ký tự đặc biệt của chữ khắc (ví dụ: "A O1" hoặc "A;01" $\rightarrow$ "A01").
-Sinh ra thêm tối đa 5 biến thể OCR dựa trên các cặp ký tự dễ nhầm lẫn (như O <-> 0, I <-> 1, S <-> 5) kèm hệ số phạt điểm giảm dần (Ví dụ biến thể cấp 1 nhân 0.85, biến thể cấp 2 nhân 0.65).
+Sinh ra thêm tối đa 5 biến thể cho mỗi chuỗi OCR dựa trên các cặp ký tự dễ nhầm lẫn (`0/O/Q`, `1/I/L`, `5/S`, `8/B`, `2/Z`, `6/G`) kèm hệ số phạt điểm giảm dần: biến thể một lần sửa nhân `0.85`, biến thể hai lần sửa nhân `0.65`. Adapter giữ tối đa 8 imprint candidates cuối cùng sau khi gộp normalized candidates, raw OCR và OCR observations.
 Bước 2: Kiểm duyệt sớm (Pre-retrieval Gating)
 Bộ duyệt an toàn (SafetyGate) kiểm tra ảnh trước khi truy vấn cơ sở dữ liệu:
 
 Nếu phát hiện vật thể không phải thuốc (possible_non_pill = True) $\rightarrow$ Dừng ngay và trả trạng thái UNKNOWN.
 Nếu chất lượng ảnh quá tệ (cv_status = "insufficient_visual_evidence") $\rightarrow$ Dừng ngay và trả trạng thái INSUFFICIENT_EVIDENCE.
 Bước 3: Tìm kiếm ứng viên (Candidate Retrieval)
-Trường hợp có chữ khắc (Imprint-First): Hệ thống tính toán độ dài an toàn tối thiểu/tối đa của imprint. Sau đó, thực hiện câu truy vấn SQL lọc độ dài bằng hàm func.length của cơ sở dữ liệu. Bước lọc này loại bỏ nhanh hơn 80% các viên thuốc quá ngắn hoặc quá dài trước khi nạp ứng viên lên bộ nhớ RAM để tính khoảng cách sửa lỗi (weighted_edit_similarity).
-Trường hợp không có chữ khắc (Fallback): Hệ thống lọc theo dạng bào chế, hình dạng, màu sắc và sắp xếp thứ tự ưu tiên bằng tổng trọng số IDF của các thuộc tính khớp.
+Trường hợp có chữ khắc (Imprint-First): Hệ thống lấy các ứng viên active theo thị trường (`market`) và so khớp các biến thể imprint với `imprint_normalized`, `imprint_raw`, `imprint_side_a`, `imprint_side_b`. Ứng viên được giữ khi similarity tốt nhất đạt `fuzzy_threshold = 0.45`, sau đó dedupe theo `appearance_id` và giới hạn mặc định `limit = 20`.
+Trường hợp không có chữ khắc hoặc không có candidate qua ngưỡng fuzzy (Fallback): Hệ thống lọc theo dạng bào chế, hình dạng, màu sắc và sắp xếp thứ tự ưu tiên bằng tổng trọng số IDF của các thuộc tính khớp.
 Bước 4: Chấm điểm bằng chứng (Evidence Scoring)
 Hệ thống lấy danh sách ứng viên rút gọn và bắt đầu đối chiếu chi tiết từng thuộc tính (Chữ khắc, hình dạng, màu sắc chính/phụ, vạch chia, logo) với đặc trưng của ứng viên trong DB để tính điểm.
 
@@ -59,8 +59,23 @@ Bước 5: Kiểm duyệt an toàn sau xếp hạng (Safety Gate Decision)
 Sau khi sắp xếp các ứng viên theo điểm số từ cao xuống thấp:
 
 Hệ thống so sánh ứng viên Top-1 và Top-2.
-Để định danh chắc chắn (IDENTIFIED), hệ thống yêu cầu: Điểm Top-1 $\ge 0.85$, điểm khớp imprint $\ge 0.70$, không có mâu thuẫn cứng, và khoảng chênh lệch điểm số giữa Top-1 và Top-2 phải lớn hơn hoặc bằng 0.10 (margin >= 0.10). Nếu hai thuốc quá giống nhau (margin < 0.10), hệ thống sẽ trả về AMBIGUOUS (Mơ hồ) chứ không chọn bừa.
-2. Cách tính điểm chi tiết (Scoring Math)
+Để định danh chắc chắn (`identified`), hệ thống hiện yêu cầu đồng thời: `cv_status = features_ready`, có imprint khả dụng, `ocr_confidence >= 0.15`, không phải merged instance, không hard reject, `Top-1 final_score >= 0.65`, `imprint_match_score >= 0.50`, và `Top-1 - Top-2 >= 0.05`. Nếu điểm Top-1 đạt `0.35` nhưng thiếu một điều kiện an toàn, hệ thống trả `ambiguous`. Nếu có imprint khả dụng nhưng `imprint_match_score < 0.30`, hệ thống trả `unknown` với lý do `imprint_not_found_in_database`.
+
+### 2.5. Safety Gate Tuned Parameters
+
+Các tham số dưới đây là nguồn sự thật hiện tại trong `src/pill_safety/rag/ranking/safety_gate.py`:
+
+| Tham số | Giá trị | Ý nghĩa |
+|---|---:|---|
+| `identified_threshold` | `0.65` | Điểm tổng hợp tối thiểu để có thể tự động công nhận `identified`. |
+| `ambiguous_threshold` | `0.35` | Điểm Top-1 tối thiểu để giữ Top Candidates và yêu cầu review thay vì trả `unknown`. |
+| `margin_threshold` | `0.05` | Khoảng cách tối thiểu giữa Top-1 và Top-2. |
+| `imprint_threshold` | `0.50` | Điểm khớp imprint tối thiểu cho trạng thái `identified`. |
+| `minimum_ocr_confidence` | `0.15` | OCR confidence tối thiểu để coi imprint là usable. |
+
+Các tham số này được ghi chú trong code là kết quả tune thực nghiệm từ Colab Grid Search với mục tiêu cân bằng Precision, Max F1 và User Friction. UI/report không được diễn giải `final_score` như xác suất y tế; chỉ dùng nó như điểm xếp hạng nội bộ.
+
+## 2. Cách tính điểm chi tiết (Scoring Math)
 Điểm số của một ứng viên thuốc được tính toán dựa trên thông tin động (IDF) và chất lượng của ảnh chụp.
 
 2.1. Trọng số IDF (Độ hiếm của đặc trưng)

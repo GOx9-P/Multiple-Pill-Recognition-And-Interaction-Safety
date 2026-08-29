@@ -17,6 +17,8 @@ def render_visual_viewer(
     quality: ImageQualityViewModel,
     selected_pill_id: str | None,
     on_pill_selected: Callable[[str], None],
+    highlighted_pill_ids: list[str] | None = None,
+    on_clear_interaction_highlight: Callable[[], None] | None = None,
 ) -> None:
     """Render the interactive annotated image and image quality assessment."""
     st.markdown(
@@ -29,23 +31,55 @@ def render_visual_viewer(
         unsafe_allow_html=True,
     )
 
+    highlighted_pill_ids = highlighted_pill_ids or []
+    if highlighted_pill_ids:
+        medication_numbers = [
+            str(index)
+            for index, pill in enumerate(pills, start=1)
+            if pill.instance_id in highlighted_pill_ids
+        ]
+        st.info(
+            "Safety finding highlighted for medication "
+            + ", ".join(f"#{number}" for number in medication_numbers)
+            + "."
+        )
+        if on_clear_interaction_highlight is not None:
+            st.button(
+                "Clear safety highlight",
+                key="clear_interaction_highlight",
+                on_click=on_clear_interaction_highlight,
+            )
+
     # 1. Draw image with overlay
-    annotated_image = draw_cv_overlay(image, pills, selected_pill_id)
+    annotated_image = draw_cv_overlay(
+        image,
+        pills,
+        selected_pill_id,
+        highlighted_pill_ids=set(highlighted_pill_ids),
+    )
     st.image(annotated_image, use_container_width=True)
 
     # 2. Pill Index Selector (for interactive focus)
     if pills:
         options = [p.instance_id for p in pills]
+        if (
+            "select_active_pill_box" in st.session_state
+            and st.session_state.select_active_pill_box not in options
+        ):
+            del st.session_state["select_active_pill_box"]
         current_idx = options.index(selected_pill_id) if selected_pill_id in options else 0
 
-        selected_option = st.selectbox(
+        def _on_pill_selector_changed() -> None:
+            """Keep the selected overlay in sync with the dropdown before rendering."""
+            on_pill_selected(st.session_state.select_active_pill_box)
+
+        st.selectbox(
             "Selected medication:",
             options=options,
             index=current_idx,
             key="select_active_pill_box",
+            on_change=_on_pill_selector_changed,
         )
-        if selected_option != selected_pill_id:
-            on_pill_selected(selected_option)
 
     # 3. Compact Image Quality Chips
     blur_label = f"Blur: {quality.blur_score:.2f} ({'Low' if quality.blur_score < 0.3 else 'High'})"

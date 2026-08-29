@@ -35,7 +35,7 @@ flowchart TD
     C -->|Kém / Non-pill| C1["Quyết định sớm:<br/>UNKNOWN / INSUFFICIENT_EVIDENCE"]
     C -->|Hợp lệ| D["3. Candidate Retriever<br/>(candidate_retriever.py)"]
     
-    D -->|Có Imprint| D1["Pha Imprint-First: Lọc độ dài SQL<br/>+ Weighted Levenshtein trên RAM"]
+    D -->|Có Imprint| D1["Pha Imprint-First: Active DB theo market<br/>+ fuzzy matching đa mặt trên RAM"]
     D -->|Không Imprint| D2["Pha Fallback: Lọc SQL theo<br/>Form, Shape, Color + Xếp hạng IDF"]
     
     D1 --> E["4. Evidence Scorer<br/>(evidence_scorer.py)"]
@@ -43,9 +43,9 @@ flowchart TD
     
     E -->|Tính điểm IDF-Weighted đa tiêu chí<br/>+ Kiểm tra Hard Reject Dạng bào chế| F{"5. Safety Gate<br/>(safety_gate.py)"}
     
-    F -->|"P1 >= 0.85 & Margin >= 0.10"| G["Trạng thái: IDENTIFIED<br/>(Gán accepted_product)"]
-    F -->|"P1 >= 0.70 & Margin < 0.10"| H["Trạng thái: AMBIGUOUS<br/>(Cần chọn trong Top-5/chụp lại)"]
-    F -->|"P1 < 0.70 / OCR < 0.40"| I["Trạng thái: UNKNOWN<br/>(Cần nhập tên thủ công)"]
+    F -->|"P1 >= 0.65 & Margin >= 0.05 & Imprint >= 0.50"| G["Trạng thái: IDENTIFIED<br/>(Gán accepted_product)"]
+    F -->|"P1 >= 0.35 nhưng thiếu điều kiện identified"| H["Trạng thái: AMBIGUOUS<br/>(Cần chụp lại hoặc xác nhận thủ công)"]
+    F -->|"P1 < 0.35 / imprint không tìm thấy / OCR quá thấp"| I["Trạng thái: UNKNOWN<br/>(Cần nhập tên thủ công hoặc chụp lại)"]
     
     G --> J["6. Active Ingredient Mapping<br/>(Product -> ProductIngredient -> Ingredient)"]
     J --> K["7. DDI & Duplicate Engine<br/>(ddi_lookup_service.py)"]
@@ -89,10 +89,11 @@ flowchart TD
 - **Ý nghĩa:** Chữ khắc độc bản nhận trọng số tối đa $1.0$, trong khi màu trắng hoặc hình tròn phổ biến nhận trọng số $0.2$, ngăn chặn việc nhận diện sai lệch do trùng lặp màu sắc/hình dáng phổ thông.
 
 ### 3.3. Truy xuất Ứng viên Lai (`src/pill_safety/rag/retrieval/candidate_retriever.py`)
-- **Pha 1 (Imprint-First):** 
-  - Tính toán khoảng độ dài cho phép: $min\_len = \max(1, \lfloor(len+1)/2\rfloor)$, $max\_len = \max(6, len \times 2)$.
-  - Sử dụng hàm SQL `func.length(DrugAppearance.imprint_normalized)` để loại bỏ $>80\%$ bản ghi rác ngay tại database server.
-  - Tính toán độ tương đồng Levenshtein có trọng số phạt nhầm lẫn (`weighted_edit_similarity`) trên RAM cho các ứng viên còn lại, giữ lại ứng viên có điểm $\ge 0.55$.
+- **Pha 1 (Imprint-First):**
+  - Lấy các ứng viên active theo `market`.
+  - So khớp mỗi imprint candidate với `imprint_normalized`, `imprint_raw`, `imprint_side_a`, `imprint_side_b` bằng `multi_aspect_imprint_similarity`.
+  - Giữ ứng viên có similarity tốt nhất `>= 0.45`, dedupe theo `appearance_id`, rồi cắt theo `limit = 20`.
+  - `load_active_candidates()` có tham số `min_len`/`max_len` và hỗ trợ SQL `func.length`, nhưng nhánh `retrieve()` hiện chưa bật lọc độ dài này.
 - **Pha 2 (Attribute-Fallback):** Khi không có chữ khắc, lọc ứng viên theo `dosage_form`, `shape`, `primary_color` và sắp xếp theo tổng trọng số IDF.
 
 ### 3.4. Chấm điểm Bằng chứng & Bác bỏ Cứng (`src/pill_safety/rag/ranking/evidence_scorer.py`)
@@ -104,9 +105,9 @@ flowchart TD
 
 ### 3.5. Bộ Duyệt An toàn (`src/pill_safety/rag/ranking/safety_gate.py`)
 Phân loại kết quả vào 4 trạng thái rõ ràng:
-1. **`IDENTIFIED`:** $P_1 \ge 0.85$, Khoảng cách điểm $(P_1 - P_2) \ge 0.10$, Điểm khớp chữ khắc $\ge 0.70$, Không có mâu thuẫn cứng $\rightarrow$ Chấp nhận sản phẩm vào danh sách kiểm tra tương tác chắc chắn.
-2. **`AMBIGUOUS`:** $P_1 \ge 0.70$ nhưng khoảng cách $(P_1 - P_2) < 0.10$ (2 thuốc quá giống nhau) $\rightarrow$ Yêu cầu người dùng chọn từ Top-5 Dropdown hoặc chụp lại mặt sau.
-3. **`UNKNOWN`:** $P_1 < 0.70$ hoặc $\text{OCR\_Confidence} < 0.40$ $\rightarrow$ Yêu cầu người dùng gõ tìm kiếm tên thuốc thủ công qua UI.
+1. **`IDENTIFIED`:** `cv_status = features_ready`, có imprint khả dụng, `ocr_confidence >= 0.15`, không phải `possible_merged_instance`, không `hard_reject`, $P_1 \ge 0.65$, khoảng cách điểm $(P_1 - P_2) \ge 0.05$, và điểm khớp chữ khắc $\ge 0.50$ $\rightarrow$ chấp nhận sản phẩm vào danh sách kiểm tra tương tác chắc chắn.
+2. **`AMBIGUOUS`:** $P_1 \ge 0.35$ nhưng thiếu một trong các điều kiện `identified`, ví dụ margin quá nhỏ, không có imprint đủ mạnh hoặc có cảnh báo merged instance $\rightarrow$ yêu cầu người dùng chụp lại mặt rõ hơn hoặc xác nhận thủ công.
+3. **`UNKNOWN`:** Không có candidate, $P_1 < 0.35$, OCR confidence dưới `0.15`, hoặc có imprint khả dụng nhưng điểm khớp imprint `< 0.30` $\rightarrow$ yêu cầu chụp lại hoặc nhập tên/mã thuốc thủ công.
 4. **`INSUFFICIENT_EVIDENCE`:** Ảnh quá mờ hoặc phát hiện vật thể không phải thuốc.
 
 ### 3.6. Cơ chế Kiểm tra Tương tác & Trùng lặp Hoạt chất (`src/pill_safety/rag/ddi/ddi_lookup_service.py`)
@@ -143,8 +144,8 @@ Phân loại kết quả vào 4 trạng thái rõ ràng:
 | Trạng thái / Mã lỗi | Ý nghĩa lâm sàng | Hành động tiếp theo |
 |---|---|---|
 | `identified` | Thuốc được định danh chính xác với độ tin cậy cao và margin an toàn. | Đưa vào kiểm tra tương tác DDI. |
-| `ambiguous` | Có $\ge 2$ ứng viên điểm số quá sát nhau ($Margin < 0.10$). | Hiển thị Dropdown Top-5 ứng viên hoặc yêu cầu chụp mặt sau. |
-| `unknown` | Điểm số Top-1 quá thấp ($< 0.70$) hoặc OCR mờ ($< 0.40$). | Cung cấp thanh tìm kiếm tên thuốc thủ công. |
+| `ambiguous` | Top-1 đạt ngưỡng review (`>= 0.35`) nhưng chưa đủ điều kiện `identified`, thường do margin `< 0.05`, thiếu imprint usable hoặc có cảnh báo merged instance. | Yêu cầu chụp lại close-up/mặt sau hoặc xác nhận thủ công. |
+| `unknown` | Không có candidate, điểm Top-1 `< 0.35`, imprint không tìm thấy trong DB hoặc OCR confidence `< 0.15`. | Cung cấp thanh tìm kiếm tên thuốc thủ công hoặc yêu cầu chụp lại rõ hơn. |
 | `insufficient_visual_evidence` | Ảnh bị mờ, lóa sáng hoàn toàn hoặc không phải viên thuốc. | Hướng dẫn người dùng chụp lại ảnh rõ nét. |
 | `duplicate_ingredient` | Đơn thuốc chứa $\ge 2$ sản phẩm có cùng hoạt chất. | Cảnh báo mức `MAJOR` về nguy cơ quá liều độc tính. |
 | `contraindicated` | Tương tác nguy hiểm có thể đe dọa tính mạng hoặc gây tàn tật. | Cảnh báo mức `CỰC KỲ NGUY HIỂM`, đề xuất không uống đơn thuốc. |

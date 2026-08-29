@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 import streamlit as st
 
 from ..adapters.view_models import DuplicateIngredientViewModel, InteractionPairViewModel
@@ -10,6 +12,8 @@ from ..adapters.view_models import DuplicateIngredientViewModel, InteractionPair
 def render_interaction_cards(
     interactions: list[InteractionPairViewModel],
     duplicates: list[DuplicateIngredientViewModel],
+    on_interaction_selected: Callable[[int], None] | None = None,
+    active_interaction_index: int | None = None,
 ) -> None:
     """Render pairwise DDI warnings and duplicate active ingredient cards."""
     st.markdown(
@@ -47,7 +51,7 @@ def render_interaction_cards(
     # 2. Render Pairwise Interactions
     if interactions:
         st.markdown(f"**Potential medication interactions ({len(interactions)}):**")
-        for inter in interactions:
+        for index, inter in enumerate(interactions):
             severity_class = inter.severity.lower()
             badge_color = "var(--sev-critical-text)" if severity_class == "critical" else "var(--sev-moderate-text)"
             badge_bg = "var(--sev-critical-bg)" if severity_class == "critical" else "var(--sev-moderate-bg)"
@@ -73,5 +77,12 @@ def render_interaction_cards(
                 """,
                 unsafe_allow_html=True,
             )
+            if on_interaction_selected is not None and inter.source_instances:
+                st.button(
+                    "Show medications in photo",
+                    key=f"show_interaction_photo_{index}",
+                    on_click=on_interaction_selected,
+                    args=(index,),
+                )
     elif not duplicates:
         st.info("No harmful interaction pair was found among the identified medications in the current database.")

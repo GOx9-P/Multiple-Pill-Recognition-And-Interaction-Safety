@@ -1,4 +1,4 @@
-"""Detected Pill Cards Component with Inline Manual Override."""
+"""Detected pill cards for compact result review."""
 
 from __future__ import annotations
 
@@ -7,15 +7,20 @@ from typing import Callable
 import streamlit as st
 
 from ..adapters.view_models import PillViewModel
+from .recapture_panel import render_retake_controls
 
 
 def render_pill_cards(
     pills: list[PillViewModel],
     selected_pill_id: str | None,
     on_pill_selected: Callable[[str], None],
-    on_manual_override: Callable[[str, str], None],
+    on_retake_requested: Callable[[str], None] | None = None,
+    on_recapture: Callable[[str, object], None] | None = None,
+    on_manual_override: Callable[[str, str], None] | None = None,
+    recapture_errors: dict[str, str] | None = None,
+    focused_retake_pill_id: str | None = None,
 ) -> None:
-    """Render compact medication results with evidence and manual confirmation."""
+    """Render compact medication results and immediate actions for each item."""
     st.markdown(
         f"""
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
@@ -30,11 +35,10 @@ def render_pill_cards(
         st.info("No medications were detected in this image.")
         return
 
-    for idx, pill in enumerate(pills, start=1):
+    for index, pill in enumerate(pills, start=1):
         is_selected = selected_pill_id is not None and pill.instance_id == selected_pill_id
         active_class = "active" if is_selected else ""
 
-        # Status badge styling
         if pill.is_manual_override:
             badge_class = "manual"
             badge_text = "MANUALLY CONFIRMED"
@@ -50,13 +54,18 @@ def render_pill_cards(
 
         drug_display_name = pill.drug_name or "Medication not confidently identified"
         brand_display = f" ({pill.brand_name})" if pill.brand_name else ""
+        identifier_row = ""
+        if pill.rxcui:
+            identifier_row = (
+                f'<div class="pill-meta-row"><span>RxCUI / NDC</span>'
+                f'<span>{pill.rxcui} / {pill.ndc or "N/A"}</span></div>'
+            )
 
-        # Main Pill Card
         st.markdown(
             f"""
             <div class="pill-card-item {active_class}">
                 <div class="pill-card-top">
-                    <span class="pill-instance-tag">MEDICATION #{idx} • {pill.instance_id}</span>
+                    <span class="pill-instance-tag">MEDICATION #{index} | {pill.instance_id}</span>
                     <span class="pill-badge {badge_class}">{badge_text}</span>
                 </div>
                 <h4 class="pill-drug-name">{drug_display_name}{brand_display}</h4>
@@ -64,40 +73,43 @@ def render_pill_cards(
                 <div class="pill-meta-row"><span>Color</span><span>{pill.color_primary} ({pill.color_confidence*100:.0f}%)</span></div>
                 <div class="pill-meta-row"><span>Imprint</span><span><code>{pill.imprint_raw}</code></span></div>
                 <div class="pill-meta-row"><span>Score line</span><span>{'Visible' if pill.scoreline_visible else 'Not visible'}</span></div>
-                {f'<div class="pill-meta-row"><span>RxCUI / NDC</span><span>{pill.rxcui or "N/A"} • {pill.ndc or "N/A"}</span></div>' if pill.rxcui else ''}
+                {identifier_row}
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Manual Override Form for Unresolved / Ambiguous Pills
-        if pill.status in ("unresolved", "ambiguous") or pill.is_manual_override:
-            with st.expander(f"Confirm or correct medication #{idx}", expanded=pill.status == "unresolved"):
-                st.caption("If the image or imprint is unclear, enter an imprint or medication name to check the database.")
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    user_input = st.text_input(
-                        "Imprint or medication name:",
-                        value=pill.drug_name or (pill.imprint_raw if pill.imprint_raw != "—" else ""),
-                        key=f"input_override_{pill.instance_id}_{idx}",
-                        placeholder="Example: TV5056, 84A, Aspirin",
-                    )
-                with c2:
-                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    if st.button("Confirm", key=f"btn_confirm_override_{pill.instance_id}_{idx}", type="primary"):
-                        if user_input.strip():
-                            on_manual_override(pill.instance_id, user_input.strip())
-                            st.success("The medication has been updated and safety screening was recalculated.")
-                            st.rerun()
+        focus_col, retake_col = st.columns(2, gap="small")
+        with focus_col:
+            st.button(
+                "Show in image",
+                key=f"focus_pill_{pill.instance_id}",
+                on_click=on_pill_selected,
+                args=(pill.instance_id,),
+                use_container_width=True,
+            )
 
-        # Expandable Explainable AI (XAI) Evidence Details
-        with st.expander(f"Evidence for medication #{idx}", expanded=False):
-            if pill.top_candidates:
-                st.markdown("**Top database candidates:**")
-                for cand in pill.top_candidates:
-                    st.markdown(f"- **Rank {cand.rank}:** {cand.product_name} | Match score: `{cand.final_score*100:.1f}%` (Imprint: {cand.imprint_score or 0:.2f}, Shape: {cand.shape_score or 0:.2f}, Color: {cand.color_score or 0:.2f})")
-            else:
-                st.markdown(f"- **Shape confidence:** `{pill.shape_confidence or 0:.2f}` ({pill.shape})")
-                st.markdown(f"- **Color confidence:** `{pill.color_confidence or 0:.2f}` ({pill.color_primary})")
-                st.markdown(f"- **Imprint confidence:** `{pill.imprint_confidence or 0:.2f}`")
-                st.markdown(f"- **Imprint candidates:** `{', '.join(pill.imprint_candidates) if pill.imprint_candidates else '—'}`")
+        needs_retake = pill.status != "accepted" and not pill.is_manual_override
+        if needs_retake and on_retake_requested is not None:
+            with retake_col:
+                st.button(
+                    "Retake photo",
+                    key=f"retake_pill_{pill.instance_id}",
+                    on_click=on_retake_requested,
+                    args=(pill.instance_id,),
+                    type="primary",
+                    use_container_width=True,
+                )
+
+            if (
+                pill.instance_id == focused_retake_pill_id
+                and on_recapture is not None
+                and on_manual_override is not None
+            ):
+                with st.expander("Retake options", expanded=True):
+                    render_retake_controls(
+                        pill=pill,
+                        on_recapture=on_recapture,
+                        on_manual_override=on_manual_override,
+                        errors=recapture_errors,
+                    )

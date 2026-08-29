@@ -88,6 +88,9 @@ class InteractionPairViewModel:
     clinical_risk: str = ""
     management: str = ""
     source: str = "NLM / NIH DDI Standard"
+    # Exact detected pill instances that supplied the two interacting ingredients.
+    # This lets the UI highlight the correct pills without guessing from display names.
+    source_instances: list[str] = field(default_factory=list)
 
 
 @dataclass
