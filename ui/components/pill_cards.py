@@ -7,14 +7,20 @@ from typing import Callable
 import streamlit as st
 
 from ..adapters.view_models import PillViewModel
+from .recapture_panel import render_retake_controls
 
 
 def render_pill_cards(
     pills: list[PillViewModel],
     selected_pill_id: str | None,
     on_pill_selected: Callable[[str], None],
+    on_retake_requested: Callable[[str], None] | None = None,
+    on_recapture: Callable[[str, object], None] | None = None,
+    on_manual_override: Callable[[str, str], None] | None = None,
+    recapture_errors: dict[str, str] | None = None,
+    focused_retake_pill_id: str | None = None,
 ) -> None:
-    """Render compact medication results with their supporting evidence."""
+    """Render compact medication results and immediate actions for each item."""
     st.markdown(
         f"""
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
@@ -73,20 +79,37 @@ def render_pill_cards(
             unsafe_allow_html=True,
         )
 
-        with st.expander(f"Evidence for medication #{index}", expanded=False):
-            if pill.top_candidates:
-                st.markdown("**Top database candidates**")
-                for candidate in pill.top_candidates:
-                    st.markdown(
-                        f"- **Rank {candidate.rank}:** {candidate.product_name} "
-                        f"| Match score: `{candidate.final_score * 100:.1f}%` "
-                        f"(Imprint: {candidate.imprint_score or 0:.2f}, "
-                        f"Shape: {candidate.shape_score or 0:.2f}, "
-                        f"Color: {candidate.color_score or 0:.2f})"
+        focus_col, retake_col = st.columns(2, gap="small")
+        with focus_col:
+            st.button(
+                "Show in image",
+                key=f"focus_pill_{pill.instance_id}",
+                on_click=on_pill_selected,
+                args=(pill.instance_id,),
+                use_container_width=True,
+            )
+
+        needs_retake = pill.status != "accepted" and not pill.is_manual_override
+        if needs_retake and on_retake_requested is not None:
+            with retake_col:
+                st.button(
+                    "Retake photo",
+                    key=f"retake_pill_{pill.instance_id}",
+                    on_click=on_retake_requested,
+                    args=(pill.instance_id,),
+                    type="primary",
+                    use_container_width=True,
+                )
+
+            if (
+                pill.instance_id == focused_retake_pill_id
+                and on_recapture is not None
+                and on_manual_override is not None
+            ):
+                with st.expander("Retake options", expanded=True):
+                    render_retake_controls(
+                        pill=pill,
+                        on_recapture=on_recapture,
+                        on_manual_override=on_manual_override,
+                        errors=recapture_errors,
                     )
-            else:
-                st.markdown(f"- **Shape confidence:** `{pill.shape_confidence or 0:.2f}` ({pill.shape})")
-                st.markdown(f"- **Color confidence:** `{pill.color_confidence or 0:.2f}` ({pill.color_primary})")
-                st.markdown(f"- **Imprint confidence:** `{pill.imprint_confidence or 0:.2f}`")
-                candidates = ", ".join(pill.imprint_candidates) if pill.imprint_candidates else "Not available"
-                st.markdown(f"- **Imprint candidates:** `{candidates}`")

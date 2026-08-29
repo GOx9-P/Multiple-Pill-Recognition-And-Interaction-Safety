@@ -62,16 +62,24 @@ def render_visual_viewer(
     # 2. Pill Index Selector (for interactive focus)
     if pills:
         options = [p.instance_id for p in pills]
+        if (
+            "select_active_pill_box" in st.session_state
+            and st.session_state.select_active_pill_box not in options
+        ):
+            del st.session_state["select_active_pill_box"]
         current_idx = options.index(selected_pill_id) if selected_pill_id in options else 0
 
-        selected_option = st.selectbox(
+        def _on_pill_selector_changed() -> None:
+            """Keep the selected overlay in sync with the dropdown before rendering."""
+            on_pill_selected(st.session_state.select_active_pill_box)
+
+        st.selectbox(
             "Selected medication:",
             options=options,
             index=current_idx,
             key="select_active_pill_box",
+            on_change=_on_pill_selector_changed,
         )
-        if selected_option != selected_pill_id:
-            on_pill_selected(selected_option)
 
     # 3. Compact Image Quality Chips
     blur_label = f"Blur: {quality.blur_score:.2f} ({'Low' if quality.blur_score < 0.3 else 'High'})"

@@ -16,7 +16,6 @@ from ..components import (
     render_evidence_details,
     render_interaction_cards,
     render_pill_cards,
-    render_recapture_panel,
     render_safety_banner,
     render_upload_panel,
     render_visual_viewer,
@@ -38,6 +37,7 @@ def render_analyze_view(cv_load_result: Any) -> None:
     st.session_state.setdefault("highlighted_pill_ids", [])
     st.session_state.setdefault("active_interaction_index", None)
     st.session_state.setdefault("scroll_to_medication_photo", False)
+    st.session_state.setdefault("focused_retake_pill_id", None)
 
     # 1. Callback when user uploads an image or captures from camera
     def on_image_selected(image: Image.Image, image_name: str) -> None:
@@ -50,6 +50,8 @@ def render_analyze_view(cv_load_result: Any) -> None:
         st.session_state.highlighted_pill_ids = []
         st.session_state.active_interaction_index = None
         st.session_state.scroll_to_medication_photo = False
+        st.session_state.focused_retake_pill_id = None
+        st.session_state.pop("select_active_pill_box", None)
         st.session_state.cv_error = None
 
         if cv_load_result and cv_load_result.available:
@@ -186,6 +188,18 @@ def render_analyze_view(cv_load_result: Any) -> None:
             """Store a user-confirmed value and keep the original medication ID."""
             st.session_state.manual_overrides[inst_id] = val
 
+        def focus_pill(instance_id: str) -> None:
+            """Focus one medication in the photo and clear any prior DDI pair highlight."""
+            st.session_state.selected_pill_id = instance_id
+            st.session_state.highlighted_pill_ids = []
+            st.session_state.active_interaction_index = None
+            st.session_state.select_active_pill_box = instance_id
+
+        def request_retake(instance_id: str) -> None:
+            """Open the matching retake menu directly beneath its medication card."""
+            focus_pill(instance_id)
+            st.session_state.focused_retake_pill_id = instance_id
+
         def focus_interaction(interaction_index: int) -> None:
             """Highlight exactly the detected pills that produced one DDI finding."""
             interaction = report.interactions[interaction_index]
@@ -193,6 +207,8 @@ def render_analyze_view(cv_load_result: Any) -> None:
             st.session_state.highlighted_pill_ids = source_instances
             st.session_state.active_interaction_index = interaction_index
             st.session_state.selected_pill_id = source_instances[0] if source_instances else None
+            if source_instances:
+                st.session_state.select_active_pill_box = source_instances[0]
             st.session_state.scroll_to_medication_photo = bool(source_instances)
 
         def clear_interaction_focus() -> None:
@@ -226,7 +242,7 @@ def render_analyze_view(cv_load_result: Any) -> None:
                     pills=pills,
                     quality=quality,
                     selected_pill_id=st.session_state.selected_pill_id,
-                    on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
+                    on_pill_selected=focus_pill,
                     highlighted_pill_ids=st.session_state.highlighted_pill_ids,
                     on_clear_interaction_highlight=clear_interaction_focus,
                 )
@@ -236,15 +252,13 @@ def render_analyze_view(cv_load_result: Any) -> None:
                 render_pill_cards(
                     pills=pills,
                     selected_pill_id=st.session_state.selected_pill_id,
-                    on_pill_selected=lambda pid: setattr(st.session_state, "selected_pill_id", pid),
+                    on_pill_selected=focus_pill,
+                    on_retake_requested=request_retake,
+                    on_recapture=on_pill_recaptured,
+                    on_manual_override=handle_manual_override,
+                    recapture_errors=st.session_state.recapture_errors,
+                    focused_retake_pill_id=st.session_state.focused_retake_pill_id,
                 )
-
-        render_recapture_panel(
-            pills=pills,
-            on_recapture=on_pill_recaptured,
-            on_manual_override=handle_manual_override,
-            errors=st.session_state.recapture_errors,
-        )
 
         # Group the safety findings into one focused workspace below the two primary panels.
         st.markdown('<div id="interaction-review"></div>', unsafe_allow_html=True)
