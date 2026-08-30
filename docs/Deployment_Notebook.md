@@ -10,7 +10,7 @@ Notebook là runner triển khai/demo. Nó không phải nơi định nghĩa l�
 
 Notebook tự động hóa 4 bước:
 
-1. Clone source từ nhánh `tune_rag`.
+1. Clone source từ nhánh `FE_Final`.
 2. Cài môi trường AI/CV/OCR với Paddle GPU và retry khi mạng không ổn định.
 3. Tải model/database artifacts từ Kaggle và seed SQLite.
 4. Chạy Streamlit UI ở port `8501` và mở Cloudflare public tunnel.
@@ -42,20 +42,19 @@ Nếu Paddle GPU smoke test fail, notebook dừng rõ ràng thay vì tiếp tụ
 Notebook clone đúng nhánh:
 
 ```text
-tune_rag
+FE_Final
 ```
 
 Lệnh trong notebook:
 
 ```python
-!git clone --depth 1 -b tune_rag https://github.com/GOx9-P/Multiple-Pill-Recognition-And-Interaction-Safety.git {repo_dir}
+!git clone --depth 1 -b FE_Final https://github.com/GOx9-P/Multiple-Pill-Recognition-And-Interaction-Safety.git {repo_dir}
 ```
 
 Ý nghĩa:
 
-- Giữ các tuned parameters của RAG/Safety Gate.
-- Đảm bảo demo dùng code mới nhất của nhánh đang chứa thuật toán định danh đã tune.
-- Không clone `FE_Final` trực tiếp trong notebook, vì UI đã được merge vào working tree/nhánh đích khi resolve conflict.
+- Đảm bảo demo dùng đúng giao diện và pipeline đã tích hợp trên nhánh đích.
+- Khi thay đổi branch demo, cập nhật đồng thời notebook và tài liệu này để tránh runtime clone sai source.
 
 ---
 
@@ -231,7 +230,7 @@ https://*.trycloudflare.com
 
 ## 9. Những điểm cần giữ khi cập nhật notebook
 
-- Không đổi branch clone khỏi `tune_rag` nếu mục tiêu là giữ tuned RAG parameters.
+- Không đổi branch clone khỏi `FE_Final` nếu mục tiêu là chạy đúng giao diện và pipeline đã tích hợp.
 - Không cài PaddleOCR trực tiếp từ `requirements.txt` trước Paddle GPU; notebook cố ý loại `paddleocr/paddlex` khỏi requirements tạm để tránh xung đột.
 - Không bỏ GPU smoke test. Nếu OCR GPU không sẵn sàng, demo có thể nhìn như chạy được nhưng kết quả OCR sai hoặc rất chậm.
 - Không dùng kết quả `no_interaction_found` như kết luận an toàn tuyệt đối. UI/report chỉ nói không tìm thấy tương tác trong database hiện tại giữa các thuốc đã định danh.
