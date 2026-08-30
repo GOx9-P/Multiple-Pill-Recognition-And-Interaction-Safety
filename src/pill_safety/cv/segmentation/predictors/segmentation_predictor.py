@@ -184,11 +184,18 @@ class SegmentationPredictor:
             mask_path = mask_directory / f"{instance_id}_clean_mask.png"
             color_crop_path = crop_directory / f"{instance_id}_color_crop.png"
             shape_crop_path = crop_directory / f"{instance_id}_shape_crop.png"
+            shape_masked_control_crop_path = (
+                crop_directory / f"{instance_id}_shape_masked_control_crop.png"
+            )
             ocr_crop_path = crop_directory / f"{instance_id}_ocr_crop.png"
             # mask_path la clean mask, dong bo pixel voi color_crop_path va ocr_crop_path.
             _write_image(mask_path, instance.crop_mask * 255)
             _write_image(color_crop_path, instance.crop)
             _write_image(shape_crop_path, instance.shape_crop)
+            _write_image(
+                shape_masked_control_crop_path,
+                instance.shape_masked_control_crop,
+            )
             _write_image(ocr_crop_path, instance.ocr_crop)
 
             flags = list(

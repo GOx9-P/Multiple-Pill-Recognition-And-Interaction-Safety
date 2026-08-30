@@ -23,6 +23,7 @@ class ProcessedInstance:
     crop: np.ndarray
     crop_mask: np.ndarray
     shape_crop: np.ndarray
+    shape_masked_control_crop: np.ndarray
     ocr_crop: np.ndarray
     occlusion_estimate: float
     possible_merged_instance: bool
@@ -300,7 +301,13 @@ def process_prediction(
     if possible_non_pill:
         flags.append("possible_non_pill")
 
-    color_crop, shape_crop, ocr_crop, clean_crop_mask = prepare_task_crops(
+    (
+        color_crop,
+        shape_crop,
+        shape_masked_control_crop,
+        ocr_crop,
+        clean_crop_mask,
+    ) = prepare_task_crops(
         image_bgr,
         cleaned_mask,
         bbox,
@@ -313,6 +320,7 @@ def process_prediction(
         crop=color_crop,
         crop_mask=clean_crop_mask,
         shape_crop=shape_crop,
+        shape_masked_control_crop=shape_masked_control_crop,
         ocr_crop=ocr_crop,
         occlusion_estimate=round(float(occlusion_estimate), 4),
         possible_merged_instance=possible_merged,

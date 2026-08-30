@@ -171,8 +171,8 @@ def prepare_task_crops(
     clean_mask: np.ndarray,
     bbox_xyxy: tuple[int, int, int, int],
     config: SegmentationConfig,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build color, shape, OCR crops and an OCR-aligned clean mask for one pill."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build task crops plus a masked shape-control crop for diagnostic comparison."""
 
     image_height, image_width = image_bgr.shape[:2]
     x1, y1, x2, y2 = bbox_xyxy
@@ -228,11 +228,15 @@ def prepare_task_crops(
         shape_clean_mask,
         config.crop_mask_dilation_ratio,
     )
-    shape_source, _ = _crop_around_region(
+    shape_source, shape_mask = _crop_around_region(
         shape_image,
         shape_clean_mask,
         shape_region,
         config.bbox_padding_ratio,
     )
     shape_crop = _render_square_rgb_crop(shape_source, config)
-    return color_crop, shape_crop, ocr_crop, output_clean_mask
+    # Keep this artifact separate from the production shape crop.  It is used by
+    # the Kaggle trace to quantify whether raw scene pixels outside the pill mask
+    # are driving a shape prediction; Module 2 still receives shape_crop.
+    shape_masked_control_crop, _ = _render_square_crop(shape_source, shape_mask, config)
+    return color_crop, shape_crop, shape_masked_control_crop, ocr_crop, output_clean_mask
