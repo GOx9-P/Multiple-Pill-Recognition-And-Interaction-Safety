@@ -4,18 +4,17 @@
 
 ### Multiple Pill Recognition & Interaction Safety Platform
 
-Identify multi-pill medications, evaluate Drug-Drug Interactions (DDI), and generate grounded clinical safety reports using **Computer Vision (YOLO11-Seg + ResNet-18 + PaddleOCR)**, **IDF-weighted RAG**, and **Google Gemini**.
+Identify multiple loose pills from one image and evaluate Drug-Drug Interactions (DDI) using **Computer Vision (YOLO11-Seg + ResNet-18 + PaddleOCR)**, IDF-weighted candidate matching, and a medication database.
 
 <p>
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688?logo=fastapi&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.40--1.42-FF4B4B?logo=streamlit&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.2--2.6-EE4C2C?logo=pytorch&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.2--2.6-EE4C?logo=pytorch&logoColor=white)
 ![YOLO11-Seg](https://img.shields.io/badge/YOLO11--Seg-8.3.253-111F68)
 ![ResNet-18](https://img.shields.io/badge/ResNet--18-Computer%20Vision-8B0000)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
-![Google Gemini](https://img.shields.io/badge/Google_Gemini-LLM-4285F4?logo=google&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 </p>
@@ -26,15 +25,15 @@ Identify multi-pill medications, evaluate Drug-Drug Interactions (DDI), and gene
 
 # 📖 Overview
 
-Polypharmacy presents significant clinical risks when multiple medications are combined in daily organizers. Visual identification of mixed or dropped pills is error-prone, and unintended co-administration of interacting drugs can cause severe adverse drug events (ADEs).
+Polypharmacy presents significant clinical risks when multiple medications are combined in daily organizers. Visual identification of mixed or dropped pills is error-prone, and unintended co-administration of interacting drugs can cause adverse drug events (ADEs).
 
-**Pill Safety AI** is an AI-powered clinical decision support platform designed to identify loose medications from a single image and detect adverse drug-drug interactions:
+**Pill Safety AI** is a clinical decision-support project for identifying loose medications from a single image and reviewing known adverse drug-drug interactions:
 
-- **Decoupled Vision Pipeline**: Combines class-agnostic instance segmentation with multi-attribute classification and imprint OCR to scale seamlessly across large pharmaceutical catalogs.
-- **IDF-Weighted RAG Matching**: Ranks candidate formulations against a structured drug database using statistical rarity weighting.
-- **Grounded Clinical Reports**: Resolves active ingredients, evaluates pairwise DDI severity, and generates zero-hallucination medical advisories via Google Gemini.
+- **Decoupled Vision Pipeline**: Class-agnostic instance segmentation, attribute classification, and imprint OCR extract evidence for each pill.
+- **Evidence-Based Identification**: Candidate products are matched against the medication database using imprint similarity and IDF-weighted visual attributes.
+- **Safety Review**: Accepted products are mapped to active ingredients, then checked pairwise for recorded DDI severity and duplicate ingredients.
 
-> **Medical Disclaimer:**  
+> **Medical Disclaimer:**
 > This platform supports medication identification and safety review. It does **not replace** professional medical advice, diagnosis, or prescribing decisions from a qualified healthcare provider.
 
 ---
@@ -42,40 +41,40 @@ Polypharmacy presents significant clinical risks when multiple medications are c
 # ⭐ Highlights
 
 - **Decoupled Vision Architecture**: Class-agnostic YOLO11-Seg segmentation paired with ResNet-18 attribute recognition and PaddleOCR text extraction.
-- **IDF-Weighted Evidence Scoring**: Statistically balances imprint, shape, and color traits to reliably identify formulations.
-- **Clinical Safety Gate**: Enforces confidence thresholds and hard reject rules with a manual clinician override fallback.
-- **Deterministic DDI Engine**: Cross-checks active molecules pairwise across 5 severity tiers with duplicate ingredient alerts.
-- **Hallucination-Free Reporting**: Synthesizes verified clinical context into clear natural language reports using Google Gemini.
-- **Dual UI Workspace**: Features a full desktop clinical review suite and an iPhone 17 Pro Max mobile simulator in Streamlit.
+- **IDF-Weighted Evidence Scoring**: Balances imprint, shape, dosage form, and color evidence when ranking candidate formulations.
+- **Clinical Safety Gate**: Applies confidence thresholds and hard-reject rules, with a manual confirmation path for ambiguous pills.
+- **Deterministic DDI Engine**: Cross-checks active molecules pairwise across `contraindicated`, `major`, `moderate`, `minor`, and `none` severity levels, including duplicate-ingredient alerts.
+- **Structured Safety Results**: Keeps identified medications, unresolved pills, interactions, sources, and scope warnings in validated data contracts.
+- **Dual UI Workspace**: Provides a desktop clinical workspace and an iPhone 17 Pro Max Streamlit preview.
 
 ---
 
 # ✨ Features
 
 ## 💊 Computer Vision Pipeline
-- **Instance Segmentation**: Class-agnostic YOLO11-Seg extracts pill masks and checks image quality (blur and glare).
-- **Attribute Classification**: Multi-head ResNet-18 identifies shape, color, dosage form, scoreline, and logo markers.
-- **Imprint OCR**: PaddleOCR reads and normalizes alphanumeric imprints across pill faces.
+- **Instance Segmentation**: YOLO11-Seg extracts pill masks and evaluates image quality, including blur, glare, and lighting checks.
+- **Attribute Classification**: ResNet-18 predicts pill shape and color from per-pill crops.
+- **Imprint OCR**: PaddleOCR extracts and normalizes alphanumeric imprints; scoreline processing can split readings from pill sides.
 
 ---
 
-## 🧠 IDF-Weighted RAG Identification
-- **Statistical Retrieval**: Uses Inverse Document Frequency (IDF) to weight rare visual features over common ones.
-- **Safety Decisioning**: Flags detections as `identified`, `unresolved`, or `out_of_scope` to prevent false positives.
-- **Clinician Override**: Enables manual binding for damaged or ambiguous pills via API.
+## 🧠 IDF-Weighted Medication Identification
+- **Candidate Matching**: Searches active medication appearances by imprint first, then falls back to dosage form, shape, and color attributes.
+- **Evidence Scoring**: Uses Inverse Document Frequency (IDF) weights so rare visual attributes contribute more strongly to ranking.
+- **Safety Decisioning**: Labels detections as `identified`, `ambiguous`, `unknown`, or `insufficient_visual_evidence` and recommends recapture or manual confirmation when needed.
 
 ---
 
 ## ⚡ Drug-Drug Interaction (DDI) Engine
-- **Ingredient Mapping**: Translates identified medications into active chemical entities.
-- **Severity Classification**: Evaluates pairwise interactions (`contraindicated`, `major`, `moderate`, `minor`, `none`).
-- **Duplicate Alerts**: Warns against co-administering multiple pills sharing the same active molecule.
+- **Ingredient Mapping**: Resolves identified drug products to active chemical entities stored in the database.
+- **Severity Classification**: Evaluates recorded pairwise interactions as `contraindicated`, `major`, `moderate`, `minor`, or `none`.
+- **Duplicate Alerts**: Flags products that share an active ingredient.
 
 ---
 
-## 📋 Grounded LLM Reporting
-- **Bounded Context**: Restricts LLM generation strictly to database-verified drug and interaction facts.
-- **Actionable Summaries**: Formats medical advisories with clear severity alert banners in Vietnamese.
+## 📋 Clinical Safety Results
+- **Structured Context**: Combines identified products, unresolved pills, interaction records, duplicate warnings, source references, and scope warnings.
+- **Deterministic Formatting**: Produces a safety summary from the verified identification and interaction data.
 
 ---
 
@@ -83,46 +82,49 @@ Polypharmacy presents significant clinical risks when multiple medications are c
 
 ```mermaid
 %%{init: {
-  "theme": "dark",
+  "theme": "base",
   "flowchart": {
-    "curve": "basis"
+    "curve": "basis",
+    "htmlLabels": true,
+    "nodeSpacing": 35,
+    "rankSpacing": 55
   },
   "themeVariables": {
-    "lineColor": "#FFFFFF"
+    "background": "#FFFFFF",
+    "primaryTextColor": "#1F2937",
+    "lineColor": "#64748B",
+    "fontFamily": "Arial, sans-serif"
   }
 }}%%
 
 flowchart TD
 
-    A["📷 RGB Pill Image"]
+    %% ===== INPUT =====
+    A["<b>RGB Pill Image</b>"]
 
-    B["🔍 YOLO11-Seg<br/>Instance Segmentation<br/>+ Quality Check"]
+    %% ===== COMPUTER VISION =====
+    B["<b>YOLO11-Seg</b><br/>Instance Segmentation<br/>+ Quality Check"]
+    C["<b>ResNet-18</b><br/>Attribute Classification"]
+    D["<b>PaddleOCR</b><br/>Imprint Extraction"]
+    E["<b>CVPipelineAssembler</b><br/>Feature Fusion"]
 
-    C["🧠 ResNet-18<br/>Attribute Classification"]
+    %% ===== CANDIDATE IDENTIFICATION =====
+    F["<b>Candidate Matching</b><br/>Medication Database"]
+    G["<b>EvidenceScorer</b><br/>IDF-Weighted Scoring"]
 
-    D["🔤 PaddleOCR<br/>Imprint Extraction"]
+    %% ===== SAFETY DECISION =====
+    H{"<b>Safety Gate</b><br/>Identification Decision"}
 
-    E["🔗 CVPipelineAssembler<br/>Feature Fusion"]
+    %% ===== CLINICAL SAFETY =====
+    I["<b>DDI Engine</b><br/>Active Ingredient<br/>+ DDI Check"]
+    J["<b>Structured Safety Context</b>"]
+    K["<b>Safety Report Formatter</b>"]
+    L["<b>Clinical Safety Result</b><br/>Severity · Drug Summary · DDI Guidance"]
 
-    F["📚 CandidateRetriever<br/>Database Query"]
-
-    G["📊 EvidenceScorer<br/>IDF-Weighted Scoring"]
-
-    H{"🛡️ Safety Gate<br/>Identification Decision"}
-
-    I["💊 DDI Engine<br/>Active Ingredient<br/>+ DDI Check"]
-
-    M["👨‍⚕️ Clinician<br/>Manual Override"]
-
-    J["📦 ContextBuilderService<br/>Grounded JSON Context"]
-
-    K["✨ Google Gemini<br/>Grounded LLM"]
-
-    L["📋 Clinical Safety Report<br/>Severity · Drug Summary · DDI Guidance"]
-
+    %% ===== HUMAN-IN-THE-LOOP =====
+    M["<b>Clinician</b><br/>Manual Confirmation"]
 
     %% ===== FLOW =====
-
     A --> B
     B --> C
     B --> D
@@ -131,49 +133,33 @@ flowchart TD
     E --> F
     F --> G
     G --> H
-
     H -->|identified| I
-    H -->|unresolved| M
+    H -->|ambiguous or unknown| M
     M --> I
-
     I --> J
     J --> K
     K --> L
 
+    %% ===== STYLE =====
+    classDef inputOutput fill:#E8F0F7,stroke:#355C7D,stroke-width:2px,color:#172B3A;
+    classDef vision fill:#F1F7FA,stroke:#5B8FA8,stroke-width:1.5px,color:#243B4A;
+    classDef matching fill:#FBF6ED,stroke:#B58A4A,stroke-width:1.5px,color:#4A3A23;
+    classDef safety fill:#F9EEEE,stroke:#A85C5C,stroke-width:2.5px,color:#5A2525;
+    classDef ddi fill:#F4F0F8,stroke:#80689A,stroke-width:1.5px,color:#3E3150;
+    classDef reporting fill:#F4F5F7,stroke:#68717C,stroke-width:1.5px,color:#303841;
+    classDef human fill:#FBF7E8,stroke:#B59B4E,stroke-width:2px,color:#4A401F;
 
-    %% ===== COLORS =====
-
-    classDef input fill:#00BCD4,stroke:#006064,stroke-width:5px,color:#FFFFFF;
-    classDef output fill:#00C853,stroke:#1B5E20,stroke-width:5px,color:#FFFFFF;
-
-    classDef vision fill:#E8F5E9,stroke:#43A047,stroke-width:2px,color:#1B5E20;
-
-    classDef rag fill:#FFF3E0,stroke:#FB8C00,stroke-width:2px,color:#E65100;
-
-    classDef safety fill:#E53935,stroke:#B71C1C,stroke-width:4px,color:#FFFFFF;
-
-    classDef ddi fill:#9C27B0,stroke:#4A148C,stroke-width:2px,color:#FFFFFF;
-
-    classDef llm fill:#673AB7,stroke:#311B92,stroke-width:2px,color:#FFFFFF;
-
-    classDef human fill:#FFD600,stroke:#F57F17,stroke-width:2px,color:#000000;
-
-
-    %% ===== APPLY COLORS =====
-
-    class A input;
+    %% ===== APPLY STYLE =====
+    class A,L inputOutput;
     class B,C,D,E vision;
-    class F,G rag;
+    class F,G matching;
     class H safety;
     class I ddi;
-    class J,K llm;
+    class J,K reporting;
     class M human;
-    class L output;
-
 
     %% ===== ARROWS =====
-
-    linkStyle default stroke:#FFFFFF,stroke-width:6px;
+    linkStyle default stroke:#64748B,stroke-width:1.8px;
 ```
 ---
 
@@ -182,19 +168,49 @@ flowchart TD
 | Component | Technology | Purpose |
 |---|---|---|
 | **Runtime** | Python 3.11+ | Core platform runtime |
-| **Web UI** | Streamlit 1.40–1.42 | Desktop clinical suite & mobile simulator |
-| **Backend API** | FastAPI 0.115.6 / Uvicorn | High-performance REST API services |
-| **Computer Vision** | PyTorch 2.2–2.6 / Ultralytics YOLO11-Seg | Neural network segmentation & instance detection |
-| **Attribute Classification** | ResNet-18 | Pill shape, color, dosage form, scoreline & logo classification |
-| **OCR & Vision Utils** | PaddleOCR 3.0.3 / OpenCV 4.10.0 | Imprint text extraction & image quality checks |
-| **Database & ORM** | PostgreSQL 16 / SQLAlchemy 2.0 / Alembic | Relational medication database & migrations |
-| **LLM Reasoning** | Google Gemini API / Pydantic 2.9.2 | Grounded clinical report synthesis & schema validation |
+| **Web UI** | Streamlit 1.40–1.42 | Desktop clinical workspace and mobile preview |
+| **Backend API** | FastAPI 0.115.6 / Uvicorn | REST API services for medication and interaction data |
+| **Computer Vision** | PyTorch 2.2–2.6 / Ultralytics YOLO11-Seg | Pill instance segmentation and mask generation |
+| **Attribute Classification** | ResNet-18 | Pill shape and color classification |
+| **OCR & Vision Utils** | PaddleOCR 3.0.3 / OpenCV 4.10.0 | Imprint extraction and image-quality processing |
+| **Identification & Safety Logic** | IDF-weighted scoring / RapidFuzz | Candidate ranking, safety decisions, and fuzzy imprint matching |
+| **Database & ORM** | PostgreSQL 16 or SQLite / SQLAlchemy 2.0 / Alembic | Medication, appearance, ingredient, and interaction data |
 | **Infrastructure** | Docker Compose | Containerized PostgreSQL database management |
 ---
 
 # 📸 Application Preview
 
-> Screenshots will be added in a future revision.
+## 💻 Desktop Version
+
+<p align="center">
+  <img src="docs/images/Screenshot 2026-08-30 213407.png" alt="Desktop - Input" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/images/Screenshot 2026-08-30 212947.png" alt="Desktop - Recognition Result" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/images/Screenshot 2026-08-30 213331.png" alt="Desktop - Final Result" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/images/Screenshot 2026-08-30 213354.png" alt="Desktop - Input" width="100%">
+</p>
+
+## 📱 Mobile Version
+
+<p align="center">
+
+  <img src="docs/images/Screenshot 2026-08-30 174134.png" alt="Image 1" width="23%">
+
+  <img src="docs/images/Screenshot 2026-08-30 213520.png" alt="Image 2" width="23%">
+
+  <img src="docs/images/Screenshot 2026-08-30 214212.png" alt="Image 3" width="23%">
+
+  <img src="docs/images/Screenshot 2026-08-30 214640.png" alt="Image 4" width="23%">
+
+</p>
 
 ---
 
@@ -202,8 +218,7 @@ flowchart TD
 
 ### 1. Prerequisites
 - Python `3.11+`
-- Docker and Docker Compose
-- Google Gemini API Key *(optional, for LLM report generation)*
+- Docker and Docker Compose *(optional when using the local SQLite configuration)*
 
 ---
 
@@ -216,12 +231,14 @@ cd Multiple-Pill-Recognition-And-Interaction-Safety
 
 # Create and activate virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # On Windows PowerShell: .venv\Scripts\Activate.ps1
 
 # Install dependencies and configure environment
 pip install -r requirements.txt
 cp .env.example .env
 ```
+
+Set `DATABASE_URL` in `.env` for the database you intend to use. The supplied example is configured for the Docker PostgreSQL service; uncomment the SQLite option for a local database file.
 
 ---
 
@@ -231,12 +248,13 @@ cp .env.example .env
 # Start PostgreSQL via Docker Compose
 docker compose up -d postgres
 
-# Apply migrations and seed standard drug datasets
+# Apply migrations and seed the medication datasets
+$env:PYTHONPATH = "src"  # PowerShell
 alembic upgrade head
 python -m pill_safety.database.scripts.seed
 ```
 
-> **Note:** Set `DATABASE_URL=sqlite:///pill_safety.db` in `.env` to run with a local SQLite database without Docker.
+> **Note:** Set `DATABASE_URL=sqlite:///pill_safety.db` in `.env` to run with a local SQLite database without Docker. In PowerShell, `scripts/setup.ps1` performs the Docker, migration, and seed steps.
 
 ---
 
@@ -247,8 +265,42 @@ python -m pill_safety.database.scripts.seed
 streamlit run app.py
 
 # Launch FastAPI Backend Service (Port 8000)
+$env:PYTHONPATH = "src"  # PowerShell
 uvicorn pill_safety.api.main:app --reload
 ```
+
+---
+### 5. Demo Web
+
+#### 🔗 Resources
+
+* **GitHub Repository:** [View Source Code](https://github.com/GOx9-P/Multiple-Pill-Recognition-And-Interaction-Safety)
+
+#### ▶️ How to Run
+
+1. Go to the **GitHub Repository** and open the following file:
+
+   ```text
+   merge-fe-be.ipynb
+   ```
+
+2. Copy the **file URL** of **`merge-fe-be.ipynb`** from GitHub.
+
+3. Go to **Kaggle** and create a **new Notebook**.
+
+4. In the Kaggle Notebook, select **Link to GitHub Repository** and paste the URL of the `merge-fe-be.ipynb` file copied in the previous step.
+
+5. Once the Notebook has been imported successfully, click **Run All** to execute all cells.
+
+6. When the server starts, look for the following message:
+
+   ```text
+   Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):
+   ```
+
+7. Click the **link displayed directly below this message** to access the **Demo Web**.
+
+> **Note:** The Quick Tunnel may take a short while to become accessible. If the link does not work immediately, wait a few seconds and try again.
 
 ---
 
@@ -256,54 +308,54 @@ uvicorn pill_safety.api.main:app --reload
 
 ```text
 .
-├── app.py                      # Streamlit application entrypoint (Desktop & Mobile)
+├── app.py                      # Streamlit application entry point
+├── alembic.ini                 # Alembic migration configuration
 ├── compose.yaml                # Docker Compose definition for PostgreSQL 16
-├── requirements.txt            # Pinned project dependencies
-├── .env.example                # Environment variables template
-├── configs/                    # Training and inference configurations
-├── data/                       # Datasets, splits, and benchmark test sets
-├── database_seed/              # Standard drug, appearance, and DDI seed JSONs
-├── docs/                       # Architectural specifications and evaluation protocols
-├── experiments/                # Training run checkpoints, metrics, and plots
-├── models/                     # Trained model weights (YOLO11-seg, ResNet-18, PaddleOCR)
-├── scripts/                    # Benchmark, smoke test, and tuning utilities
+├── requirements.txt            # Project dependencies
+├── .env.example                # Environment-variable template
+├── configs/                    # Inference and training configurations
+├── data/                       # Raw, processed, augmented, benchmark, and split datasets
+├── database/                   # Alembic migrations and database seed placeholder
+├── database_seed/              # Medication, appearance, ingredient, DDI, and scan seed JSON files
+├── docs/                       # Project, database, CV, UI, and evaluation documentation
+├── experiments/                # Training checkpoints, metrics, plots, and prediction artifacts
+├── inference/                  # CLI entry points for CV modules and end-to-end inference
+├── models/                     # Segmentation, attribute-classification, and OCR model artifacts
+├── notebooks/                  # Kaggle training and inference notebooks
+├── outputs/                    # Generated crops, masks, predictions, and reports
+├── scripts/                    # Setup, seeding, benchmarking, tuning, and demo utilities
 ├── src/
 │   └── pill_safety/            # Core application package
 │       ├── api/                # FastAPI application routes (`main.py`)
-│       ├── core/               # Configuration settings and environment loader
-│       ├── cv/                 # Computer vision subsystem (seg, attr, ocr, pipeline)
-│       ├── database/           # SQLAlchemy models, session factory, repositories
-│       ├── rag/                # RAG retrieval, ranking, DDI lookup, and reporting
-│       └── schemas/            # Pydantic data validation contracts
-├── tests/                      # Automated test suite (cv, database, rag, ui)
-└── ui/                         # Streamlit UI views, components, and styles
+│       ├── core/               # Runtime configuration and environment loading
+│       ├── cv/                 # Segmentation, attribute, OCR, and CV-pipeline subsystems
+│       ├── database/           # SQLAlchemy models, sessions, repositories, services, and seeding
+│       ├── schemas/            # Pydantic data-validation contracts
+│       └── utils/              # Shared utility package
+├── tests/                      # Automated tests for CV, database, UI, and safety workflow
+├── training/                   # Segmentation, attribute, and OCR training workflows
+└── ui/                         # Streamlit views, components, adapters, and styling
 ```
 
 ---
 
 # 🔥 Production Engineering Features
 
-- [x] **Decoupled Vision-Reasoning Architecture** — Prevents combinatorial retraining explosion when expanding the drug catalog.
-- [x] **Strict Pydantic Contract Validation** — End-to-end type validation across all CV, RAG, and API boundaries.
-- [x] **IDF Statistical Evidence Scoring** — Dynamically balances feature weights to eliminate bias toward common shapes and colors.
-- [x] **Pre- & Post-Retrieval Safety Gates** — Intercepts low-confidence or conflicting pill predictions before reporting.
-- [x] **Zero-Hallucination Guardrails** — Constrains LLM synthesis strictly to database-verified active ingredients and DDI pairs.
-- [x] **Graceful Fallback Handling** — Dual SQLite/PostgreSQL support and offline deterministic rule-based report fallbacks.
-
----
-
-# 🗺️ Roadmap
-chưa có
-> Future improvements will be documented here.
+- [x] **Decoupled Vision and Safety Architecture** — Keeps pill segmentation, attribute recognition, OCR, candidate matching, and DDI checks as separate components.
+- [x] **Strict Pydantic Contract Validation** — Type validation across CV, identification, database, and API boundaries.
+- [x] **IDF Statistical Evidence Scoring** — Dynamically weights visual attributes when ranking medication candidates.
+- [x] **Pre- and Post-Matching Safety Gates** — Stops low-confidence, conflicting, merged, or non-pill predictions before an automatic identification is accepted.
+- [x] **Traceable Safety Context** — Preserves the identified products, unresolved pills, interaction records, duplicate warnings, source references, and scope warnings used for the result.
+- [x] **Database Flexibility** — Supports PostgreSQL through Docker Compose and a local SQLite configuration.
 
 ---
 
 # 🎯 Learning Objectives
 
-- **Decoupled AI System Design**: Architecting hybrid systems combining computer vision models with statistical RAG and LLMs.
-- **Multi-Task Deep Learning**: Training and deploying multi-head classification networks (ResNet-18) alongside instance segmenters (YOLO11-Seg).
-- **Statistical Evidence Retrieval**: Implementing inverse document frequency (IDF) weighting for robust entity matching.
-- **Clinical AI Safety Engineering**: Enforcing hard rejection gates and zero-hallucination prompt strategies in healthcare.
+- **Decoupled AI System Design**: Building a modular computer-vision and medication-safety workflow.
+- **Multi-Task Deep Learning**: Training and deploying ResNet-18 attribute classifiers alongside a YOLO11-Seg instance segmenter.
+- **Statistical Evidence Matching**: Applying inverse document frequency (IDF) weighting to medication-candidate ranking.
+- **Clinical AI Safety Engineering**: Applying rejection thresholds, manual confirmation, and scope warnings in a medication-safety workflow.
 - **Production API & Database Lifecycle**: Developing modular FastAPI services with Pydantic v2 validation, SQLAlchemy ORM, and Alembic migrations.
 
 ---
@@ -322,7 +374,7 @@ Before submitting a pull request:
 
 # 📄 License
 
-Chưa có
+This project is licensed under the [MIT License](docs/LICENSE).
 
 ---
 
@@ -373,7 +425,3 @@ Developed as a final project for *HCMUT EE Machine Learning & IoT Lab — Summer
          style="border-radius: 50%; object-fit: cover;">
   </a>
 </p>
-
-
-
-
