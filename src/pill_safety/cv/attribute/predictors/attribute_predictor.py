@@ -105,7 +105,7 @@ def _load_model_state_dict(
     num_shape_classes: int,
     num_color_classes: int,
     expected_mapping_hash: str,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], int, int]:
     """Nạp raw state dict của run mới hoặc checkpoint có metadata của run cũ."""
 
     payload = torch.load(path, map_location=device, weights_only=False)
@@ -142,7 +142,19 @@ def _load_model_state_dict(
             "Checkpoint does not match the trained multi-task model: "
             "missing shape_head or color_head weights."
         )
-    return state_dict, shape_weight.shape[0], color_weight.shape[0]
+    actual_shape_classes = int(shape_weight.shape[0])
+    actual_color_classes = int(color_weight.shape[0])
+    if actual_shape_classes != num_shape_classes:
+        raise RuntimeError(
+            "Checkpoint shape class count differs from label_mapping.json: "
+            f"{actual_shape_classes} != {num_shape_classes}."
+        )
+    if actual_color_classes != num_color_classes:
+        raise RuntimeError(
+            "Checkpoint color class count differs from label_mapping.json: "
+            f"{actual_color_classes} != {num_color_classes}."
+        )
+    return state_dict, actual_shape_classes, actual_color_classes
 
 
 class AttributePredictor:
@@ -186,25 +198,6 @@ class AttributePredictor:
             mapping_hash,
         )
 
-        # Tự động đồng bộ số lượng class với checkpoint thực tế
-        if actual_shape_classes != num_shape_classes:
-            if actual_shape_classes <= len(self.label_mapping["shape"]):
-                self.label_mapping["shape"] = self.label_mapping["shape"][:actual_shape_classes]
-            else:
-                self.label_mapping["shape"] = self.label_mapping["shape"] + [
-                    f"SHAPE_{i}" for i in range(len(self.label_mapping["shape"]), actual_shape_classes)
-                ]
-            num_shape_classes = actual_shape_classes
-
-        if actual_color_classes != num_color_classes:
-            if actual_color_classes <= len(self.label_mapping["color"]):
-                self.label_mapping["color"] = self.label_mapping["color"][:actual_color_classes]
-            else:
-                self.label_mapping["color"] = self.label_mapping["color"] + [
-                    f"COLOR_{i}" for i in range(len(self.label_mapping["color"]), actual_color_classes)
-                ]
-            num_color_classes = actual_color_classes
-
         self.color_thresholds = _load_color_thresholds(
             self.config.color_thresholds_path,
             self.label_mapping["color"],
@@ -237,20 +230,49 @@ class AttributePredictor:
             ]
         )
 
+    def _shape_logits_tta(self, image: Image.Image) -> torch.Tensor:
+        """Average shape logits over right-angle rotations.
+
+        Shape is a rotation-invariant attribute, while the Module 1 shape crop
+        intentionally preserves the input orientation.  Deterministic
+        0/90/180/270-degree test-time augmentation reduces the chance that the
+        classifier treats the camera/pill orientation as a class cue.
+        """
+
+        rotations = (0, 90, 180, 270)
+        rotated_images = [
+            image
+            if angle == 0
+            else image.rotate(angle, resample=Image.Resampling.BILINEAR, expand=True)
+            for angle in rotations
+        ]
+        tensor = torch.stack(
+            [self.transform(rotated).to(self.device) for rotated in rotated_images]
+        )
+        outputs = self.model(tensor)
+        if isinstance(outputs, tuple):
+            shape_logits = outputs[0]
+        else:
+            shape_logits = self.model(tensor, task_type="shape")
+        return shape_logits.mean(dim=0, keepdim=True)
+
+    def _color_logits(self, image: Image.Image) -> torch.Tensor:
+        """Run the color head on the unrotated crop."""
+
+        tensor = self.transform(image).unsqueeze(0).to(self.device)
+        outputs = self.model(tensor)
+        if isinstance(outputs, tuple):
+            return outputs[1]
+        return self.model(tensor, task_type="color")
+
     def _predict_crop(self, crop_path: Path) -> dict[str, Any]:
         """Chạy shape head và color head trên một crop đã được Module 1 mask sẵn."""
 
         with Image.open(crop_path) as source:
             image = source.convert("RGB")
-        tensor = self.transform(image).unsqueeze(0).to(self.device)
-
         with torch.inference_mode():
-            outputs = self.model(tensor)
-            if isinstance(outputs, tuple):
-                shape_logits, color_logits = outputs
-            else:
-                shape_logits = self.model(tensor, task_type="shape")
-                color_logits = self.model(tensor, task_type="color")
+            shape_logits = self._shape_logits_tta(image)
+            color_logits = self._color_logits(image)
             shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
             color_probabilities = torch.sigmoid(color_logits)[0]
 
@@ -296,14 +318,9 @@ class AttributePredictor:
             shape_image = source.convert("RGB")
         with Image.open(color_crop_path) as source:
             color_image = source.convert("RGB")
-        shape_tensor = self.transform(shape_image).unsqueeze(0).to(self.device)
-        color_tensor = self.transform(color_image).unsqueeze(0).to(self.device)
-
         with torch.inference_mode():
-            shape_out = self.model(shape_tensor)
-            shape_logits = shape_out[0] if isinstance(shape_out, tuple) else shape_out
-            color_out = self.model(color_tensor)
-            color_logits = color_out[1] if isinstance(color_out, tuple) else color_out
+            shape_logits = self._shape_logits_tta(shape_image)
+            color_logits = self._color_logits(color_image)
             shape_probabilities = torch.softmax(shape_logits, dim=1)[0]
             color_probabilities = torch.sigmoid(color_logits)[0]
 

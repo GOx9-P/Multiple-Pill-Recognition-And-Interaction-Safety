@@ -51,7 +51,8 @@ def test_promoted_last_block_artifacts_use_the_expected_label_and_threshold_orde
         mapping["color"],
     )
 
-    assert shape_count in (5, 16)
+    assert mapping["shape"] == ["CAPSULE", "IRREGULAR", "OVAL", "POLYGON", "ROUND"]
+    assert shape_count == 5
     assert color_count == 12
     assert thresholds[mapping["color"].index("PINK")] == 0.4
     assert thresholds[mapping["color"].index("ORANGE")] == 0.95

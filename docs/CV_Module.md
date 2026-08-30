@@ -502,6 +502,8 @@ Các tham số runtime được đọc từ `configs/inference/segmentation.yaml
 
 Lưu ý: alignment cho color/OCR không có nghĩa là chữ imprint đã đúng hướng. Nhánh OCR vẫn phải thử nhiều góc xoay.
 
+Shape inference chạy deterministic test-time augmentation trên bốn hướng `0°/90°/180°/270°` và lấy trung bình logits trước khi chọn top-1 để giảm phụ thuộc vào hướng xoay của crop. Color vẫn chạy trên crop gốc để giữ đúng pipeline màu.
+
 Nếu `possible_merged_instance = true`, backend không được dùng crop đó để `identified` trừ khi có bằng chứng bổ sung rất mạnh. Trạng thái ưu tiên là `partial_features` hoặc `insufficient_visual_evidence`.
 
 ### 3.2. Attribute Recognition
@@ -562,6 +564,9 @@ oval
 polygon
 round
 ```
+
+`label_mapping.json` phải đi cùng checkpoint đã train và giữ nguyên thứ tự index (`CAPSULE`, `IRREGULAR`, `OVAL`, `POLYGON`, `ROUND`); runtime sẽ từ chối artifact lệch số lớp thay vì tự cắt hoặc thêm tên lớp.
+UI chỉ fallback trong đúng thư mục/model family đã chọn; không lấy checkpoint Attribute cũ từ artifact của Segmentation.
 
 Color labels của artifact Attribute hiện tại:
 

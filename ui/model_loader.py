@@ -38,13 +38,24 @@ class CVPipelineLoadResult:
         return self.pipeline is not None
 
 
-def _find_path(preferred_path: Path, patterns: list[str]) -> Path:
-    """Find file from preferred path or search in models/ and experiments/."""
+def _find_path(
+    preferred_path: Path,
+    patterns: list[str],
+    scope_token: str | None = None,
+) -> Path:
+    """Find an artifact without crossing into another model family.
+
+    A broad ``*.pt`` fallback can otherwise select an unrelated checkpoint
+    (for example the legacy 16-class attribute model under the segmentation
+    experiment).  When ``scope_token`` is supplied, every fallback candidate
+    must live under a path containing that selected model name.
+    """
     if preferred_path.exists():
         return preferred_path
     search_dirs = [
         PROJECT_ROOT / "models",
         PROJECT_ROOT / "experiments",
+        PROJECT_ROOT / "kaggle_uploads",
         Path("/kaggle/input"),
     ]
     for s_dir in search_dirs:
@@ -53,6 +64,11 @@ def _find_path(preferred_path: Path, patterns: list[str]) -> Path:
                 try:
                     for match in s_dir.rglob(pat):
                         if match.is_file() and ".git" not in str(match):
+                            if (
+                                scope_token
+                                and scope_token.casefold() not in str(match).casefold()
+                            ):
+                                continue
                             return match
                 except Exception:
                     continue
@@ -86,26 +102,31 @@ def _build_cv_pipeline() -> Any:
     # Auto-resolve segmentation weights
     seg_weights = _find_path(
         project_path(segmentation_config.weights_path),
-        ["*yolo*.pt", "*seg*.pt", "best.pt", "*.pt"]
+        ["*yolo*.pt", "*seg*.pt", "best.pt", "*.pt"],
+        scope_token=project_path(segmentation_config.weights_path).parent.name,
     )
     segmentation_config = segmentation_config.with_weights_path(seg_weights).with_output_dir(output_root)
 
     # Auto-resolve attribute weights & configs
     attr_weights = _find_path(
         attribute_config.weights_path,
-        ["*attr*.pt", "attr_last_v1_best.pt", "*resnet*.pt", "*attribute*.pt"]
+        ["*attr*.pt", "attr_last_v1_best.pt", "*resnet*.pt", "*attribute*.pt"],
+        scope_token=attribute_config.selected_model,
     )
     attr_labels = _find_path(
         attribute_config.label_mapping_path,
-        ["label_mapping.json", "*mapping*.json"]
+        ["label_mapping.json", "*mapping*.json"],
+        scope_token=attribute_config.selected_model,
     )
     attr_thresh = _find_path(
         attribute_config.color_thresholds_path,
-        ["optimal_thresholds.json", "*thresholds*.json"]
+        ["optimal_thresholds.json", "*thresholds*.json"],
+        scope_token=attribute_config.selected_model,
     )
     attr_model_cfg = _find_path(
         attribute_config.model_config_path,
-        ["model_config.yaml", "*config*.yaml"]
+        ["model_config.yaml", "*config*.yaml"],
+        scope_token=attribute_config.selected_model,
     )
 
     from dataclasses import replace

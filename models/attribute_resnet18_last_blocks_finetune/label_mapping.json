@@ -1,21 +1,10 @@
 {
   "shape": [
-    "BULLET",
     "CAPSULE",
-    "DIAMOND",
-    "DOUBLE CIRCLE",
-    "FREEFORM",
-    "HEXAGON",
-    "OCTAGON",
+    "IRREGULAR",
     "OVAL",
-    "PENTAGON",
-    "RECTANGLE",
-    "ROUND",
-    "SEMI-CIRCLE",
-    "SQUARE",
-    "TEAR",
-    "TRAPEZOID",
-    "TRIANGLE"
+    "POLYGON",
+    "ROUND"
   ],
   "color": [
     "BLACK",
