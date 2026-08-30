@@ -80,87 +80,10 @@ Polypharmacy presents significant clinical risks when multiple medications are c
 
 # 🏗️ Architecture
 
-```mermaid
-%%{init: {
-  "theme": "base",
-  "flowchart": {
-    "curve": "basis",
-    "htmlLabels": true,
-    "nodeSpacing": 35,
-    "rankSpacing": 55
-  },
-  "themeVariables": {
-    "background": "#FFFFFF",
-    "primaryTextColor": "#1F2937",
-    "lineColor": "#64748B",
-    "fontFamily": "Arial, sans-serif"
-  }
-}}%%
+<p align="center">
+  <img src="docs/images/Gemini_Generated_Image_16i59u16i59u16i5.png" alt="Desktop - Input" width="100%">
+</p>
 
-flowchart TD
-
-    %% ===== INPUT =====
-    A["<b>RGB Pill Image</b>"]
-
-    %% ===== COMPUTER VISION =====
-    B["<b>YOLO11-Seg</b><br/>Instance Segmentation<br/>+ Quality Check"]
-    C["<b>ResNet-18</b><br/>Attribute Classification"]
-    D["<b>PaddleOCR</b><br/>Imprint Extraction"]
-    E["<b>CVPipelineAssembler</b><br/>Feature Fusion"]
-
-    %% ===== CANDIDATE IDENTIFICATION =====
-    F["<b>Candidate Matching</b><br/>Medication Database"]
-    G["<b>EvidenceScorer</b><br/>IDF-Weighted Scoring"]
-
-    %% ===== SAFETY DECISION =====
-    H{"<b>Safety Gate</b><br/>Identification Decision"}
-
-    %% ===== CLINICAL SAFETY =====
-    I["<b>DDI Engine</b><br/>Active Ingredient<br/>+ DDI Check"]
-    J["<b>Structured Safety Context</b>"]
-    K["<b>Safety Report Formatter</b>"]
-    L["<b>Clinical Safety Result</b><br/>Severity · Drug Summary · DDI Guidance"]
-
-    %% ===== HUMAN-IN-THE-LOOP =====
-    M["<b>Clinician</b><br/>Manual Confirmation"]
-
-    %% ===== FLOW =====
-    A --> B
-    B --> C
-    B --> D
-    C --> E
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-    H -->|identified| I
-    H -->|ambiguous or unknown| M
-    M --> I
-    I --> J
-    J --> K
-    K --> L
-
-    %% ===== STYLE =====
-    classDef inputOutput fill:#E8F0F7,stroke:#355C7D,stroke-width:2px,color:#172B3A;
-    classDef vision fill:#F1F7FA,stroke:#5B8FA8,stroke-width:1.5px,color:#243B4A;
-    classDef matching fill:#FBF6ED,stroke:#B58A4A,stroke-width:1.5px,color:#4A3A23;
-    classDef safety fill:#F9EEEE,stroke:#A85C5C,stroke-width:2.5px,color:#5A2525;
-    classDef ddi fill:#F4F0F8,stroke:#80689A,stroke-width:1.5px,color:#3E3150;
-    classDef reporting fill:#F4F5F7,stroke:#68717C,stroke-width:1.5px,color:#303841;
-    classDef human fill:#FBF7E8,stroke:#B59B4E,stroke-width:2px,color:#4A401F;
-
-    %% ===== APPLY STYLE =====
-    class A,L inputOutput;
-    class B,C,D,E vision;
-    class F,G matching;
-    class H safety;
-    class I ddi;
-    class J,K reporting;
-    class M human;
-
-    %% ===== ARROWS =====
-    linkStyle default stroke:#64748B,stroke-width:1.8px;
-```
 ---
 
 # ⚙️ Technology Stack
@@ -183,7 +106,7 @@ flowchart TD
 ## 💻 Desktop Version
 
 <p align="center">
-  <img src="docs/images/Screenshot 2026-08-30 213407.png" alt="Desktop - Input" width="100%">
+  <img src="docs/images/Screenshot 2026-08-30 174110.png" alt="Desktop - Input" width="100%">
 </p>
 
 <p align="center">
@@ -196,6 +119,10 @@ flowchart TD
 
 <p align="center">
   <img src="docs/images/Screenshot 2026-08-30 213354.png" alt="Desktop - Input" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/images/Screenshot 2026-08-30 213407.png" alt="Desktop - Input" width="100%">
 </p>
 
 ## 📱 Mobile Version
