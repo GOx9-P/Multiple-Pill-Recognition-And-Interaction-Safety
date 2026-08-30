@@ -27,7 +27,7 @@ Nguyên tắc an toàn:
 - Report formatter không được tự thêm tên thuốc, hoạt chất, DDI hoặc khuyến nghị ngoài context đã kiểm chứng.
 - Việc định danh thuốc phải qua structured retrieval, không qua suy luận tự do.
 - Hệ thống không buộc phải nhận diện mọi viên thuốc.
-- Khi bằng chứng không đủ, trả `ambiguous`, `unknown`, `insufficient_visual_evidence` hoặc yêu cầu ảnh bổ sung.
+- CV chỉ trả các trạng thái `features_ready`, `partial_features`, `insufficient_visual_evidence` hoặc `unknown_object`; `ambiguous`, `unknown` và `identified` là trạng thái của Retrieval/Safety Gate ở module sau.
 - Chỉ thuốc `identified` mới được dùng cho kết luận DDI chắc chắn.
 - Không tìm thấy DDI trong database không đồng nghĩa phối hợp thuốc an toàn.
 - Kết quả chỉ có tính hỗ trợ, không thay thế bác sĩ hoặc dược sĩ.
@@ -134,17 +134,17 @@ flowchart TB
 
             CP2["Crop theo bounding box<br/>và thêm khoảng đệm"]
 
-            CP3["Chuẩn hóa nền<br/>trắng, xám hoặc trong suốt"]
+            CP3["Chuẩn hóa nền<br/>xám trung tính (mặc định 127)"]
 
             CPG{"Viên có trục chính<br/>ổn định không?"}
 
-            CP4A["Căn chỉnh bằng PCA<br/>hoặc minimum-area rectangle"]
+            CP4A["Căn chỉnh bằng PCA<br/>khi mask đủ thuôn"]
 
             CP4B["Giữ nguyên hướng<br/>của ảnh crop"]
 
             CP5["Đưa ảnh về<br/>kích thước chuẩn"]
 
-            CP6["Tạo các biến thể xử lý<br/>Ảnh RGB<br/>Ảnh xám<br/>CLAHE<br/>Hiệu chỉnh gamma<br/>Ngưỡng thích nghi<br/>Làm sắc nét"]
+            CP6["Xuất crop riêng theo task<br/>color: interior mask<br/>shape: RGB ROI gốc<br/>OCR: clean masked crop"]
 
             CP1 --> CP2
             CP2 --> CP3
@@ -177,9 +177,9 @@ flowchart TB
 
                 SH2["Trích xuất đặc trưng hình học<br/>Tỷ lệ dài rộng<br/>Độ tròn<br/>Độ đặc<br/>Độ lồi<br/>Đặc trưng contour"]
 
-                SH3["Mô hình phân loại thuộc tính<br/>MobileNetV4, ResNet hoặc ConvNeXt<br/><br/>Dữ liệu huấn luyện:<br/>NIH Pill Image Dataset"]
+                SH3["Mô hình hiện tại<br/>ResNet18 đa nhiệm<br/><br/>Hai head đã train:<br/>shape và color"]
 
-                SH4["Kết quả thuộc tính<br/>Hình dạng<br/>Dạng bào chế<br/>Đường chia viên<br/>Điểm tin cậy"]
+                SH4["Kết quả thuộc tính<br/>shape top-1 + alternatives<br/>color multi-label<br/>điểm model<br/><br/>Các field khác: unknown"]
 
                 SH1 --> SH2
                 SH1 --> SH3
@@ -197,13 +197,13 @@ flowchart TB
 
                 CL1["Ảnh RGB đã áp dụng mask"]
 
-                CL2["Hiệu chỉnh sai lệch màu<br/>Cân bằng trắng hoặc Retinex"]
+                CL2["Crop màu từ Module 1<br/>chỉ dùng interior mask<br/>giảm lẫn pixel nền"]
 
-                CL3["Chỉ lấy pixel trong mask<br/>Loại vùng phản sáng và bóng mạnh"]
+                CL3["Chuẩn hóa ảnh inference<br/>Resize 224×224<br/>ImageNet mean/std"]
 
-                CL4["Phân tích màu trong<br/>không gian HSV hoặc Lab"]
+                CL4["ResNet18 color head<br/>sigmoid multi-label"]
 
-                CL5["Phân cụm màu<br/>Màu chính và màu phụ"]
+                CL5["Áp dụng calibrated<br/>per-class threshold"]
 
                 CL6["Kết quả màu sắc<br/>Màu chính<br/>Màu phụ<br/>Phân bố màu<br/>Cảnh báo ánh sáng<br/>Điểm tin cậy"]
 
@@ -437,10 +437,10 @@ Mục tiêu:
 - Phát hiện các viên tiếp xúc hoặc chồng lấp một phần do model instance segmentation tách được.
 - Tạo crop đã tách nền để phục vụ attribute recognition và OCR.
 
-Model đề xuất:
+Model đang triển khai:
 
 - **YOLOv11-Seg**.
-- Train bằng **MEDISEG** hoặc dataset segmentation tương đương.
+- Checkpoint inference lấy từ `configs/inference/segmentation.yaml`; train/evaluate wrapper nằm trong `training/segmentation_yolov11_full_finetune/`.
 - Bài toán class-agnostic:
 
 ```text
@@ -471,6 +471,7 @@ Output instance segmentation:
 ```json
 {
   "instance_id": "pill_001",
+  "instance_token": "pill_token_<sha256-prefix>",
   "bbox_xyxy": [142, 93, 326, 248],
   "segmentation": {
     "confidence": 0.96,
@@ -581,14 +582,12 @@ yellow
 
 Shape là softmax: pipeline trả top-1 và tối đa hai alternatives. Color là multi-label sigmoid với calibrated per-class thresholds. `unknown` không phải class train; nó được xuất ra khi không có color nào vượt threshold.
 
-Color constancy:
+Tiền xử lý color hiện tại:
 
-- Chỉ lấy pixel trong mask.
-- Loại vùng highlight và shadow.
-- Dùng HSV/Lab để phân tích màu.
-- Áp dụng white balance hoặc Retinex nếu ánh sáng lệch rõ.
-- Với capsule hai màu, thử chia theo trục dài trước khi phân màu.
-- Nếu có `lighting_warning`, color không được dùng làm hard filter.
+- Module 1 tạo `color_crop_path` từ phần interior của clean mask để giảm pixel nền ở viền.
+- Module 2 resize crop về 224×224, chuyển RGB tensor và normalize bằng ImageNet mean/std trước khi chạy ResNet18.
+- Color head dùng sigmoid multi-label và threshold đã calibration trong artifact; không có bước HSV/Lab, white balance, Retinex hoặc tách hai nửa capsule trong inference hiện tại.
+- `lighting_warning` trong output Attribute hiện là field schema; predictor hiện không tự suy ra lại cờ này từ crop. Cờ chất lượng ảnh nguồn nằm ở Module 1 và `quality_flags` của output cuối.
 
 Output attribute:
 
@@ -660,7 +659,7 @@ dosage_form, logo_or_symbol, damage_or_occlusion
 
 ### 3.3. Imprint OCR
 
-Imprint là tín hiệu phân biệt quan trọng trong bước retrieval. Baseline hiện tại được triển khai tại `PaddleOCR_baseline_colab.ipynb` bằng **PaddleOCR PP-OCRv5 end-to-end**. Cùng một lần `predict()` trả text, recognition confidence và polygon của từng vùng chữ.
+Imprint là tín hiệu phân biệt quan trọng trong bước retrieval. Implementation runtime nằm tại `src/pill_safety/cv/ocr/` và dùng **PaddleOCR PP-OCRv5 end-to-end**; notebook baseline chỉ là tài liệu/thử nghiệm tham khảo. Mỗi lần `predict()` trả text, recognition confidence và polygon của từng vùng chữ.
 
 Pipeline hiện tại:
 
@@ -729,7 +728,7 @@ Tier 2: 90°, 270°
 Tier 3: -45°, -30°, -15°, 15°, 30°, 45°
 ```
 
-`FORCE_RUN_ALL_ROTATION_TIERS = True` trong notebook baseline, vì vậy mọi tier đều chạy để thu thập evidence. Có thể chuyển thành early-stop sau khi benchmark latency và Recall@k, nhưng đó chưa phải hành vi mặc định hiện tại.
+`force_run_all_rotation_tiers: true` trong `configs/inference/ocr.yaml`, vì vậy mọi tier đều chạy để thu thập evidence. Có thể chuyển thành early-stop sau khi benchmark latency và Recall@k, nhưng đó chưa phải hành vi mặc định hiện tại.
 
 PP-OCRv5 vẫn chạy trên các góc xiên. Riêng Hough scoreline và side-split chỉ chạy ở `0°`, `90°`, `180°`, `270°`. Nguyên nhân là `warpAffine` ở góc xiên tạo biên canvas dài và Hough có thể nhận nhầm biên này thành scoreline.
 
@@ -843,7 +842,7 @@ scoreline/split_info nếu có
 
 Quality gate hiện yêu cầu chuỗi có ký tự alphanumeric ASCII, không chứa ký tự lỗi, có ít nhất một ký tự hợp lệ và `best_confidence >= 0.50`.
 
-Để không làm regression các case baseline đã đọc đúng, final answer giữ rule cũ:
+Mỗi observation có priority để mô tả loại evidence, nhưng final answer của runtime hiện tại không chọn trực tiếp theo priority. Sau quality gate, text được group theo chuỗi chuẩn hoá và xếp hạng theo consensus:
 
 ```text
 full_image có từ hai box: priority = 2
@@ -851,11 +850,12 @@ full_image có một box:    priority = 1
 reliable scoreline split: priority = 3
 unreliable split:         priority = 0
 
-final observation = priority cao nhất
-                    → best OCR confidence cao nhất
+candidate_score = 0.65 × mean_sequence_confidence
+                + 0.25 × min(support_count / 3, 1)
+                + 0.10 × min(mode_diversity / 2, 1)
 ```
 
-`best_confidence` chỉ dùng để chọn observation khi cùng priority. Sau khi đã chọn observation cuối, confidence của toàn imprint được tính trên tất cả `ordered_items`:
+Candidate fragment nằm trong một candidate dài hơn sẽ bị loại. Candidate có score, support count và mean confidence cao nhất là `final_answer`; priority vẫn được giữ trong observation/debug, không phải rule chọn final answer của runtime hiện tại. Confidence sequence của một observation được tính trên tất cả `ordered_items`:
 
 ```text
 final_sequence_confidence =
@@ -863,13 +863,13 @@ final_sequence_confidence =
   + 0.5 × min(region_confidences)
 ```
 
-Giá trị này được dùng cho `final_answer.score`, `imprint.confidence` và tạm dùng cho `imprint_visibility.confidence`. Vì vậy một region yếu không bị che bởi region có confidence cao; quy tắc chọn đáp án cuối vẫn không thay đổi.
+Giá trị này góp phần vào score candidate và là confidence của evidence text. Vì vậy một region yếu không bị che bởi region có confidence cao. `final_answer.score` là consensus score, không phải xác suất định danh thuốc.
 
-Consensus và circular candidates được giữ làm evidence bổ sung, không ghi đè final baseline. Candidate được normalize bằng uppercase alphanumeric key, gộp evidence trùng giữa các biến thể và tính relative score từ mean sequence confidence, support count và mode diversity.
+Circular candidates là giả thuyết bổ sung trong cùng cơ chế ranking. Candidate được normalize bằng uppercase alphanumeric key, gộp evidence trùng giữa các biến thể và tính relative score từ mean sequence confidence, support count và mode diversity.
 
 Notebook chưa tự sinh các biến thể confusion như `O↔0`, `I↔1`, `S↔5`. Nếu bổ sung, chúng phải nằm ở bước candidate expansion có giới hạn và giữ provenance rõ ràng; không được sửa trực tiếp raw OCR text.
 
-Notebook giữ tối đa 10 candidates để debug. Trước khi gửi Retrieval/RAG, CV adapter phải quality-gate và cắt còn Top 3–5 theo contract hệ thống. Candidate score chỉ là relative OCR score, không phải xác suất thuốc đúng.
+Runtime giữ tối đa 10 candidates để debug (`max_final_candidates`) và schema công khai giữ tối đa 5 normalized candidates (`max_ocr_observations` và `max_normalized_candidates` trong YAML). Candidate score chỉ là relative OCR score, không phải xác suất thuốc đúng.
 
 #### 3.3.6. Notebook Output
 
@@ -1126,6 +1126,8 @@ partial_features
 insufficient_visual_evidence
 unknown_object
 ```
+
+Fusion suy ra trạng thái theo thứ tự: `possible_non_pill → unknown_object`; ảnh có `image_quality.status = unusable → insufficient_visual_evidence`; `possible_merged_instance` hoặc `imprint.visible = false → partial_features`; còn lại là `features_ready`. Fusion bắt buộc kiểm tra `instance_token` và identity (`request_id`, `session_id`, `image_id`, `instance_id`) trước khi tạo `cv_output_v1`.
 
 ---
 
